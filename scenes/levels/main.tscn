@@ -1,7 +1,11 @@
-[gd_scene load_steps=3 format=3 uid="uid://main_scene"]
+[gd_scene load_steps=2 format=3 uid="uid://main_scene"]
 
 [ext_resource type="PackedScene" uid="uid://dungeon_gen" path="res://scenes/levels/dungeon_generator.tscn" id="3_dungeon"]
 
 [node name="Main" type="Node2D"]
 
 [node name="DungeonGenerator" parent="." instance=ExtResource("3_dungeon")]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(3200, 3200)
+zoom = Vector2(0.5, 0.5)
