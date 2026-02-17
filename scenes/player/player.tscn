@@ -1,27 +1,28 @@
-[gd_scene load_steps=9 format=3 uid="uid://player_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://player_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
-[ext_resource type="Script" path="res://scripts/components/hurtbox_component.gd" id="2_hurtbox"]
-[ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="3_hitbox"]
-[ext_resource type="Script" path="res://scripts/player/player.gd" id="4_player"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="3_player"]
 
-[sub_resource type="RectangleShape2D" id="shape_body"]
-size = Vector2(32, 32)
+[sub_resource type="CircleShape2D" id="shape_body"]
+radius = 14.0
 
-[sub_resource type="RectangleShape2D" id="shape_hurtbox"]
-size = Vector2(32, 32)
+[sub_resource type="CircleShape2D" id="shape_hurtbox"]
+radius = 14.0
 
 [sub_resource type="RectangleShape2D" id="shape_attack"]
-size = Vector2(40, 40)
+size = Vector2(28, 16)
 
 [node name="Player" type="CharacterBody2D"]
-script = ExtResource("4_player")
+collision_layer = 2
+collision_mask = 9
+script = ExtResource("3_player")
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("1_health")
 max_health = 100
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_body")
 
 [node name="Visuals" type="Node2D" parent="."]
@@ -31,33 +32,38 @@ offset_left = -16.0
 offset_top = -16.0
 offset_right = 16.0
 offset_bottom = 16.0
-color = Color(0.2, 0.6, 1, 1)
+color = Color(0.2, 0.4, 0.9, 1)
 
-[node name="Direction" type="Node2D" parent="Visuals"]
+[node name="WeaponPivot" type="Node2D" parent="."]
 
-[node name="AttackPoint" type="Marker2D" parent="Visuals/Direction"]
-position = Vector2(25, 0)
+[node name="WeaponSprite" type="ColorRect" parent="WeaponPivot"]
+offset_left = 14.0
+offset_top = -3.0
+offset_right = 38.0
+offset_bottom = 3.0
+color = Color(0.8, 0.8, 0.8, 1)
+
+[node name="AttackArea" type="Area2D" parent="WeaponPivot"]
+collision_mask = 8
+monitoring = true
+monitorable = false
+
+[node name="AttackShape" type="CollisionShape2D" parent="WeaponPivot/AttackArea"]
+shape = SubResource("shape_attack")
+position = Vector2(26, 0)
 
 [node name="Hurtbox" type="Area2D" parent="."]
+script = ExtResource("2_hurtbox")
+collision_layer = 32
+monitoring = false
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+[node name="HurtboxShape" type="CollisionShape2D" parent="Hurtbox"]
 shape = SubResource("shape_hurtbox")
 
-[node name="HurtboxComponent" type="Node" parent="Hurtbox"]
-script = ExtResource("2_hurtbox")
-invincibility_time = 0.5
-
-[node name="Attack" type="Area2D" parent="."]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Attack"]
-shape = SubResource("shape_attack")
-position = Vector2(30, 0)
-
-[node name="HitboxComponent" type="Node" parent="Attack"]
-script = ExtResource("3_hitbox")
-damage = 25
-knockback_force = 200.0
-cooldown = 0.3
-
-[node name="Camera2D" type="Camera2D" parent="."]
-zoom = Vector2(2, 2)
+[node name="HPBar" type="ProgressBar" parent="."]
+offset_left = -18.0
+offset_top = -28.0
+offset_right = 18.0
+offset_bottom = -23.0
+value = 100.0
+show_percentage = false
