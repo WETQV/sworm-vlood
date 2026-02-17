@@ -179,6 +179,10 @@ func _perform_shield_bash() -> void:
 
 ## Атака попала по врагу
 func _on_attack_hit(area: Area2D) -> void:
+	# Защита: бьём только врагов
+	if not area.get_parent().is_in_group("enemy"):
+		return
+	
 	if area.has_method("receive_damage"):
 		area.receive_damage(attack_damage, attack_knockback, global_position)
 		print("Попал по: ", area.get_parent().name)

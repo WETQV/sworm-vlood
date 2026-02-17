@@ -24,6 +24,10 @@ func _process(delta: float) -> void:
 
 
 func _on_area_entered(area: Area2D) -> void:
+	# Защита: бьём только врагов
+	if not area.get_parent().is_in_group("enemy"):
+		return
+	
 	if area.has_method("receive_damage"):
 		area.receive_damage(damage, 150.0, global_position)
 		print("Стрела попала в: ", area.get_parent().name)

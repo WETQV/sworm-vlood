@@ -94,6 +94,10 @@ func _find_target() -> void:
 func _try_contact_damage() -> void:
 	var areas: Array = attack_area.get_overlapping_areas()
 	for area in areas:
+		# Защита: бьём только игроков
+		if not area.get_parent().is_in_group("player"):
+			continue
+		
 		if area.has_method("receive_damage"):
 			area.receive_damage(contact_damage, 150.0, global_position)
 			_attack_timer = attack_cooldown
