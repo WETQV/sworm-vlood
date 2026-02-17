@@ -1,3 +1,43 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Godot ignores (https://github.com/godotengine/godot/blob/main/.gitignore)
+# Imported resources (generated automatically)
+*.import
+.import/
+
+# Export presets (may contain private keys)
+export_presets.cfg
+
+# Exported game files (these can be large and are rebuildable)
+export/
+*.pck
+*.pcx
+*.wasm
+*.js
+
+# Debug files
+*.dmp
+*.log
+
+# User-specific files (saves, settings, etc.)
+user://
+
+# Mono / C# specific
+.mono/
+*.dll
+*.dll.mdb
+*.pdb
+*.mdb
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Editor directories and files
+.vscode/
+.idea/
+*.code-workspace
