@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3 uid="uid://fireball_scene"]
+
+[ext_resource type="Script" path="res://scripts/items/fireball.gd" id="1_fireball"]
+
+[sub_resource type="CircleShape2D" id="shape_fireball"]
+radius = 8.0
+
+[node name="Fireball" type="Area2D"]
+script = ExtResource("1_fireball")
+collision_layer = 0
+collision_mask = 8
+
+[node name="Shape" type="CollisionShape2D" parent="."]
+shape = SubResource("shape_fireball")
+
+[node name="Sprite" type="ColorRect" parent="."]
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+color = Color(1, 0.4, 0.1, 1)

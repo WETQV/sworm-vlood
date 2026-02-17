@@ -1,671 +1,97 @@
-
-
-# 🔧 Полный план: Персонаж + Враги + Боевая система
-
-## 🐛 Сначала — что сломано и почему
-
-```
-Баг 1: "Враги липнут к игроку"
-→ Нет collision layers. Все на одном слое — тела перекрываются.
-→ У врага нет stop_distance — он бесконечно толкается в игрока.
-
-Баг 2: "Атака не наносит урон"
-→ HitboxComponent ищет receive_damage() на Area2D:
-   area.has_method("receive_damage")  ← FALSE!
-   Потому что receive_damage() лежит на ДОЧЕРНЕМ Node (HurtboxComponent),
-   а не на самой Area2D.
-
-Баг 3: "HurtboxComponent не находит HealthComponent"
-→ _parent_node = get_parent() → это Area2D (Hurtbox)
-→ _parent_node.get_node("HealthComponent") → ищет ВНУТРИ Area2D
-→ А HealthComponent — РЯДОМ с Area2D, на уровне CharacterBody2D
-
-Баг 4: "Отбрасывание не работает"
-→ _parent_node as CharacterBody2D → null (потому что parent = Area2D)
-```
-
-**Решение:** упрощаем архитектуру. Скрипт `receive_damage` вешаем прямо на Area2D.
+Отлично, структура у тебя уже хорошая! Вот что нужно сделать для добавления новых классов:
 
 ---
 
-## Шаг 1 — Collision Layers (САМОЕ ВАЖНОЕ)
+**1. GameManager — добавить данные классов**
 
-> **Проект → Настройки проекта → General → Layer Names → 2D Physics**
-
-Пропиши имена слоёв:
-
-```
-Layer 1: walls
-Layer 2: player_body
-Layer 3: enemy_body
-Layer 4: player_attack
-Layer 5: enemy_attack
-Layer 6: player_hurtbox
-Layer 7: enemy_hurtbox
-```
-
-**Кто на каком слое и что видит:**
-
-```
-Нода                    │ Layer (я есть) │ Mask (я вижу)
-────────────────────────│────────────────│──────────────
-Player (CharacterBody2D)│ 2              │ 1, 3
-Enemy (CharacterBody2D) │ 3              │ 1, 2, 3
-Player AttackArea       │ —              │ 7
-Enemy AttackArea        │ —              │ 6
-Player Hurtbox          │ 6              │ —
-Enemy Hurtbox           │ 7              │ —
-```
-
-**Что это даёт:**
-```
-✅ Игрок сталкивается со стенами и врагами (не проходит сквозь)
-✅ Враги сталкиваются друг с другом (не стакаются)
-✅ Атака игрока бьёт ТОЛЬКО врагов
-✅ Атака врага бьёт ТОЛЬКО игрока
-✅ Нет friendly fire
-```
-
----
-
-## Шаг 2 — Input Map
-
-> **Проект → Настройки проекта → Input Map**
-
-Добавь действия:
-
-```
-move_up     → W
-move_down   → S
-move_left   → A
-move_right  → D
-attack      → Left Mouse Button (ЛКМ)
-```
-
----
-
-## Шаг 3 — HealthComponent (оставляем как есть)
-
-`scripts/components/health_component.gd`:
+Судя по `ClassSelect`, у тебя уже есть `GameManager.CLASS_DATA` и enum `PlayerClass`. Нужно добавить туда новые классы, например:
 
 ```gdscript
-extends Node
-class_name HealthComponent
+enum PlayerClass { WARRIOR, MAGE, ROGUE }
 
-signal health_changed(current: int, maximum: int)
-signal died
-
-@export var max_health: int = 100
-var current_health: int
-
-
-func _ready() -> void:
-    current_health = max_health
-
-
-func take_damage(amount: int) -> void:
-    current_health = max(0, current_health - amount)
-    health_changed.emit(current_health, max_health)
-    print("%s получил %d урона. HP: %d/%d" % [get_parent().name, amount, current_health, max_health])
-    if current_health <= 0:
-        died.emit()
-
-
-func heal(amount: int) -> void:
-    current_health = min(max_health, current_health + amount)
-    health_changed.emit(current_health, max_health)
-
-
-func is_alive() -> bool:
-    return current_health > 0
+const CLASS_DATA = {
+    PlayerClass.WARRIOR: {
+        "name": "Воин",
+        "description": "Крепкий боец ближнего боя",
+        "color": Color(0.2, 0.5, 1),
+        "stats": { "hp": 150, "damage": 25, "speed": 180 }
+    },
+    PlayerClass.MAGE: {
+        "name": "Маг",
+        "description": "Бьёт издалека, но хрупкий",
+        "color": Color(0.8, 0.2, 1),
+        "stats": { "hp": 80, "damage": 45, "speed": 160 }
+    },
+    PlayerClass.ROGUE: {
+        "name": "Разбойник",
+        "description": "Быстрый и юркий",
+        "color": Color(0.2, 0.8, 0.3),
+        "stats": { "hp": 100, "damage": 30, "speed": 260 }
+    },
+}
 ```
 
 ---
 
-## Шаг 4 — Новый Hurtbox (ЗАМЕНА старых компонентов)
+**2. Player.gd — применять статы из GameManager**
 
-> Удали `HitboxComponent.gd` и `HurtboxComponent.gd`. Вместо них — один простой скрипт **на самой Area2D**.
-
-`scripts/components/hurtbox.gd`:
+В `_ready()` добавь применение выбранного класса:
 
 ```gdscript
-extends Area2D
-class_name Hurtbox
-## Hurtbox — зона получения урона
-## Вешается НАПРЯМУЮ на Area2D
-## Родитель (get_parent()) должен быть CharacterBody2D
-
-signal damage_received(amount: int, knockback: Vector2)
-
-@export var invincibility_time: float = 0.3
-
-var _is_invincible: bool = false
-
-
-## Получить урон — вызывается атакующей стороной
-func receive_damage(amount: int, knockback_force: float, attacker_position: Vector2) -> void:
-    if _is_invincible:
-        return
-
-    var entity = get_parent()
-
-    # Наносим урон через HealthComponent
-    var health = entity.get_node_or_null("HealthComponent") as HealthComponent
-    if health:
-        health.take_damage(amount)
-
-    # Считаем направление отбрасывания
-    var direction: Vector2 = (entity.global_position - attacker_position).normalized()
-    if direction == Vector2.ZERO:
-        direction = Vector2.RIGHT
-
-    # Отправляем сигнал — entity сам решит что делать
-    damage_received.emit(amount, direction * knockback_force)
-
-    # Неуязвимость
-    _is_invincible = true
-
-    # Мигание
-    var tween = create_tween()
-    tween.tween_property(entity, "modulate", Color(1, 0.3, 0.3), 0.05)
-    tween.tween_property(entity, "modulate", Color.WHITE, 0.15)
-
-    await get_tree().create_timer(invincibility_time).timeout
-    _is_invincible = false
-```
-
-**Почему это лучше:**
-```
-Раньше: AttackArea → area_entered → Area2D → ???
-        area.has_method("receive_damage") = FALSE (метод на дочернем Node)
-
-Теперь: AttackArea → area_entered → Area2D (Hurtbox)
-        area.has_method("receive_damage") = TRUE (метод на самой Area2D)
-```
-
----
-
-## Шаг 5 — Игрок (полная переделка)
-
-### Дерево сцены `scenes/player/player.tscn`
-
-Строй в редакторе **по одной ноде**:
-
-```
-Player (CharacterBody2D)
-│   → Layer: 2 (player_body)
-│   → Mask: 1, 3 (walls, enemy_body)
-│
-├── BodyCollision (CollisionShape2D)
-│   → Shape: CircleShape2D, radius = 14
-│
-├── HealthComponent (Node)
-│   → Script: health_component.gd
-│   → max_health: 100
-│
-├── Visuals (Node2D)
-│   └── Body (ColorRect)
-│       → Position: (-16, -16)     ← чтобы центрировать
-│       → Size: (32, 32)
-│       → Color: синий
-│
-├── WeaponPivot (Node2D)            ← крутится за мышью
-│   → Position: (0, 0)
-│   │
-│   ├── WeaponSprite (ColorRect)    ← визуал оружия
-│   │   → Position: (16, -3)
-│   │   → Size: (22, 6)
-│   │   → Color: светло-серый
-│   │
-│   └── AttackArea (Area2D)         ← зона удара
-│       → Monitoring: false         ← ВЫКЛЮЧЕНО по умолчанию!
-│       → Monitorable: false
-│       → Layer: ничего
-│       → Mask: 7 (enemy_hurtbox)
-│       │
-│       └── AttackShape (CollisionShape2D)
-│           → Shape: RectangleShape2D (28 x 16)
-│           → Position: (26, 0)     ← впереди игрока
-│
-├── Hurtbox (Area2D)                ← СКРИПТ: hurtbox.gd
-│   → Script: hurtbox.gd
-│   → Monitoring: false
-│   → Monitorable: true
-│   → Layer: 6 (player_hurtbox)
-│   → Mask: ничего
-│   │
-│   └── HurtboxShape (CollisionShape2D)
-│       → Shape: CircleShape2D, radius = 14
-│
-└── HPBar (ProgressBar)
-    → Position: (-18, -28)
-    → Size: (36, 5)
-    → Show Percentage: off
-    → Min Value: 0, Max Value: 100
-```
-
-**Визуально это выглядит так:**
-
-```
-         HP бар
-        [██████]
-        ┌──────┐
-        │      │═══▶  ← Оружие (поворачивается за мышью)
-        │ Тело │      ← Зона атаки (перед оружием)
-        │      │
-        └──────┘
-```
-
-### Скрипт `scripts/player/player.gd`
-
-```gdscript
-extends CharacterBody2D
-## Player.gd — движение, поворот за мышью, атака мечом
-
-@onready var health_component: HealthComponent = $HealthComponent
-@onready var weapon_pivot: Node2D = $WeaponPivot
-@onready var weapon_sprite: ColorRect = $WeaponPivot/WeaponSprite
-@onready var attack_area: Area2D = $WeaponPivot/AttackArea
-@onready var body_sprite: ColorRect = $Visuals/Body
-@onready var hurtbox: Hurtbox = $Hurtbox
-@onready var hp_bar: ProgressBar = $HPBar
-
-# --- Настройки ---
-@export var speed: float = 200.0
-@export var attack_damage: int = 25
-@export var attack_knockback: float = 250.0
-@export var attack_duration: float = 0.15
-@export var attack_cooldown: float = 0.4
-
-# --- Внутреннее состояние ---
-var _is_attacking: bool = false
-var _knockback_velocity: Vector2 = Vector2.ZERO
-
-# --- Цвета оружия ---
-var _weapon_color_idle: Color = Color.LIGHT_GRAY
-var _weapon_color_attack: Color = Color.WHITE
-
-
 func _ready() -> void:
     add_to_group("player")
+    _apply_class_stats()
+    # ... остальной код
 
-    # Подключаем сигналы
-    health_component.died.connect(_on_died)
-    health_component.health_changed.connect(_on_health_changed)
-    hurtbox.damage_received.connect(_on_damage_received)
-    attack_area.area_entered.connect(_on_attack_hit)
+func _apply_class_stats() -> void:
+    var data = GameManager.CLASS_DATA[GameManager.selected_class]
+    var stats = data["stats"]
+    
+    speed = float(stats["speed"])
+    attack_damage = stats["damage"]
+    health_component.max_health = stats["hp"]
+    health_component.current_health = stats["hp"]
+    body_sprite.color = data["color"]
+```
 
-    # Атака выключена по умолчанию
-    attack_area.monitoring = false
+---
 
-    # HP бар
-    hp_bar.max_value = health_component.max_health
-    hp_bar.value = health_component.current_health
+**3. Уникальная механика для каждого класса**
 
-    # Цвет оружия
-    weapon_sprite.color = _weapon_color_idle
+Самое интересное — чем классы отличаются в бою. Вот простые идеи:
 
+**Маг** — вместо удара мечом кидает снаряд. В `_perform_attack()` проверяй класс:
 
-func _physics_process(delta: float) -> void:
-    if not health_component.is_alive():
-        return
-
-    # --- Движение ---
-    var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-    var move_velocity: Vector2 = input_dir.normalized() * speed
-
-    # Отбрасывание затухает
-    _knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 800.0 * delta)
-
-    # Итоговая скорость = движение + отбрасывание
-    velocity = move_velocity + _knockback_velocity
-    move_and_slide()
-
-    # --- Поворот оружия за мышью ---
-    var mouse_pos: Vector2 = get_global_mouse_position()
-    weapon_pivot.rotation = (mouse_pos - global_position).angle()
-
-    # --- Атака ---
-    if Input.is_action_just_pressed("attack") and not _is_attacking:
-        _perform_attack()
-
-
-## Выполнить атаку мечом
+```gdscript
 func _perform_attack() -> void:
-    _is_attacking = true
-
-    # Включаем зону урона
-    attack_area.monitoring = true
-    weapon_sprite.color = _weapon_color_attack
-
-    # Небольшое "выдвижение" оружия вперёд
-    var tween := create_tween()
-    tween.tween_property(weapon_sprite, "position:x", 22.0, 0.05)
-    tween.tween_property(weapon_sprite, "position:x", 16.0, 0.1)
-
-    await get_tree().create_timer(attack_duration).timeout
-
-    # Выключаем зону урона
-    attack_area.monitoring = false
-    weapon_sprite.color = _weapon_color_idle
-
-    # Кулдаун до следующей атаки
-    await get_tree().create_timer(attack_cooldown - attack_duration).timeout
-    _is_attacking = false
-
-
-## Атака попала по вражескому hurtbox
-func _on_attack_hit(area: Area2D) -> void:
-    if area.has_method("receive_damage"):
-        area.receive_damage(attack_damage, attack_knockback, global_position)
-        print("Попал по: ", area.get_parent().name)
-
-
-## Получил урон
-func _on_damage_received(_amount: int, knockback: Vector2) -> void:
-    _knockback_velocity = knockback
-
-
-## HP изменилось
-func _on_health_changed(current: int, maximum: int) -> void:
-    hp_bar.max_value = maximum
-    hp_bar.value = current
-
-
-## Смерть
-func _on_died() -> void:
-    set_physics_process(false)
-    modulate = Color(0.5, 0.5, 0.5, 0.5)
-    print("Игрок погиб!")
-```
-
----
-
-## Шаг 6 — Слизь (враг)
-
-### Дерево сцены `scenes/enemies/slime.tscn`
-
-```
-Slime (CharacterBody2D)
-│   → Layer: 3 (enemy_body)
-│   → Mask: 1, 2, 3 (walls, player_body, enemy_body)
-│
-├── BodyCollision (CollisionShape2D)
-│   → Shape: CircleShape2D, radius = 12
-│
-├── HealthComponent (Node)
-│   → Script: health_component.gd
-│   → max_health: 40
-│
-├── Visuals (Node2D)
-│   └── Body (ColorRect)
-│       → Position: (-12, -12)
-│       → Size: (24, 24)
-│       → Color: зелёный (#44cc44)
-│
-├── AttackArea (Area2D)             ← контактный урон
-│   → Monitoring: true
-│   → Monitorable: false
-│   → Layer: ничего
-│   → Mask: 6 (player_hurtbox)
-│   │
-│   └── AttackShape (CollisionShape2D)
-│       → Shape: CircleShape2D, radius = 16
-│
-├── Hurtbox (Area2D)                ← СКРИПТ: hurtbox.gd
-│   → Script: hurtbox.gd
-│   → Monitoring: false
-│   → Monitorable: true
-│   → Layer: 7 (enemy_hurtbox)
-│   → Mask: ничего
-│   │
-│   └── HurtboxShape (CollisionShape2D)
-│       → Shape: CircleShape2D, radius = 12
-│
-└── HPBar (ProgressBar)
-    → Position: (-14, -22)
-    → Size: (28, 4)
-    → Show Percentage: off
-```
-
-### Скрипт `scripts/enemies/slime.gd`
-
-```gdscript
-extends CharacterBody2D
-## Slime.gd — простой враг, идёт к игроку и бьёт контактом
-
-@onready var health_component: HealthComponent = $HealthComponent
-@onready var attack_area: Area2D = $AttackArea
-@onready var body_sprite: ColorRect = $Visuals/Body
-@onready var hurtbox: Hurtbox = $Hurtbox
-@onready var hp_bar: ProgressBar = $HPBar
-
-# --- Настройки ---
-@export var speed: float = 70.0
-@export var contact_damage: int = 10
-@export var attack_cooldown: float = 1.0
-@export var stop_distance: float = 20.0          # перестаёт идти на этом расстоянии
-@export var detection_range: float = 250.0        # видит игрока на этом расстоянии
-
-# --- Внутреннее состояние ---
-var _target: CharacterBody2D = null
-var _knockback_velocity: Vector2 = Vector2.ZERO
-var _attack_timer: float = 0.0
-
-# --- Цвета ---
-var _color_normal: Color = Color("44cc44")
-var _color_angry: Color = Color("ff6644")
-
-
-func _ready() -> void:
-    add_to_group("enemy")
-
-    health_component.died.connect(_on_died)
-    health_component.health_changed.connect(_on_health_changed)
-    hurtbox.damage_received.connect(_on_damage_received)
-
-    # HP бар
-    hp_bar.max_value = health_component.max_health
-    hp_bar.value = health_component.current_health
-
-    body_sprite.color = _color_normal
-
-
-func _physics_process(delta: float) -> void:
-    if not health_component.is_alive():
+    if GameManager.selected_class == GameManager.PlayerClass.MAGE:
+        _shoot_projectile()
         return
+    # обычная атака мечом...
 
-    # --- Поиск цели ---
-    _find_target()
-
-    # --- Движение ---
-    var move_velocity: Vector2 = Vector2.ZERO
-
-    if _target and is_instance_valid(_target):
-        var distance: float = global_position.distance_to(_target.global_position)
-
-        if distance <= detection_range:
-            body_sprite.color = _color_angry     # Заметил игрока!
-
-            if distance > stop_distance:
-                # Идём к игроку
-                var direction: Vector2 = (_target.global_position - global_position).normalized()
-                move_velocity = direction * speed
-            else:
-                # Достаточно близко — стоим и бьём
-                move_velocity = Vector2.ZERO
-        else:
-            body_sprite.color = _color_normal    # Не видит
-    else:
-        body_sprite.color = _color_normal
-
-    # Отбрасывание затухает
-    _knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 600.0 * delta)
-
-    velocity = move_velocity + _knockback_velocity
-    move_and_slide()
-
-    # --- Контактный урон ---
-    _attack_timer -= delta
-    if _attack_timer <= 0.0:
-        _try_contact_damage()
-
-
-## Найти ближайшего игрока
-func _find_target() -> void:
-    if _target and is_instance_valid(_target):
-        return  # Уже есть цель
-
-    var players: Array = get_tree().get_nodes_in_group("player")
-    var min_dist: float = INF
-    for p in players:
-        var dist: float = global_position.distance_to(p.global_position)
-        if dist < min_dist:
-            min_dist = dist
-            _target = p
-
-
-## Попытка нанести контактный урон
-func _try_contact_damage() -> void:
-    var areas: Array = attack_area.get_overlapping_areas()
-    for area in areas:
-        if area.has_method("receive_damage"):
-            area.receive_damage(contact_damage, 150.0, global_position)
-            _attack_timer = attack_cooldown
-            print("%s бьёт игрока на %d урона!" % [name, contact_damage])
-            return
-
-
-## Получил урон — отбрасывание
-func _on_damage_received(_amount: int, knockback: Vector2) -> void:
-    _knockback_velocity = knockback
-
-
-## HP изменилось
-func _on_health_changed(current: int, maximum: int) -> void:
-    hp_bar.max_value = maximum
-    hp_bar.value = current
-
-
-## Смерть
-func _on_died() -> void:
-    set_physics_process(false)
-
-    # Анимация смерти
-    var tween: Tween = create_tween()
-    tween.tween_property(self, "modulate:a", 0.0, 0.4)
-    tween.tween_callback(queue_free)
-
-    print("%s убит!" % name)
+func _shoot_projectile() -> void:
+    var bullet = preload("res://scenes/projectile.tscn").instantiate()
+    bullet.global_position = global_position
+    bullet.direction = (get_global_mouse_position() - global_position).normalized()
+    bullet.damage = attack_damage
+    get_parent().add_child(bullet)
 ```
 
----
-
-## Шаг 7 — Обновлённый game.gd
+**Разбойник** — рывок при атаке:
 
 ```gdscript
-extends Node2D
-## Game — тестовая сцена
-
-@onready var info_label: Label = $CanvasLayer/InfoLabel
-@onready var player_container: Node2D = $PlayerContainer
-@onready var enemy_container: Node2D = $EnemyContainer
-
-
-func _ready() -> void:
-    var class_data := GameManager.get_selected_class_data()
-    info_label.text = "Класс: %s | WASD — движение | ЛКМ — атака | ESC — меню" % class_data["name"]
-
-    _spawn_player(class_data)
-    _spawn_enemies()
-
-
-func _spawn_player(class_data: Dictionary) -> void:
-    var player_scene: PackedScene = load("res://scenes/player/player.tscn")
-    var player: CharacterBody2D = player_scene.instantiate()
-
-    player.position = Vector2(200, 300)
-    player_container.add_child(player)
-
-    # Применяем статы класса
-    var health: HealthComponent = player.get_node("HealthComponent")
-    health.max_health = class_data["stats"]["hp"]
-    health.current_health = class_data["stats"]["hp"]
-    player.speed = class_data["stats"]["speed"]
-    player.attack_damage = class_data["stats"]["damage"]
-
-    # Цвет тела
-    player.get_node("Visuals/Body").color = class_data["color"]
-
-
-func _spawn_enemies() -> void:
-    var slime_scene: PackedScene = load("res://scenes/enemies/slime.tscn")
-
-    var positions := [
-        Vector2(500, 200),
-        Vector2(600, 400),
-        Vector2(350, 500),
-    ]
-
-    for pos in positions:
-        var slime: CharacterBody2D = slime_scene.instantiate()
-        slime.position = pos
-        enemy_container.add_child(slime)
-
-
-func _input(event: InputEvent) -> void:
-    if event.is_action_pressed("ui_cancel"):
-        GameManager.go_to_menu()
+func _perform_attack() -> void:
+    if GameManager.selected_class == GameManager.PlayerClass.ROGUE:
+        var dash_dir = (get_global_mouse_position() - global_position).normalized()
+        _knockback_velocity = -dash_dir * 400.0  # рывок вперёд
+    # дальше обычная атака...
 ```
 
 ---
 
-## ✅ Чеклист — проверь по порядку
+**Порядок работы:**
 
-```
-Настройка:
-  [ ] Collision layers прописаны (7 слоёв)
-  [ ] Input Map: move_up/down/left/right + attack (ЛКМ)
-  [ ] GameManager в автозагрузке
-
-Файлы:
-  [ ] scripts/components/health_component.gd
-  [ ] scripts/components/hurtbox.gd         ← НОВЫЙ
-  [ ] scripts/player/player.gd              ← ПЕРЕПИСАН
-  [ ] scripts/enemies/slime.gd              ← НОВЫЙ
-  [ ] Старые hitbox_component.gd и hurtbox_component.gd — УДАЛИТЬ
-
-Сцены (collision layers!):
-  [ ] player.tscn — Layer 2, Mask 1,3
-      [ ] AttackArea — Mask 7, monitoring OFF
-      [ ] Hurtbox — Layer 6, скрипт hurtbox.gd
-  [ ] slime.tscn — Layer 3, Mask 1,2,3
-      [ ] AttackArea — Mask 6, monitoring ON
-      [ ] Hurtbox — Layer 7, скрипт hurtbox.gd
-
-Тестируй:
-  [ ] Игрок двигается WASD
-  [ ] Оружие крутится за мышью
-  [ ] ЛКМ — оружие мигает, зона атаки появляется
-  [ ] Удар по слизи — слизь теряет HP + отлетает
-  [ ] HP бар слизи уменьшается
-  [ ] Слизь умирает и исчезает
-  [ ] Слизь идёт к игроку и бьёт контактом
-  [ ] Игрок получает урон + мигает красным
-  [ ] HP бар игрока уменьшается
-  [ ] Враги НЕ проходят друг сквозь друга
-  [ ] Враги НЕ проходят сквозь игрока
-```
-
----
-
-## 📋 Что делать дальше (после того как всё заработает)
-
-```
-[ ] Остальные 3 класса (лучник, маг, паладин)
-[ ] Больше типов врагов (скелет, летучая мышь)
-[ ] Лут (зелья, оружие)
-[ ] Босс
-```
-
-Сделай этот чеклист, протестируй, и пиши — пойдём дальше к остальным классам!
+1. Дополни `GameManager` — enum и CLASS_DATA
+2. Добавь `_apply_class_stats()` в Player.gd
+3. Создай сцену `projectile.tscn` если нужен маг
+4. Проверь что `GameManager.selected_class` сохраняется между сценами (AutoLoad)
