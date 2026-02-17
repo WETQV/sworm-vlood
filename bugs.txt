@@ -1,3 +1,406 @@
-Строка 23:Could not preload resource file "res://scenes/player/player.tscn".
-Строка 23:Cannot infer the type of "player_scene" variable because the value doesn't have a set type.
-Строка 24:Cannot infer the type of "player" variable because the value doesn't have a set type.
+
+
+# 🚀 Окей, начинаем с нуля — пошагово
+
+У вас пока каша из кусков кода. Это нормально. Давайте сделаем всё **по порядку**, каждый шаг — проверяем что работает.
+
+---
+
+## Шаг 1 — Чистый проект, правильная структура
+
+Создай папки (если ещё нет):
+
+```
+res://
+├── scenes/
+│   ├── ui/
+│   ├── game/
+│   ├── player/
+│   └── enemies/
+├── scripts/
+│   ├── autoload/
+│   ├── ui/
+│   └── components/
+└── assets/
+    └── sprites/
+```
+
+---
+
+## Шаг 2 — GameManager (автозагрузка)
+
+Создай файл `scripts/autoload/game_manager.gd`:
+
+```gdscript
+# scripts/autoload/game_manager.gd
+extends Node
+
+enum PlayerClass { WARRIOR, RANGER, MAGE, PALADIN }
+
+const CLASS_DATA: Dictionary = {
+    PlayerClass.WARRIOR: {
+        "name": "Мечник",
+        "description": "Ближний бой. Высокий урон.",
+        "color": Color.INDIAN_RED,
+        "stats": {"hp": 120, "damage": 25, "speed": 200}
+    },
+    PlayerClass.RANGER: {
+        "name": "Лучник",
+        "description": "Дальний бой. Быстрый.",
+        "color": Color.FOREST_GREEN,
+        "stats": {"hp": 80, "damage": 20, "speed": 260}
+    },
+    PlayerClass.MAGE: {
+        "name": "Маг",
+        "description": "Мощная магия. Хрупкий.",
+        "color": Color.DODGER_BLUE,
+        "stats": {"hp": 70, "damage": 35, "speed": 200}
+    },
+    PlayerClass.PALADIN: {
+        "name": "Паладин",
+        "description": "Щит. Защищает союзников.",
+        "color": Color.GOLD,
+        "stats": {"hp": 150, "damage": 15, "speed": 170}
+    }
+}
+
+var selected_class: PlayerClass = PlayerClass.WARRIOR
+
+
+func get_class_data(class_id: PlayerClass) -> Dictionary:
+    return CLASS_DATA[class_id]
+
+
+func get_selected_class_data() -> Dictionary:
+    return CLASS_DATA[selected_class]
+```
+
+**Сразу зарегистрируй:**
+```
+Проект → Настройки проекта → Автозагрузка
+→ Путь: res://scripts/autoload/game_manager.gd
+→ Имя: GameManager
+→ Нажми "Добавить"
+```
+
+---
+
+## Шаг 3 — Главное меню
+
+### Создай сцену `scenes/ui/main_menu.tscn`
+
+В редакторе Godot:
+
+```
+1. Сцена → Новая сцена → Other Node → Control
+2. Назови корень "MainMenu"
+3. Выдели MainMenu → Inspector → Layout → Full Rect
+```
+
+Теперь добавляй ноды **по одной**:
+
+```
+MainMenu (Control) — Full Rect
+│
+├── Background (ColorRect)
+│   → Layout: Full Rect
+│   → Color: #1a1a2e (тёмно-синий)
+│
+├── CenterContainer (CenterContainer)
+│   → Layout: Full Rect
+│   │
+│   └── VBoxContainer
+│       → Theme Overrides → Constants → Separation: 20
+│       │
+│       ├── Title (Label)
+│       │   → Text: "DUNGEON CRAWL"
+│       │   → Horizontal Alignment: Center
+│       │   → Theme Overrides → Font Sizes → 48
+│       │
+│       ├── PlayButton (Button)
+│       │   → Text: "Играть"
+│       │   → Custom Minimum Size: (300, 50)
+│       │
+│       └── QuitButton (Button)
+│           → Text: "Выход"
+│           → Custom Minimum Size: (300, 50)
+```
+
+> **Важно:** для каждой ноды которую используешь в коде — ПКМ → **"% Access as Unique Name"**. Сделай это для `PlayButton` и `QuitButton`.
+
+### Скрипт — прикрепи к MainMenu
+
+```gdscript
+# scripts/ui/main_menu.gd
+extends Control
+
+@onready var play_button: Button = %PlayButton
+@onready var quit_button: Button = %QuitButton
+
+
+func _ready() -> void:
+    play_button.pressed.connect(_on_play)
+    quit_button.pressed.connect(_on_quit)
+    play_button.grab_focus()
+
+
+func _on_play() -> void:
+    get_tree().change_scene_to_file("res://scenes/ui/class_select.tscn")
+
+
+func _on_quit() -> void:
+    get_tree().quit()
+```
+
+### ✅ ПРОВЕРКА
+
+```
+Проект → Настройки проекта → Application → Run → Main Scene:
+→ Выбери: res://scenes/ui/main_menu.tscn
+
+Запусти (F5). Должен увидеть:
+- Тёмный фон
+- Название "DUNGEON CRAWL"
+- Две кнопки
+- "Выход" закрывает игру
+- "Играть" выдаст ошибку (class_select ещё нет) — ЭТО НОРМАЛЬНО
+```
+
+**Работает? Идём дальше. Не работает? Пиши мне ошибку.**
+
+---
+
+## Шаг 4 — Выбор класса
+
+### Создай сцену `scenes/ui/class_select.tscn`
+
+```
+ClassSelect (Control) — Full Rect
+│
+├── Background (ColorRect)
+│   → Layout: Full Rect
+│   → Color: #16213e
+│
+├── VBoxContainer (VBoxContainer)
+│   → Layout: Full Rect
+│   → Theme Overrides → Constants → Separation: 30
+│   → Alignment: Center
+│   │
+│   ├── Title (Label)
+│   │   → Text: "ВЫБЕРИ КЛАСС"
+│   │   → Horizontal Alignment: Center
+│   │   → Font Size: 36
+│   │
+│   ├── CardsBox (HBoxContainer)       ← % Unique Name!
+│   │   → Alignment: Center
+│   │   → Separation: 20
+│   │   (оставь пустым — карточки создадим кодом)
+│   │
+│   ├── SelectedLabel (Label)          ← % Unique Name!
+│   │   → Text: "Выбран: Мечник"
+│   │   → Horizontal Alignment: Center
+│   │   → Font Size: 20
+│   │
+│   └── ButtonsBox (HBoxContainer)
+│       → Alignment: Center
+│       → Separation: 20
+│       │
+│       ├── BackButton (Button)        ← % Unique Name!
+│       │   → Text: "Назад"
+│       │   → Minimum Size: (150, 45)
+│       │
+│       └── StartButton (Button)       ← % Unique Name!
+│           → Text: "Начать!"
+│           → Minimum Size: (150, 45)
+```
+
+### Скрипт
+
+```gdscript
+# scripts/ui/class_select.gd
+extends Control
+
+@onready var cards_box: HBoxContainer = %CardsBox
+@onready var selected_label: Label = %SelectedLabel
+@onready var start_button: Button = %StartButton
+@onready var back_button: Button = %BackButton
+
+var _selected_class: GameManager.PlayerClass = GameManager.PlayerClass.WARRIOR
+var _cards: Array = []
+
+
+func _ready() -> void:
+    _create_cards()
+    _connect_buttons()
+    _highlight_selected()
+
+
+func _create_cards() -> void:
+    for class_id in GameManager.CLASS_DATA:
+        var data: Dictionary = GameManager.CLASS_DATA[class_id]
+
+        # Панель-карточка
+        var panel := PanelContainer.new()
+        panel.custom_minimum_size = Vector2(180, 250)
+
+        # Контент внутри
+        var vbox := VBoxContainer.new()
+        vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+        vbox.add_theme_constant_override("separation", 12)
+        panel.add_child(vbox)
+
+        # Цветной квадрат вместо иконки
+        var icon := ColorRect.new()
+        icon.custom_minimum_size = Vector2(60, 60)
+        icon.color = data["color"]
+        icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+        vbox.add_child(icon)
+
+        # Имя класса
+        var name_label := Label.new()
+        name_label.text = data["name"]
+        name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        name_label.add_theme_font_size_override("font_size", 22)
+        vbox.add_child(name_label)
+
+        # Описание
+        var desc := Label.new()
+        desc.text = data["description"]
+        desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        desc.autowrap_mode = TextServer.AUTOWRAP_WORD
+        desc.custom_minimum_size.x = 160
+        desc.add_theme_font_size_override("font_size", 13)
+        vbox.add_child(desc)
+
+        # Статы
+        var stats: Dictionary = data["stats"]
+        var stats_label := Label.new()
+        stats_label.text = "HP:%d ATK:%d SPD:%d" % [
+            stats["hp"], stats["damage"], stats["speed"]
+        ]
+        stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        stats_label.add_theme_font_size_override("font_size", 11)
+        vbox.add_child(stats_label)
+
+        # Клик по карточке
+        panel.gui_input.connect(_on_card_clicked.bind(class_id))
+        panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+        cards_box.add_child(panel)
+        _cards.append({"panel": panel, "class_id": class_id})
+
+
+func _connect_buttons() -> void:
+    start_button.pressed.connect(_on_start)
+    back_button.pressed.connect(_on_back)
+
+
+func _on_card_clicked(event: InputEvent, class_id: GameManager.PlayerClass) -> void:
+    if event is InputEventMouseButton and event.pressed:
+        _selected_class = class_id
+        _highlight_selected()
+
+
+func _highlight_selected() -> void:
+    var data: Dictionary = GameManager.CLASS_DATA[_selected_class]
+    selected_label.text = "Выбран: %s" % data["name"]
+
+    for card_data in _cards:
+        var panel: PanelContainer = card_data["panel"]
+        if card_data["class_id"] == _selected_class:
+            panel.modulate = Color.WHITE
+        else:
+            panel.modulate = Color(0.5, 0.5, 0.5)
+
+
+func _on_start() -> void:
+    GameManager.selected_class = _selected_class
+    get_tree().change_scene_to_file("res://scenes/game/game.tscn")
+
+
+func _on_back() -> void:
+    get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+```
+
+### ✅ ПРОВЕРКА
+
+```
+Запусти (F5):
+1. Главное меню → "Играть" → Экран выбора класса
+2. Кликаешь по карточкам — подсвечивается выбранная
+3. Внизу пишет "Выбран: Маг" (или кого выбрал)
+4. "Назад" → возврат в меню
+5. "Начать!" → ошибка (game.tscn ещё нет) — НОРМАЛЬНО
+```
+
+---
+
+## Шаг 5 — Заглушка игровой сцены
+
+### Создай `scenes/game/game.tscn`
+
+```
+Game (Node2D)
+│
+└── CanvasLayer
+    └── Label
+        → Anchors Preset: Center
+        → Font Size: 28
+```
+
+### Скрипт
+
+```gdscript
+# scenes/game/game.gd
+extends Node2D
+
+@onready var label: Label = $CanvasLayer/Label
+
+
+func _ready() -> void:
+    var data := GameManager.get_selected_class_data()
+    label.text = "Добро пожаловать, %s!\nHP: %d | ATK: %d | SPD: %d\n\nESC — в меню" % [
+        data["name"],
+        data["stats"]["hp"],
+        data["stats"]["damage"],
+        data["stats"]["speed"]
+    ]
+
+
+func _input(event: InputEvent) -> void:
+    if event.is_action_pressed("ui_cancel"):
+        get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+```
+
+### ✅ ФИНАЛЬНАЯ ПРОВЕРКА
+
+```
+Полный цикл должен работать:
+
+Меню → Играть → Выбрал Мага → Начать!
+→ "Добро пожаловать, Маг! HP:70..."
+→ ESC → обратно в меню
+
+Если это работает — ПОЗДРАВЛЯЮ, база готова!
+```
+
+---
+
+## 📋 Что дальше (порядок важен!)
+
+```
+Сейчас вы здесь
+       ↓
+[✅] Шаг 1: Структура проекта
+[✅] Шаг 2: GameManager
+[✅] Шаг 3: Главное меню
+[✅] Шаг 4: Выбор класса
+[✅] Шаг 5: Заглушка игры
+[ ] Шаг 6: Персонаж — движение по WASD        ← СЛЕДУЮЩИЙ
+[ ] Шаг 7: Персонаж — атака
+[ ] Шаг 8: Простой враг
+[ ] Шаг 9: Генерация комнат
+[ ] Шаг 10: Мультиплеер
+```
+
+Сделай шаги 1–5, проверь что всё работает, и напиши мне — дальше делаем персонажа!
