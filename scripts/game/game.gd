@@ -23,9 +23,12 @@ func _ready() -> void:
 
 
 func _spawn_player(class_data: Dictionary) -> void:
+	# СНАЧАЛА загружаем сцену
 	var PlayerScene: PackedScene = load("res://scenes/player/player.tscn")
+	# ПОТОМ создаём экземпляр
 	var player: CharacterBody2D = PlayerScene.instantiate()
-	player.position = Vector2(200, 300)  # Центр экрана
+	
+	player.position = Vector2(200, 300)
 	player_container.add_child(player)
 	
 	# Применяем статы класса
@@ -38,15 +41,17 @@ func _spawn_player(class_data: Dictionary) -> void:
 
 
 func _spawn_enemies() -> void:
+	# СНАЧАЛА загружаем
 	var SlimeScene: PackedScene = load("res://scenes/enemies/slime.tscn")
 	
-	# Создаём 3 слаймов в разных позициях
+	# Позиции для врагов
 	var positions := [
 		Vector2(500, 200),
 		Vector2(600, 400),
 		Vector2(300, 500)
 	]
 	
+	# Создаём врагов
 	for pos in positions:
 		var slime = SlimeScene.instantiate()
 		slime.position = pos

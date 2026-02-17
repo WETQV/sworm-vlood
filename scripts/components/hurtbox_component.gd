@@ -57,7 +57,7 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 
 
 ## Обработка входа в зону (своя зона hurtbox)
-func _on_area_entered(_area: Area2D) -> void:
+func _on_area_entered(_entered_area: Area2D) -> void:
 	# Здесь мы получаем урон от чужого hitbox
 	# Но эта логика уже обработана в receive_damage
 	pass

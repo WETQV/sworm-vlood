@@ -1,9 +1,18 @@
-[gd_scene load_steps=5 format=3 uid="uid://slime_scene"]
+[gd_scene load_steps=8 format=3 uid="uid://slime_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox_component.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="3_hitbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime.gd" id="4_slime"]
+
+[sub_resource type="RectangleShape2D" id="shape_body"]
+size = Vector2(28, 28)
+
+[sub_resource type="RectangleShape2D" id="shape_hurtbox"]
+size = Vector2(28, 28)
+
+[sub_resource type="RectangleShape2D" id="shape_attack"]
+size = Vector2(24, 24)
 
 [node name="Slime" type="CharacterBody2D"]
 script = ExtResource("4_slime")
@@ -14,8 +23,7 @@ max_health = 30
 current_health = 30
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = RectangleShape2D.new()
-size = Vector2(28, 28)
+shape = SubResource("shape_body")
 
 [node name="Visuals" type="Node2D" parent="."]
 
@@ -29,8 +37,7 @@ color = Color(0.3, 0.8, 0.3, 1)
 [node name="Hurtbox" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
-shape = RectangleShape2D.new()
-size = Vector2(28, 28)
+shape = SubResource("shape_hurtbox")
 
 [node name="HurtboxComponent" type="Node" parent="Hurtbox"]
 script = ExtResource("2_hurtbox")
@@ -39,8 +46,7 @@ invincibility_time = 0.3
 [node name="Attack" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Attack"]
-shape = RectangleShape2D.new()
-size = Vector2(24, 24)
+shape = SubResource("shape_attack")
 position = Vector2(16, 0)
 
 [node name="HitboxComponent" type="Node" parent="Attack"]

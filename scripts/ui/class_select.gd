@@ -84,7 +84,7 @@ func _connect_signals() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 
 
-func _on_card_input(event: InputEvent, class_id: GameManager.PlayerClass, panel: PanelContainer) -> void:
+func _on_card_input(event: InputEvent, class_id: GameManager.PlayerClass, _panel: PanelContainer) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_select_class(class_id)
 
