@@ -1,22 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://main_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://main_scene"]
 
-[ext_resource type="PackedScene" uid="uid://player_scene" path="res://scenes/player/player.tscn" id="1_player"]
-[extResource type="PackedScene" uid="uid://slime_scene" path="res://scenes/enemies/slime.tscn" id="2_slime"]
+[ext_resource type="PackedScene" uid="uid://dungeon_gen" path="res://scenes/levels/dungeon_generator.tscn" id="3_dungeon"]
 
 [node name="Main" type="Node2D"]
 
-[node name="Floor" type="TileMapLayer" parent="."]
-
-[node name="Walls" type="TileMapLayer" parent="."]
-
-[node name="Player" parent="." instance=ExtResource("1_player")]
-position = Vector2(200, 300)
-
-[node name="Slime" parent="." instance=ExtResource("2_slime")]
-position = Vector2(500, 200)
-
-[node name="Slime2" parent="." instance=ExtResource("2_slime")]
-position = Vector2(600, 400)
-
-[node name="Slime3" parent="." instance=ExtResource("2_slime")]
-position = Vector2(300, 500)
+[node name="DungeonGenerator" parent="." instance=ExtResource("3_dungeon")]

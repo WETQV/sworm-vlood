@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://dungeon_generator"]
+
+[ext_resource type="Script" path="res://scripts/levels/dungeon_generator.gd" id="1_dungeon"]
+
+[node name="DungeonGenerator" type="Node2D"]
+script = ExtResource("1_dungeon")
+
+[node name="Floor" type="TileMap" parent="."]
+
+[node name="Walls" type="TileMap" parent="."]
+
+[node name="PlayerSpawn" type="Marker2D" parent="."]
+
+[node name="BossSpawn" type="Marker2D" parent="."]

@@ -1,0 +1,1 @@
+Invalid assignment of property or key 'tile_size' with value of type 'Vector2i' on a base object of type 'TileSetAtlasSource'.
