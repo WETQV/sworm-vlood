@@ -1,0 +1,20 @@
+Привет! Проблема в том, что в начале файла **отсутствует объявление класса с наследованием**. GDScript не знает, что это Node, поэтому ругается на `$`, `@onready`, `move_and_slide()` и т.д.
+
+Добавь в самое начало файла строку:
+
+```gdscript
+extends CharacterBody2D
+```
+
+Скорее всего именно `CharacterBody2D`, раз используется `move_and_slide()`. Если твой персонаж наследуется от другого типа ноды — замени на нужный (например `CharacterBody2D`, `RigidBody2D`, `Node2D`).
+
+После этого все ошибки должны исчезнуть — они все были следствием одной этой пропущенной строки.
+
+Также замечу небольшой баг в `_move()`: ты вычисляешь `velocity`, но передаёшь её в `move_and_slide()` через свойство `self.velocity`. Нужно присвоить:
+
+```gdscript
+func _move() -> void:
+    var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+    velocity = input_dir.normalized() * speed if input_dir != Vector2.ZERO else Vector2.ZERO
+    move_and_slide()
+```
