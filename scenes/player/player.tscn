@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="3_player"]
+[ext_resource type="Script" path="res://scripts/components/smooth_camera.gd" id="4_camera"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 14.0
@@ -67,3 +68,16 @@ offset_right = 18.0
 offset_bottom = -23.0
 value = 100.0
 show_percentage = false
+
+[node name="Camera2D" type="Camera2D" parent="."]
+enabled = true
+zoom = Vector2(1.7, 1.7)
+process_callback = 1
+drag_horizontal_enabled = true
+drag_vertical_enabled = true
+drag_left_margin = 0.2
+drag_right_margin = 0.2
+drag_top_margin = 0.2
+drag_bottom_margin = 0.2
+script = ExtResource("4_camera")
+smooth_speed = 12.0

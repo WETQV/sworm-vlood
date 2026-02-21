@@ -1,0 +1,32 @@
+[gd_scene load_steps=9 format=3 uid="uid://dungeon_gen"]
+
+[ext_resource type="Script" path="res://scripts/levels/dungeon_generator.gd" id="1_gen"]
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/room_start.tscn"        id="2_start"]
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/room_combat_small.tscn" id="3_fight_s"]
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/room_combat_large.tscn" id="4_fight_l"]
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/room_chest.tscn"        id="5_chest"]
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/room_shrine.tscn"       id="6_shrine"]
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/room_boss.tscn"         id="7_boss"]
+
+[node name="DungeonGenerator" type="Node2D"]
+script                   = ExtResource("1_gen")
+seed_value               = 0
+room_count               = 10
+room_attempts            = 30
+map_width                = 120
+map_height               = 90
+extra_edge_chance        = 0.12
+room_start_scene         = ExtResource("2_start")
+room_combat_small_scene  = ExtResource("3_fight_s")
+room_combat_large_scene  = ExtResource("4_fight_l")
+room_chest_scene         = ExtResource("5_chest")
+room_shrine_scene        = ExtResource("6_shrine")
+room_boss_scene          = ExtResource("7_boss")
+
+[node name="FloorLayer" type="TileMapLayer" parent="."]
+z_index = -1
+
+[node name="WallLayer" type="TileMapLayer" parent="."]
+z_index = 0
+
+[node name="Rooms" type="Node2D" parent="."]

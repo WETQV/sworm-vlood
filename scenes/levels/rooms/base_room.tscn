@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://base_room"]
+
+[ext_resource type="Script" path="res://scripts/levels/room.gd" id="1_room"]
+
+[node name="BaseRoom" type="Node2D"]
+script = ExtResource("1_room")
+room_type = 1
+room_size = Vector2i(15, 12)
+
+[node name="FloorLayer" type="TileMapLayer" parent="."]
+
+[node name="WallLayer" type="TileMapLayer" parent="."]
+
+[node name="SpawnPoints" type="Node2D" parent="."]

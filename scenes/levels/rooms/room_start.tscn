@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3 uid="uid://room_start"]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/levels/room.gd" id="2_room"]
+
+[node name="RoomStart" instance=ExtResource("1_base")]
+## Стартовая комната 15x12 — игроки спавнятся в центре, врагов нет
+script = ExtResource("2_room")
+room_type = 0
+room_size = Vector2i(15, 12)
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="PlayerSpawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(192, 192)
+
+[node name="PlayerSpawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(320, 192)
+
+[node name="PlayerSpawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(192, 320)
+
+[node name="PlayerSpawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(320, 320)

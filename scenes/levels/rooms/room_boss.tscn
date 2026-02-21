@@ -1,0 +1,42 @@
+[gd_scene load_steps=3 format=3 uid="uid://room_boss"]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/levels/room_boss.gd" id="2_script"]
+
+[node name="RoomBoss" instance=ExtResource("1_base")]
+## Босс-арена 30x25 — большое открытое пространство.
+## Широкие входы (3+ тайла) для свободного движения 4 игроков.
+## Точки спавна для фаз 1 и 2 босса.
+script = ExtResource("2_script")
+room_type = 4
+room_size = Vector2i(30, 25)
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="BossSpawn" type="Marker2D" parent="SpawnPoints"]
+## Центр — стартовая позиция босса
+position = Vector2(896, 736)
+
+[node name="PlayerEntry1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(192, 192)
+
+[node name="PlayerEntry2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(384, 192)
+
+[node name="PlayerEntry3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(192, 384)
+
+[node name="PlayerEntry4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(384, 384)
+
+[node name="MinionSpawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(704, 288)
+
+[node name="MinionSpawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1152, 288)
+
+[node name="MinionSpawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(704, 1152)
+
+[node name="MinionSpawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1152, 1152)
