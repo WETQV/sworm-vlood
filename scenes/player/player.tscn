@@ -76,7 +76,7 @@ show_percentage = false
 
 [node name="Camera2D" type="Camera2D" parent="."]
 enabled = true
-zoom = Vector2(0.7, 0.7)
+zoom = Vector2(1.4, 1.4)
 process_callback = 0
 drag_horizontal_enabled = true
 drag_vertical_enabled = true
