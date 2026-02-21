@@ -3,15 +3,16 @@
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_boss.gd" id="3_boss"]
+[ext_resource type="Script" path="res://scripts/enemies/slime_ai.gd" id="4_slimeai"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
-radius = 12.0
+radius = 30.0
 
 [sub_resource type="CircleShape2D" id="shape_hurtbox"]
-radius = 12.0
+radius = 30.0
 
 [sub_resource type="CircleShape2D" id="shape_attack"]
-radius = 16.0
+radius = 40.0
 
 [node name="SlimeBoss" type="CharacterBody2D"]
 collision_layer = 3
@@ -30,10 +31,10 @@ shape = SubResource("shape_body")
 [node name="Visuals" type="Node2D" parent="."]
 
 [node name="Body" type="ColorRect" parent="Visuals"]
-offset_left = -12.0
-offset_top = -12.0
-offset_right = 12.0
-offset_bottom = 12.0
+offset_left = -30.0
+offset_top = -30.0
+offset_right = 30.0
+offset_bottom = 30.0
 color = Color(0.8, 0.2, 0.2, 1)
 
 [node name="AttackArea" type="Area2D" parent="."]
@@ -62,3 +63,10 @@ show_percentage = false
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 path_desired_distance = 20.0
 target_desired_distance = 20.0
+
+[node name="SlimeAI" type="Node" parent="."]
+script = ExtResource("4_slimeai")
+base_speed = 40.0
+dash_speed = 80.0
+attack_range = 45.0
+weight_separation = 3.0

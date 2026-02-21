@@ -1,24 +1,20 @@
-[gd_scene load_steps=3 format=3 uid="uid://room_start"]
+[gd_scene format=3 uid="uid://c054ljb1m6wc7"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
-[ext_resource type="Script" path="res://scripts/levels/room.gd" id="2_room"]
 
-[node name="RoomStart" instance=ExtResource("1_base")]
-## Стартовая комната 15x12 — игроки спавнятся в центре, врагов нет
-script = ExtResource("2_room")
+[node name="RoomStart" unique_id=1644370441 instance=ExtResource("1_base")]
 room_type = 0
-room_size = Vector2i(15, 12)
 
-[node name="SpawnPoints" type="Node2D" parent="."]
-
-[node name="PlayerSpawn1" type="Marker2D" parent="SpawnPoints"]
+[node name="PlayerSpawn1" type="Marker2D" parent="SpawnPoints" index="0" unique_id=1230995608]
 position = Vector2(192, 192)
 
-[node name="PlayerSpawn2" type="Marker2D" parent="SpawnPoints"]
+[node name="PlayerSpawn2" type="Marker2D" parent="SpawnPoints" index="1" unique_id=1263922827]
 position = Vector2(320, 192)
 
-[node name="PlayerSpawn3" type="Marker2D" parent="SpawnPoints"]
+[node name="PlayerSpawn3" type="Marker2D" parent="SpawnPoints" index="2" unique_id=1592758963]
 position = Vector2(192, 320)
 
-[node name="PlayerSpawn4" type="Marker2D" parent="SpawnPoints"]
+[node name="PlayerSpawn4" type="Marker2D" parent="SpawnPoints" index="3" unique_id=1915159290]
 position = Vector2(320, 320)
+
+[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=1130573359]

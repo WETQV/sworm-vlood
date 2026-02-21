@@ -1,22 +1,17 @@
-[gd_scene load_steps=3 format=3 uid="uid://room_chest"]
+[gd_scene format=3 uid="uid://c8mf1yo8riypx"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
-[ext_resource type="Script" path="res://scripts/levels/room.gd" id="2_room"]
 
-[node name="RoomChest" instance=ExtResource("1_base")]
-## Комната с сундуком 11x9 — 1 сундук в центре, 2 охранника по бокам
-script = ExtResource("2_room")
+[node name="RoomChest" unique_id=452107752 instance=ExtResource("1_base")]
 room_type = 2
 room_size = Vector2i(11, 9)
 
-[node name="SpawnPoints" type="Node2D" parent="."]
+[node name="ChestSpawn" type="Marker2D" parent="SpawnPoints" index="0" unique_id=646283551]
 
-[node name="ChestSpawn" type="Marker2D" parent="SpawnPoints"]
-## Место для сундука — центр комнаты
-position = Vector2(320, 256)
-
-[node name="GuardSpawn1" type="Marker2D" parent="SpawnPoints"]
+[node name="GuardSpawn1" type="Marker2D" parent="SpawnPoints" index="1" unique_id=1709003457]
 position = Vector2(192, 256)
 
-[node name="GuardSpawn2" type="Marker2D" parent="SpawnPoints"]
+[node name="GuardSpawn2" type="Marker2D" parent="SpawnPoints" index="2" unique_id=1555886127]
 position = Vector2(448, 256)
+
+[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=962052488]

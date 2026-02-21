@@ -1,17 +1,11 @@
-[gd_scene load_steps=3 format=3 uid="uid://room_shrine"]
+[gd_scene format=3 uid="uid://b2seg7yem3etw"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
-[ext_resource type="Script" path="res://scripts/levels/room.gd" id="2_room"]
 
-[node name="RoomShrine" instance=ExtResource("1_base")]
-## Комната-святилище 13x11 — 1 точка взаимодействия (алтарь), без врагов.
-## Игроки могут получить усиление или исцеление (логика добавляется позже).
-script = ExtResource("2_room")
+[node name="RoomShrine" unique_id=939048808 instance=ExtResource("1_base")]
 room_type = 3
 room_size = Vector2i(13, 11)
 
-[node name="SpawnPoints" type="Node2D" parent="."]
+[node name="ShrinePoint" type="Marker2D" parent="SpawnPoints" index="0" unique_id=917597230]
 
-[node name="ShrinePoint" type="Marker2D" parent="SpawnPoints"]
-## Центр комнаты — расположение алтаря
-position = Vector2(384, 320)
+[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=1268438592]

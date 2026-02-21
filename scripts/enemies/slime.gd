@@ -14,15 +14,11 @@ extends CharacterBody2D
 @export var stop_distance: float = 20.0
 @export var detection_range: float = 2000.0
 
-# --- Внутреннее состояние ---
-var _target: CharacterBody2D = null
+	# --- Внутреннее состояние ---
 var _knockback_velocity: Vector2 = Vector2.ZERO
-var _attack_timer: float = 0.0
 
 # --- Цвета ---
 var _color_normal: Color = Color("44cc44")
-var _color_angry: Color = Color("ff6644")
-
 
 func _ready() -> void:
 	add_to_group("enemy")
@@ -38,76 +34,17 @@ func _ready() -> void:
 	body_sprite.color = _color_normal
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if not health_component.is_alive():
 		return
-
-	# --- Поиск цели ---
-	_find_target()
-
-	# --- Движение ---
-	var move_velocity: Vector2 = Vector2.ZERO
-
-	if _target and is_instance_valid(_target):
-		var distance: float = global_position.distance_to(_target.global_position)
-
-		if distance <= detection_range:
-			body_sprite.color = _color_angry
-
-			if distance > stop_distance:
-				# Обновляем цель для навигации
-				$NavigationAgent2D.target_position = _target.global_position
-				
-				if not $NavigationAgent2D.is_navigation_finished():
-					var next_pos: Vector2 = $NavigationAgent2D.get_next_path_position()
-					var direction: Vector2 = global_position.direction_to(next_pos)
-					move_velocity = direction * speed
-			else:
-				move_velocity = Vector2.ZERO
-		else:
-			body_sprite.color = _color_normal
-	else:
-		body_sprite.color = _color_normal
-
-	# Отбрасывание затухает
-	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 600.0 * delta)
-
-	velocity = move_velocity + _knockback_velocity
-	move_and_slide()
-
-	# --- Контактный урон ---
-	_attack_timer -= delta
-	if _attack_timer <= 0.0:
-		_try_contact_damage()
-
-
-## Найти ближайшего игрока
-func _find_target() -> void:
-	if _target and is_instance_valid(_target):
-		return
-
-	var players: Array = get_tree().get_nodes_in_group("player")
-	var min_dist: float = INF
-	for p in players:
-		var dist: float = global_position.distance_to(p.global_position)
-		if dist < min_dist:
-			min_dist = dist
-			_target = p
-
-
-## Попытка нанести контактный урон
-func _try_contact_damage() -> void:
-	var areas: Array = attack_area.get_overlapping_areas()
-	for area in areas:
-		# Защита: бьём только игроков
-		if not area.get_parent().is_in_group("player"):
-			continue
-		
-		if area.has_method("receive_damage"):
-			area.receive_damage(contact_damage, 150.0, global_position)
-			_attack_timer = attack_cooldown
-			print("%s бьёт игрока на %d урона!" % [name, contact_damage])
-			return
+	
+	# Движение теперь управляется нодой SlimeAI (если она есть)
+	# Отбрасывание всё еще обрабатываем тут
+	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 600.0 * _delta)
+	
+	if not has_node("SlimeAI"):
+		velocity = _knockback_velocity
+		move_and_slide()
 
 
 ## Получил урон — отбрасывание
@@ -122,7 +59,11 @@ func _on_health_changed(current: int, maximum: int) -> void:
 
 
 ## Смерть
-func _on_died() -> void:
+func _on_died(killed_by: Node2D) -> void:
+	# Сообщаем убийце для threat-системы
+	if is_instance_valid(killed_by) and killed_by.has_node("PlayerInfo"):
+		killed_by.get_node("PlayerInfo").register_kill()
+	
 	set_physics_process(false)
 
 	var tween: Tween = create_tween()

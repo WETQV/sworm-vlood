@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime.gd" id="3_slime"]
+[ext_resource type="Script" path="res://scripts/enemies/slime_ai.gd" id="4_slimeai"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 12.0
@@ -60,3 +61,8 @@ show_percentage = false
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 path_desired_distance = 20.0
 target_desired_distance = 20.0
+
+[node name="SlimeAI" type="Node" parent="."]
+script = ExtResource("4_slimeai")
+dash_speed = 150.0
+attack_range = 25.0

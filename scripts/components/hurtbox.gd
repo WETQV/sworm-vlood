@@ -12,7 +12,7 @@ var _is_invincible: bool = false
 
 
 ## Получить урон — вызывается атакующей стороной
-func receive_damage(amount: int, knockback_force: float, attacker_position: Vector2) -> void:
+func receive_damage(amount: int, knockback_force: float, attacker_position: Vector2, attacker: Node2D = null) -> void:
 	if _is_invincible:
 		return
 
@@ -21,7 +21,7 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 	# Наносим урон через HealthComponent
 	var health = entity.get_node_or_null("HealthComponent") as HealthComponent
 	if health:
-		health.take_damage(amount)
+		health.take_damage(amount, attacker)
 
 	# Считаем направление отбрасывания
 	var direction: Vector2 = (entity.global_position - attacker_position).normalized()

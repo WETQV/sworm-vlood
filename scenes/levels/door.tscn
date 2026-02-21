@@ -17,4 +17,4 @@ shape = SubResource("RectangleShape2D_wall")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 modulate = Color(0.2, 0.6, 1, 0.5)
-texture = SubResource("PlaceholderTexture2D_tex"))
+texture = SubResource("PlaceholderTexture2D_tex")

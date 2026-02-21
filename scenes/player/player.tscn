@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://player_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://player_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="3_player"]
 [ext_resource type="Script" path="res://scripts/components/smooth_camera.gd" id="4_camera"]
+[ext_resource type="Script" path="res://scripts/components/player_info.gd" id="5_playerinfo"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 14.0
@@ -22,6 +23,9 @@ script = ExtResource("3_player")
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("1_health")
 max_health = 100
+
+[node name="PlayerInfo" type="Node" parent="."]
+script = ExtResource("5_playerinfo")
 
 [node name="BodyCollision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_body")

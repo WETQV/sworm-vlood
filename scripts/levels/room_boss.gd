@@ -1,8 +1,12 @@
-extends "res://scripts/levels/room.gd"
+extends Room
 ## RoomBoss — арена с боссом 30x25.
 ## Добавляет декоративные угловые пилоны (3x3 тайла),
 ## чтобы у босса и игроков было пространство для манёвра,
 ## но арена не выглядела пустой коробкой.
+
+func _ready() -> void:
+	room_type = RoomType.BOSS
+	super._ready()
 
 func _build_room() -> void:
 	super._build_room()  # Базовый пол + стены

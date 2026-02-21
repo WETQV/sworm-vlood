@@ -45,7 +45,7 @@ func _on_area_entered(area: Area2D) -> void:
 	# Проверяем, что это hurtbox (другой объект)
 	if area.has_method("receive_damage"):
 		# Наносим урон, передаём свою позицию
-		area.receive_damage(damage, knockback_force, _parent_node.global_position)
+		area.receive_damage(damage, knockback_force, _parent_node.global_position, _parent_node)
 		hit_detected.emit(area.get_parent())
 		
 		# Запускаем кулдаун

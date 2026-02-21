@@ -1,0 +1,1449 @@
+
+
+# 🐛 Роевой интеллект v2 — мультиплеер + адаптация к классам
+
+## Что изменилось и почему
+
+```
+ПРОБЛЕМЫ v1                          РЕШЕНИЕ v2
+─────────────────────────────────     ─────────────────────────────
+Один target_player                →  Массив игроков + threat-система
+Все слаймы на одного              →  Отряды (squads) по игрокам
+Одна стратегия на всех            →  Стратегия ПО ОТРЯДУ
+Не учитывается класс игрока       →  Поведение адаптируется к классу
+Глобальные токены атаки           →  Токены ПО КАЖДОМУ игроку
+Одинаковое поведение              →  vs Мечник ≠ vs Маг ≠ vs Лучник
+```
+
+```
+АРХИТЕКТУРА v2
+
+SwarmManager
+├── Список всех игроков
+├── ThreatTable (оценка угрозы каждого игрока)
+├── Squad-система (какие слаймы → на какого игрока)
+│   ├── Squad для Player_1 → своя стратегия, свои роли
+│   ├── Squad для Player_2 → своя стратегия, свои роли
+│   ├── Squad для Player_3 → ...
+│   └── Squad для Player_4 → ...
+├── Токены атаки ПО КАЖДОМУ игроку
+├── Ребалансировка отрядов (каждые N секунд)
+└── Адаптация ролей к классу цели
+
+SlimeAI
+├── Знает СВОЕГО целевого игрока (назначен менеджером)
+├── Адаптивные дистанции (vs мечник — дальше, vs маг — ближе)
+├── Уклонение от AoE способностей
+├── Зигзаг-подход к дальникам
+└── Boids только среди СВОЕГО отряда + общее разделение
+```
+
+---
+
+## Файл 0 — `player_info.gd`
+
+Компонент на игроке, который слаймы будут читать. Без него ИИ не знает, с кем имеет дело.
+
+```gdscript
+# scripts/components/player_info.gd
+# ─────────────────────────────────────────────
+# Компонент, который вешается на каждого игрока.
+# SlimeAI и SwarmManager читают из него данные.
+# Сам компонент ничего не решает — только отдаёт инфу.
+# ─────────────────────────────────────────────
+extends Node
+class_name PlayerInfo
+
+# ── Классы игрока ──
+enum PlayerClass {
+    WARRIOR,   # ближний бой, танковый
+    RANGER,    # дальний бой, мобильный
+    MAGE,      # дальний бой, стеклянный
+    PALADIN    # ближний бой, поддержка
+}
+
+# ── Экспортируемые параметры ──
+
+## Класс персонажа — задаётся в инспекторе при настройке сцены
+@export var player_class: PlayerClass = PlayerClass.WARRIOR
+
+## Ссылка на HealthComponent (для чтения текущего HP)
+@export var health_component_path: NodePath = "HealthComponent"
+
+# ── Состояние способностей ──
+# Эти переменные обновляет скрипт игрока,
+# когда он активирует способность.
+
+## Активна ли сейчас какая-то опасная способность?
+var is_ability_active: bool = false
+
+## Центр опасной зоны (мировые координаты)
+var ability_zone_center: Vector2 = Vector2.ZERO
+
+## Радиус опасной зоны (0 = нет зоны)
+var ability_zone_radius: float = 0.0
+
+## Тип опасности: "melee_aoe", "ranged_aoe", "shield", "projectile"
+var ability_type: String = ""
+
+# ── Счётчик убийств (для оценки угрозы) ──
+
+## Сколько слаймов этот игрок убил за последние N секунд
+var recent_kills: int = 0
+var _kill_timestamps: Array[float] = []
+
+## Окно подсчёта (секунды)
+@export var kill_window: float = 10.0
+
+# ── Ссылки ──
+var _health: Node = null
+
+func _ready() -> void:
+    if has_node(health_component_path):
+        _health = get_node(health_component_path)
+
+func _process(delta: float) -> void:
+    _update_recent_kills()
+
+# ─────────────────────────────────────────────
+# ПУБЛИЧНЫЕ МЕТОДЫ (читает SwarmManager / SlimeAI)
+# ─────────────────────────────────────────────
+
+## Ближний или дальний класс?
+func is_melee() -> bool:
+    return player_class in [PlayerClass.WARRIOR, PlayerClass.PALADIN]
+
+func is_ranged() -> bool:
+    return player_class in [PlayerClass.RANGER, PlayerClass.MAGE]
+
+## Отношение текущего HP к максимальному (0.0 - 1.0)
+func get_hp_ratio() -> float:
+    if _health and _health.has_method("get_hp_ratio"):
+        return _health.get_hp_ratio()
+    # Запасной вариант — если HealthComponent хранит hp/max_hp напрямую
+    if _health and "hp" in _health and "max_hp" in _health:
+        if _health.max_hp > 0:
+            return float(_health.hp) / float(_health.max_hp)
+    return 1.0
+
+## Позиция игрока (удобство)
+func get_position() -> Vector2:
+    return get_parent().global_position
+
+## Зарегистрировать убийство (вызывается при смерти слайма)
+func register_kill() -> void:
+    _kill_timestamps.append(Time.get_ticks_msec() / 1000.0)
+
+## Обновить счётчик (убрать старые)
+func _update_recent_kills() -> void:
+    var now := Time.get_ticks_msec() / 1000.0
+    _kill_timestamps = _kill_timestamps.filter(
+        func(t): return now - t < kill_window
+    )
+    recent_kills = _kill_timestamps.size()
+
+# ─────────────────────────────────────────────
+# МЕТОДЫ ДЛЯ СКРИПТА ИГРОКА
+# (вызываются из скрипта класса при касте способностей)
+# ─────────────────────────────────────────────
+
+## Активировать опасную зону
+## Пример: мечник использует круговой удар
+func activate_danger_zone(center: Vector2, radius: float, type: String = "melee_aoe") -> void:
+    is_ability_active = true
+    ability_zone_center = center
+    ability_zone_radius = radius
+    ability_type = type
+
+## Деактивировать опасную зону
+func deactivate_danger_zone() -> void:
+    is_ability_active = false
+    ability_zone_radius = 0.0
+    ability_type = ""
+```
+
+Добавь в скрипт каждого класса вызовы `activate_danger_zone` / `deactivate_danger_zone`:
+
+```gdscript
+# Пример: warrior.gd при круговом ударе
+func special_attack():
+    var info = $PlayerInfo as PlayerInfo
+    info.activate_danger_zone(global_position, 80.0, "melee_aoe")
+    # ... анимация, урон ...
+    await get_tree().create_timer(0.5).timeout
+    info.deactivate_danger_zone()
+
+# Пример: mage.gd при метеорите
+func cast_meteor(target_pos: Vector2):
+    var info = $PlayerInfo as PlayerInfo
+    info.activate_danger_zone(target_pos, 120.0, "ranged_aoe")
+    await get_tree().create_timer(2.0).timeout  # задержка метеорита
+    info.deactivate_danger_zone()
+
+# Пример: paladin.gd при куполе
+func shield_dome():
+    var info = $PlayerInfo as PlayerInfo
+    info.activate_danger_zone(global_position, 100.0, "shield")
+    await get_tree().create_timer(4.0).timeout
+    info.deactivate_danger_zone()
+```
+
+---
+
+## Файл 1 — `swarm_manager.gd` (v2)
+
+Полностью переписан для мультиплеера.
+
+```gdscript
+# scripts/enemies/swarm_manager.gd
+extends Node
+
+# ═════════════════════════════════════════════
+# РОЕВОЙ МЕНЕДЖЕР v2
+# Поддержка 1-4 игроков, адаптация к классам,
+# отряды (squads), threat-система
+# ═════════════════════════════════════════════
+
+# ─────────────────────────────────────────────
+# ПЕРЕЧИСЛЕНИЯ
+# ─────────────────────────────────────────────
+
+enum Strategy { SOLO, PACK, SWARM, HORDE }
+
+enum Role {
+    RUSHER,
+    FLANKER,
+    ORBITER,
+    WAITER,
+    RETREATER
+}
+
+# ─────────────────────────────────────────────
+# НАСТРОЙКИ
+# ─────────────────────────────────────────────
+
+## Как часто пересчитывать отряды и роли
+@export var reassign_interval: float = 0.6
+
+## Базовое число атакующих на одного игрока
+@export var base_attackers_per_player: int = 2
+
+## Максимум атакующих на одного игрока
+@export var max_attackers_per_player: int = 4
+
+## Ближняя дистанция
+@export var close_range: float = 80.0
+
+## Средняя дистанция
+@export var medium_range: float = 200.0
+
+## Минимальный размер отряда (чтобы ни один игрок не остался без внимания)
+@export var min_squad_size: int = 1
+
+# ─── Веса для расчёта угрозы ───
+
+## Вес дистанции (ближе = опаснее для слаймов → больше внимания)
+@export var threat_weight_distance: float = 1.0
+
+## Вес урона (кто больше убивает → больше угроза)
+@export var threat_weight_damage: float = 1.5
+
+## Вес низкого HP (раненый → легче добить → выше приоритет)
+@export var threat_weight_low_hp: float = 2.0
+
+## Вес класса (маг/лучник опаснее для роя → атакуем первым)
+@export var threat_weight_class: float = 1.2
+
+# ─────────────────────────────────────────────
+# СОСТОЯНИЕ
+# ─────────────────────────────────────────────
+
+## Все живые слаймы
+var slimes: Array[CharacterBody2D] = []
+
+## Все игроки в игре
+var players: Array[CharacterBody2D] = []
+
+## Отряд: player_id → массив слаймов
+## player_id = индекс в массиве players
+var squads: Dictionary = {}  # { int: Array[CharacterBody2D] }
+
+## Стратегия каждого отряда
+var squad_strategies: Dictionary = {}  # { int: Strategy }
+
+## Токены атаки PER PLAYER
+var _attack_tokens: Dictionary = {}  # { int: Array[CharacterBody2D] }
+
+## Угрозы PER PLAYER
+var _threat_scores: Dictionary = {}  # { int: float }
+
+## Таймер
+var _reassign_timer: float = 0.0
+
+# ─────────────────────────────────────────────
+# ЖИЗНЕННЫЙ ЦИКЛ
+# ─────────────────────────────────────────────
+
+func _ready() -> void:
+    add_to_group("swarm_manager")
+    _find_players()
+
+
+func _physics_process(delta: float) -> void:
+    _reassign_timer -= delta
+    if _reassign_timer <= 0.0:
+        _reassign_timer = reassign_interval
+        _find_players()
+        _calculate_threats()
+        _assign_squads()
+        _assign_roles_for_all_squads()
+        _cleanup_all_tokens()
+
+# ─────────────────────────────────────────────
+# РЕГИСТРАЦИЯ
+# ─────────────────────────────────────────────
+
+func register_slime(slime: CharacterBody2D) -> void:
+    if slime not in slimes:
+        slimes.append(slime)
+
+
+func unregister_slime(slime: CharacterBody2D) -> void:
+    slimes.erase(slime)
+    # Убираем из всех отрядов и токенов
+    for pid in squads:
+        squads[pid].erase(slime)
+    for pid in _attack_tokens:
+        _attack_tokens[pid].erase(slime)
+
+    # Сообщаем игрокам о убийстве (для threat-системы)
+    # Тут нужно знать, кто убил — передаётся из HealthComponent
+    # Пока пропускаем, register_kill вызывается из другого места
+
+
+func _find_players() -> void:
+    players.clear()
+    var found := get_tree().get_nodes_in_group("player")
+    for p in found:
+        if p is CharacterBody2D and is_instance_valid(p):
+            players.append(p as CharacterBody2D)
+
+    # Инициализируем структуры для новых игроков
+    for i in range(players.size()):
+        if i not in squads:
+            squads[i] = []
+        if i not in _attack_tokens:
+            _attack_tokens[i] = []
+        if i not in _threat_scores:
+            _threat_scores[i] = 0.0
+
+# ─────────────────────────────────────────────
+# THREAT-СИСТЕМА
+# ─────────────────────────────────────────────
+# Оцениваем каждого игрока: насколько он "важная цель".
+# Чем выше threat → тем больше слаймов на него выделяем.
+# ─────────────────────────────────────────────
+
+func _calculate_threats() -> void:
+    if players.is_empty() or slimes.is_empty():
+        return
+
+    var swarm_center := _get_swarm_center()
+
+    for i in range(players.size()):
+        var player := players[i]
+        var info := _get_player_info(player)
+
+        var threat := 0.0
+
+        # ── Фактор дистанции ──
+        # Чем ближе игрок к центру роя, тем он "опаснее"
+        var dist := player.global_position.distance_to(swarm_center)
+        var dist_factor := clampf(1.0 - (dist / 600.0), 0.1, 1.0)
+        threat += dist_factor * threat_weight_distance
+
+        if info:
+            # ── Фактор урона ──
+            # Кто убивает больше слаймов — тот приоритетнее
+            var kill_factor := clampf(info.recent_kills / 5.0, 0.0, 1.0)
+            threat += kill_factor * threat_weight_damage
+
+            # ── Фактор низкого HP ──
+            # Раненого легче добить → повышаем приоритет
+            var hp_ratio := info.get_hp_ratio()
+            var low_hp_factor := clampf(1.0 - hp_ratio, 0.0, 1.0)
+            threat += low_hp_factor * threat_weight_low_hp
+
+            # ── Фактор класса ──
+            # Стеклянные пушки — приоритетные цели
+            var class_factor := _get_class_priority(info.player_class)
+            threat += class_factor * threat_weight_class
+
+        _threat_scores[i] = threat
+
+
+## Приоритет класса (выше = атакуем первым)
+func _get_class_priority(pclass: int) -> float:
+    match pclass:
+        PlayerInfo.PlayerClass.MAGE:
+            return 1.0    # стеклянная пушка → убить первым
+        PlayerInfo.PlayerClass.RANGER:
+            return 0.8    # тоже больно бьёт
+        PlayerInfo.PlayerClass.WARRIOR:
+            return 0.5    # танкует, но не так приоритетен
+        PlayerInfo.PlayerClass.PALADIN:
+            return 0.3    # танк-поддержка → в последнюю очередь
+    return 0.5
+
+# ─────────────────────────────────────────────
+# РАСПРЕДЕЛЕНИЕ ПО ОТРЯДАМ
+# ─────────────────────────────────────────────
+# Каждый слайм назначается на одного игрока.
+# Количество слаймов в отряде пропорционально угрозе игрока.
+# ─────────────────────────────────────────────
+
+func _assign_squads() -> void:
+    if players.is_empty() or slimes.is_empty():
+        return
+
+    # ── Шаг 1: определяем квоты ──
+    var total_threat := 0.0
+    for pid in range(players.size()):
+        total_threat += _threat_scores.get(pid, 1.0)
+
+    if total_threat < 0.01:
+        total_threat = 1.0
+
+    var quotas: Dictionary = {}  # pid → желаемый размер отряда
+    var total_slimes := slimes.size()
+
+    for pid in range(players.size()):
+        var ratio: float = _threat_scores.get(pid, 1.0) / total_threat
+        var quota: int = max(min_squad_size, roundi(ratio * total_slimes))
+        quotas[pid] = quota
+
+    # Нормализуем, чтобы сумма квот = total_slimes
+    var quota_sum := 0
+    for pid in quotas:
+        quota_sum += quotas[pid]
+
+    # Если квот больше чем слаймов — урежем пропорционально
+    if quota_sum > total_slimes:
+        for pid in quotas:
+            quotas[pid] = max(1, roundi(float(quotas[pid]) / quota_sum * total_slimes))
+
+    # ── Шаг 2: очищаем старые отряды ──
+    for pid in squads:
+        squads[pid] = []
+
+    # ── Шаг 3: назначаем слаймов ──
+    # Для каждого слайма считаем "оценку назначения" к каждому игроку.
+    # Это комбинация: близость к игроку × угроза игрока.
+    # Затем жадно назначаем, пока квоты не заполнены.
+
+    var unassigned := slimes.duplicate()
+    var assigned_count: Dictionary = {}
+    for pid in range(players.size()):
+        assigned_count[pid] = 0
+
+    # Сортируем игроков по убыванию угрозы (сначала набираем отряд
+    # для самого приоритетного)
+    var sorted_pids: Array[int] = []
+    for pid in range(players.size()):
+        sorted_pids.append(pid)
+    sorted_pids.sort_custom(func(a, b):
+        return _threat_scores.get(a, 0) > _threat_scores.get(b, 0)
+    )
+
+    for pid in sorted_pids:
+        var player := players[pid]
+        var player_pos := player.global_position
+        var quota: int = quotas.get(pid, 1)
+
+        # Сортируем неназначенных слаймов по близости к этому игроку
+        unassigned.sort_custom(func(a: CharacterBody2D, b: CharacterBody2D) -> bool:
+            return a.global_position.distance_squared_to(player_pos) \
+                 < b.global_position.distance_squared_to(player_pos)
+        )
+
+        var to_assign := mini(quota, unassigned.size())
+        for j in range(to_assign):
+            var slime := unassigned[j]
+            if pid not in squads:
+                squads[pid] = []
+            squads[pid].append(slime)
+
+            # Сообщаем слайму его новую цель
+            var ai := _get_ai(slime)
+            if ai:
+                ai.assigned_target = player
+                ai.assigned_player_id = pid
+
+        # Убираем назначенных
+        for j in range(to_assign - 1, -1, -1):
+            unassigned.remove_at(j)
+
+    # Оставшиеся (если есть) — на самого приоритетного
+    if not unassigned.is_empty() and not sorted_pids.is_empty():
+        var fallback_pid: int = sorted_pids[0]
+        for slime in unassigned:
+            if fallback_pid not in squads:
+                squads[fallback_pid] = []
+            squads[fallback_pid].append(slime)
+            var ai := _get_ai(slime)
+            if ai:
+                ai.assigned_target = players[fallback_pid]
+                ai.assigned_player_id = fallback_pid
+
+    # ── Шаг 4: обновляем стратегию каждого отряда ──
+    for pid in squads:
+        var squad_size: int = squads[pid].size()
+        squad_strategies[pid] = _size_to_strategy(squad_size)
+
+# ─────────────────────────────────────────────
+# НАЗНАЧЕНИЕ РОЛЕЙ (ПО ОТРЯДАМ)
+# ─────────────────────────────────────────────
+
+func _assign_roles_for_all_squads() -> void:
+    for pid in squads:
+        if pid >= players.size():
+            continue
+        var player := players[pid]
+        var squad: Array = squads[pid]
+        var strategy: Strategy = squad_strategies.get(pid, Strategy.SOLO)
+        var info := _get_player_info(player)
+
+        _assign_roles_for_squad(squad, player, strategy, info)
+
+
+func _assign_roles_for_squad(
+    squad: Array,
+    player: CharacterBody2D,
+    strategy: Strategy,
+    info: PlayerInfo
+) -> void:
+    if squad.is_empty():
+        return
+
+    var player_pos := player.global_position
+    var is_melee := info.is_melee() if info else true
+
+    # Сортируем по дистанции до СВОЕГО игрока
+    squad.sort_custom(func(a: CharacterBody2D, b: CharacterBody2D) -> bool:
+        return a.global_position.distance_squared_to(player_pos) \
+             < b.global_position.distance_squared_to(player_pos)
+    )
+
+    # ── Выбираем распределение ролей в зависимости от
+    #    стратегии + класса цели ──
+
+    var role_plan: Array = _get_role_plan(strategy, is_melee, squad.size())
+
+    for i in range(squad.size()):
+        var ai := _get_ai(squad[i])
+        if not ai:
+            continue
+        var role: Role = role_plan[mini(i, role_plan.size() - 1)]
+        ai.set_role(role, i)
+
+
+## Генерирует массив ролей для отряда.
+## Учитывает стратегию (сколько слаймов) и класс цели.
+func _get_role_plan(strategy: Strategy, target_is_melee: bool, count: int) -> Array:
+    var plan: Array = []
+
+    match strategy:
+        Strategy.SOLO:
+            if target_is_melee:
+                # Против мечника/паладина: оба фланкируют
+                # Не лезем в лоб — обходим
+                for i in range(count):
+                    plan.append(Role.FLANKER)
+            else:
+                # Против дальника: рашим — нужно закрыть дистанцию
+                for i in range(count):
+                    plan.append(Role.RUSHER)
+
+        Strategy.PACK:
+            if target_is_melee:
+                # vs мечник: 1 раш + остальные фланк/орбит
+                plan.append(Role.RUSHER)
+                for i in range(1, count):
+                    plan.append(Role.FLANKER if i % 2 == 0 else Role.ORBITER)
+            else:
+                # vs дальник: больше рашеров, нужно прорваться
+                var rushers := ceili(count * 0.6)
+                for i in range(rushers):
+                    plan.append(Role.RUSHER)
+                for i in range(rushers, count):
+                    plan.append(Role.FLANKER)
+
+        Strategy.SWARM:
+            if target_is_melee:
+                # vs мечник: мало рашеров, много фланкеров и орбитеров
+                # Изматываем, не подставляемся под AoE
+                var rushers := ceili(count * 0.2)
+                var flankers := ceili(count * 0.4)
+                for i in range(rushers):
+                    plan.append(Role.RUSHER)
+                for i in range(flankers):
+                    plan.append(Role.FLANKER)
+                for i in range(rushers + flankers, count):
+                    plan.append(Role.ORBITER)
+            else:
+                # vs дальник: много рашеров, окружение
+                var rushers := ceili(count * 0.4)
+                var flankers := ceili(count * 0.35)
+                for i in range(rushers):
+                    plan.append(Role.RUSHER)
+                for i in range(flankers):
+                    plan.append(Role.FLANKER)
+                for i in range(rushers + flankers, count):
+                    plan.append(Role.ORBITER)
+
+        Strategy.HORDE:
+            if target_is_melee:
+                # vs мечник: орбитеры + фланкеры + ожидающие, мало рашеров
+                var rushers := ceili(count * 0.15)
+                var flankers := ceili(count * 0.30)
+                var orbiters := ceili(count * 0.30)
+                for i in range(rushers):
+                    plan.append(Role.RUSHER)
+                for i in range(flankers):
+                    plan.append(Role.FLANKER)
+                for i in range(orbiters):
+                    plan.append(Role.ORBITER)
+                for i in range(rushers + flankers + orbiters, count):
+                    plan.append(Role.WAITER)
+            else:
+                # vs дальник: давим массой
+                var rushers := ceili(count * 0.35)
+                var flankers := ceili(count * 0.30)
+                var orbiters := ceili(count * 0.20)
+                for i in range(rushers):
+                    plan.append(Role.RUSHER)
+                for i in range(flankers):
+                    plan.append(Role.FLANKER)
+                for i in range(orbiters):
+                    plan.append(Role.ORBITER)
+                for i in range(rushers + flankers + orbiters, count):
+                    plan.append(Role.WAITER)
+
+    # Добиваем до нужной длины, если вдруг не хватило
+    while plan.size() < count:
+        plan.append(Role.WAITER)
+
+    return plan
+
+# ─────────────────────────────────────────────
+# ТОКЕНЫ АТАКИ (PER PLAYER)
+# ─────────────────────────────────────────────
+
+func request_attack_token(slime: CharacterBody2D, player_id: int) -> bool:
+    if player_id not in _attack_tokens:
+        _attack_tokens[player_id] = []
+
+    var tokens: Array = _attack_tokens[player_id]
+    if slime in tokens:
+        return true
+
+    var max_tokens := _get_max_attackers_for_player(player_id)
+    if tokens.size() < max_tokens:
+        tokens.append(slime)
+        return true
+    return false
+
+
+func release_attack_token(slime: CharacterBody2D, player_id: int) -> void:
+    if player_id in _attack_tokens:
+        _attack_tokens[player_id].erase(slime)
+
+
+func _get_max_attackers_for_player(player_id: int) -> int:
+    if player_id >= players.size():
+        return base_attackers_per_player
+
+    var info := _get_player_info(players[player_id])
+    if not info:
+        return base_attackers_per_player
+
+    # Танков можно атаковать бо́льшим числом — они выдержат
+    # Стеклянных пушек — меньшим (и так помрут, а остальные
+    # слаймы пусть давят других игроков)
+    match info.player_class:
+        PlayerInfo.PlayerClass.PALADIN:
+            return max_attackers_per_player      # 4
+        PlayerInfo.PlayerClass.WARRIOR:
+            return base_attackers_per_player + 1  # 3
+        PlayerInfo.PlayerClass.RANGER:
+            return base_attackers_per_player       # 2
+        PlayerInfo.PlayerClass.MAGE:
+            return base_attackers_per_player       # 2
+
+    return base_attackers_per_player
+
+
+func _cleanup_all_tokens() -> void:
+    for pid in _attack_tokens:
+        _attack_tokens[pid] = _attack_tokens[pid].filter(
+            func(s): return is_instance_valid(s) and s in slimes
+        )
+
+# ─────────────────────────────────────────────
+# УТИЛИТЫ
+# ─────────────────────────────────────────────
+
+func _size_to_strategy(count: int) -> Strategy:
+    if count <= 2:
+        return Strategy.SOLO
+    elif count <= 5:
+        return Strategy.PACK
+    elif count <= 10:
+        return Strategy.SWARM
+    else:
+        return Strategy.HORDE
+
+
+func _get_ai(slime: CharacterBody2D) -> Node:
+    if slime.has_node("SlimeAI"):
+        return slime.get_node("SlimeAI")
+    return null
+
+
+func _get_player_info(player: CharacterBody2D) -> PlayerInfo:
+    if player.has_node("PlayerInfo"):
+        return player.get_node("PlayerInfo") as PlayerInfo
+    return null
+
+
+func _get_swarm_center() -> Vector2:
+    if slimes.is_empty():
+        return Vector2.ZERO
+    var center := Vector2.ZERO
+    for s in slimes:
+        center += s.global_position
+    return center / slimes.size()
+
+
+## Получить соседей из ТОГО ЖЕ ОТРЯДА (для cohesion/alignment)
+func get_squad_neighbors(slime: CharacterBody2D, player_id: int, radius: float) -> Array[CharacterBody2D]:
+    var result: Array[CharacterBody2D] = []
+    var squad: Array = squads.get(player_id, [])
+    var pos := slime.global_position
+
+    for other in squad:
+        if other == slime:
+            continue
+        if pos.distance_squared_to(other.global_position) < radius * radius:
+            result.append(other)
+    return result
+
+
+## Получить ВСЕХ соседей (для separation — чтобы слаймы из разных
+## отрядов тоже не слипались друг с другом)
+func get_all_neighbors(slime: CharacterBody2D, radius: float) -> Array[CharacterBody2D]:
+    var result: Array[CharacterBody2D] = []
+    var pos := slime.global_position
+
+    for other in slimes:
+        if other == slime:
+            continue
+        if pos.distance_squared_to(other.global_position) < radius * radius:
+            result.append(other)
+    return result
+```
+
+---
+
+## Файл 2 — `slime_ai.gd` (v2)
+
+Полностью переписан: знает своего конкретного игрока-цель, адаптирует поведение к его классу.
+
+```gdscript
+# scripts/enemies/slime_ai.gd
+extends Node
+
+# ═════════════════════════════════════════════
+# МОЗГ СЛАЙМА v2
+# Адаптация к классу цели, уклонение от AoE,
+# зигзаг-подход к дальникам
+# ═════════════════════════════════════════════
+
+# ─────────────────────────────────────────────
+# ССЫЛКИ
+# ─────────────────────────────────────────────
+
+var swarm: Node = null
+@onready var body: CharacterBody2D = get_parent()
+
+## Назначенная цель (конкретный игрок, не один на всех)
+var assigned_target: CharacterBody2D = null
+
+## ID игрока в массиве SwarmManager.players
+var assigned_player_id: int = 0
+
+# ─────────────────────────────────────────────
+# НАСТРОЙКИ ДВИЖЕНИЯ
+# ─────────────────────────────────────────────
+
+@export var base_speed: float = 100.0
+@export var dash_speed: float = 200.0
+@export var separation_radius: float = 40.0
+@export var neighbor_radius: float = 120.0
+
+# ─────────────────────────────────────────────
+# НАСТРОЙКИ РОЛЕЙ
+# ─────────────────────────────────────────────
+
+@export var flank_distance: float = 100.0
+@export var orbit_radius: float = 150.0
+@export var orbit_speed: float = 1.5
+@export var retreat_distance: float = 120.0
+@export var retreat_duration: float = 1.2
+@export var attack_range: float = 35.0
+@export var attack_cooldown: float = 1.5
+
+# ─────────────────────────────────────────────
+# НАСТРОЙКИ АДАПТАЦИИ К КЛАССАМ
+# ─────────────────────────────────────────────
+
+## Множитель дистанции для ближних классов
+## (держимся дальше от мечника/паладина)
+@export var melee_distance_multiplier: float = 1.3
+
+## Множитель дистанции для дальних классов
+## (лезем ближе к магу/лучнику)
+@export var ranged_distance_multiplier: float = 0.8
+
+## Амплитуда зигзага при подходе к дальнику
+@export var zigzag_amplitude: float = 40.0
+
+## Частота зигзага
+@export var zigzag_frequency: float = 3.0
+
+## Радиус уклонения от опасных зон
+@export var danger_avoid_radius: float = 30.0
+
+## Сила уклонения от опасных зон
+@export var danger_avoid_weight: float = 3.0
+
+# ─────────────────────────────────────────────
+# ВЕСА BOIDS-СИЛ
+# ─────────────────────────────────────────────
+
+@export var weight_separation: float = 1.5
+@export var weight_cohesion: float = 0.3
+@export var weight_alignment: float = 0.2
+@export var weight_target: float = 1.0
+@export var weight_avoid_danger: float = 2.5
+
+# ─────────────────────────────────────────────
+# СОСТОЯНИЕ
+# ─────────────────────────────────────────────
+
+var current_role: int = -1
+var role_index: int = 0
+var flank_side: float = 1.0
+var orbit_offset: float = 0.0
+var personal_speed: float = 100.0
+
+var _attack_timer: float = 0.0
+var _retreat_timer: float = 0.0
+var _is_retreating: bool = false
+var last_direction: Vector2 = Vector2.RIGHT
+
+## Кэш: PlayerInfo цели (обновляется при смене цели)
+var _target_info: PlayerInfo = null
+var _cached_target: CharacterBody2D = null
+
+# ─────────────────────────────────────────────
+# ИНИЦИАЛИЗАЦИЯ
+# ─────────────────────────────────────────────
+
+func _ready() -> void:
+    swarm = _find_swarm_manager()
+    if swarm:
+        swarm.register_slime(body)
+    _randomize_personality()
+
+
+func _exit_tree() -> void:
+    if swarm:
+        swarm.unregister_slime(body)
+
+
+func _randomize_personality() -> void:
+    personal_speed = base_speed * randf_range(0.85, 1.15)
+    orbit_offset = randf() * TAU
+    flank_side = [-1.0, 1.0].pick_random()
+    attack_cooldown *= randf_range(0.8, 1.2)
+
+# ─────────────────────────────────────────────
+# ОСНОВНОЙ ЦИКЛ
+# ─────────────────────────────────────────────
+
+func _physics_process(delta: float) -> void:
+    if not swarm:
+        return
+    if not is_instance_valid(assigned_target):
+        # Нет цели — стоим (менеджер скоро назначит)
+        body.velocity = Vector2.ZERO
+        return
+
+    # Обновляем кэш PlayerInfo
+    _update_target_info()
+
+    # Таймеры
+    _attack_timer -= delta
+    if _is_retreating:
+        _retreat_timer -= delta
+        if _retreat_timer <= 0.0:
+            _is_retreating = false
+
+    # ── 1. Целевая позиция по роли + адаптация к классу ──
+    var target_pos := _get_role_target_position()
+
+    # ── 2. Boids-силы ──
+    # Separation — ОТ ВСЕХ слаймов (чтобы разные отряды не слипались)
+    var all_neighbors := swarm.get_all_neighbors(body, neighbor_radius)
+    var separation := _calc_separation(all_neighbors) * weight_separation
+
+    # Cohesion + Alignment — только среди СВОЕГО отряда
+    var squad_neighbors := swarm.get_squad_neighbors(
+        body, assigned_player_id, neighbor_radius
+    )
+    var cohesion := _calc_cohesion(squad_neighbors) * weight_cohesion
+    var alignment := _calc_alignment(squad_neighbors) * weight_alignment
+
+    # ── 3. Направление к целевой позиции ──
+    var to_target := Vector2.ZERO
+    if body.global_position.distance_to(target_pos) > 5.0:
+        to_target = (target_pos - body.global_position).normalized() * weight_target
+
+    # ── 4. Уклонение от опасных зон ──
+    var danger_avoid := _calc_danger_avoidance() * weight_avoid_danger
+
+    # ── 5. Зигзаг (против дальников) ──
+    var zigzag := _calc_zigzag()
+
+    # ── 6. Суммируем ──
+    var desired := (
+        to_target
+        + separation
+        + cohesion
+        + alignment
+        + danger_avoid
+        + zigzag
+    ).normalized()
+
+    if desired.length() < 0.01:
+        desired = Vector2.ZERO
+
+    # ── 7. Скорость ──
+    var speed := _get_current_speed()
+
+    # ── 8. Двигаемся ──
+    body.velocity = desired * speed
+    body.move_and_slide()
+
+    if desired.length() > 0.1:
+        last_direction = desired
+
+    # ── 9. Атака ──
+    _try_attack()
+
+# ─────────────────────────────────────────────
+# АДАПТИВНАЯ ЦЕЛЕВАЯ ПОЗИЦИЯ
+# ─────────────────────────────────────────────
+
+func _get_role_target_position() -> Vector2:
+    var player_pos: Vector2 = assigned_target.global_position
+    var my_pos: Vector2 = body.global_position
+    var dist_mult := _get_distance_multiplier()
+
+    # Отступление
+    if _is_retreating:
+        var away := (my_pos - player_pos).normalized()
+        return my_pos + away * retreat_distance * dist_mult
+
+    match current_role:
+        # ── RUSHER ──
+        swarm.Role.RUSHER:
+            # Против мечника: целимся чуть МИМО (не прямо в лоб)
+            # Чтобы не попасть под AoE удар
+            if _target_is_melee():
+                var to_player := (player_pos - my_pos)
+                if to_player.length() < 1.0:
+                    return player_pos
+                var offset_angle := to_player.angle() + 0.3 * flank_side
+                var offset_pos := player_pos + Vector2.from_angle(offset_angle) * 20.0
+                return offset_pos
+            else:
+                # Против дальника: рашим прямо
+                return player_pos
+
+        # ── FLANKER ──
+        swarm.Role.FLANKER:
+            var to_player := (player_pos - my_pos)
+            if to_player.length() < 1.0:
+                return player_pos
+
+            var base_angle: float = to_player.angle()
+            var flank_angle: float = base_angle + (PI / 2.0) * flank_side
+
+            # Адаптивная дистанция фланга
+            var adaptive_flank := flank_distance * dist_mult
+            var flank_pos := player_pos + Vector2.from_angle(flank_angle) * adaptive_flank
+
+            # Если близко к точке фланга — атакуем
+            if my_pos.distance_to(flank_pos) < 30.0:
+                return player_pos
+
+            return flank_pos
+
+        # ── ORBITER ──
+        swarm.Role.ORBITER:
+            var time := Time.get_ticks_msec() / 1000.0
+
+            # Против мечника кружим ДАЛЬШЕ
+            var adaptive_orbit := orbit_radius * dist_mult
+
+            # Против дальника кружим быстрее (чтобы сложнее попасть)
+            var adaptive_speed := orbit_speed
+            if _target_is_ranged():
+                adaptive_speed *= 1.4
+
+            var angle := time * adaptive_speed + orbit_offset
+            return player_pos + Vector2.from_angle(angle) * adaptive_orbit
+
+        # ── WAITER ──
+        swarm.Role.WAITER:
+            var to_player := (player_pos - my_pos).normalized()
+            var wait_dist := orbit_radius * 1.5 * dist_mult
+            return player_pos - to_player * wait_dist
+
+        # ── RETREATER ──
+        swarm.Role.RETREATER:
+            var away := (my_pos - player_pos).normalized()
+            return my_pos + away * retreat_distance
+
+    return player_pos
+
+# ─────────────────────────────────────────────
+# ЗИГЗАГ (ПРОТИВ ДАЛЬНИКОВ)
+# ─────────────────────────────────────────────
+# Когда слайм бежит к лучнику/магу, он двигается волной,
+# чтобы в него было сложнее попасть снарядами.
+
+func _calc_zigzag() -> Vector2:
+    if not _target_is_ranged():
+        return Vector2.ZERO
+
+    # Зигзаг только для рашеров и фланкеров
+    if current_role != swarm.Role.RUSHER and current_role != swarm.Role.FLANKER:
+        return Vector2.ZERO
+
+    # Только если достаточно далеко (вблизи зигзаг не нужен)
+    var dist := body.global_position.distance_to(assigned_target.global_position)
+    if dist < 60.0:
+        return Vector2.ZERO
+
+    # Перпендикуляр к направлению на цель
+    var to_target := (assigned_target.global_position - body.global_position).normalized()
+    var perpendicular := Vector2(-to_target.y, to_target.x)
+
+    # Синусоидальное смещение (у каждого слайма свой orbit_offset,
+    # поэтому зигзаги не синхронны)
+    var time := Time.get_ticks_msec() / 1000.0
+    var zigzag_value := sin(time * zigzag_frequency + orbit_offset) * zigzag_amplitude
+
+    # Ослабляем зигзаг с приближением
+    var dist_factor := clampf(dist / 200.0, 0.0, 1.0)
+
+    return perpendicular * zigzag_value * dist_factor * 0.01
+
+# ─────────────────────────────────────────────
+# УКЛОНЕНИЕ ОТ ОПАСНЫХ ЗОН
+# ─────────────────────────────────────────────
+# Слаймы видят, когда игрок активирует способность,
+# и убегают из зоны поражения.
+
+func _calc_danger_avoidance() -> Vector2:
+    var force := Vector2.ZERO
+    var my_pos := body.global_position
+
+    # Проверяем ВСЕ опасные зоны всех игроков
+    # (не только своей цели — чужой маг тоже может кастануть метеорит рядом)
+    for player in swarm.players:
+        var info := _get_info_for(player)
+        if not info or not info.is_ability_active:
+            continue
+
+        var zone_center := info.ability_zone_center
+        var zone_radius := info.ability_zone_radius + danger_avoid_radius
+
+        var dist := my_pos.distance_to(zone_center)
+
+        if dist < zone_radius and dist > 0.01:
+            # Убегаем от центра зоны
+            var away := (my_pos - zone_center).normalized()
+
+            # Чем ближе к центру — тем сильнее паника
+            var urgency := clampf(1.0 - (dist / zone_radius), 0.0, 1.0)
+
+            # Щит паладина — особый случай: слаймы вообще не лезут в зону
+            if info.ability_type == "shield":
+                urgency *= 2.0
+
+            force += away * urgency
+
+    return force.normalized() if force.length() > 0.01 else Vector2.ZERO
+
+# ─────────────────────────────────────────────
+# BOIDS
+# ─────────────────────────────────────────────
+
+func _calc_separation(neighbors: Array[CharacterBody2D]) -> Vector2:
+    var force := Vector2.ZERO
+    var my_pos := body.global_position
+
+    for other in neighbors:
+        var diff := my_pos - other.global_position
+        var dist := diff.length()
+        if dist < separation_radius and dist > 0.01:
+            force += diff.normalized() * (separation_radius / dist)
+
+    return force.normalized() if force.length() > 0.01 else Vector2.ZERO
+
+
+func _calc_cohesion(neighbors: Array[CharacterBody2D]) -> Vector2:
+    if neighbors.is_empty():
+        return Vector2.ZERO
+
+    var center := Vector2.ZERO
+    for other in neighbors:
+        center += other.global_position
+    center /= neighbors.size()
+
+    var to_center := center - body.global_position
+    return to_center.normalized() if to_center.length() > 1.0 else Vector2.ZERO
+
+
+func _calc_alignment(neighbors: Array[CharacterBody2D]) -> Vector2:
+    if neighbors.is_empty():
+        return Vector2.ZERO
+
+    var avg_vel := Vector2.ZERO
+    var count := 0
+    for other in neighbors:
+        if other.velocity.length() > 1.0:
+            avg_vel += other.velocity.normalized()
+            count += 1
+
+    if count == 0:
+        return Vector2.ZERO
+
+    avg_vel /= count
+    return avg_vel.normalized()
+
+# ─────────────────────────────────────────────
+# АТАКА
+# ─────────────────────────────────────────────
+
+func _try_attack() -> void:
+    if _attack_timer > 0.0 or _is_retreating:
+        return
+    if not _is_in_attack_range():
+        return
+
+    # Просим токен для КОНКРЕТНОГО игрока
+    if not swarm.request_attack_token(body, assigned_player_id):
+        return
+
+    _perform_attack()
+
+
+func _perform_attack() -> void:
+    # Урон через HealthComponent
+    if assigned_target.has_node("HealthComponent"):
+        assigned_target.get_node("HealthComponent").take_damage(10)
+
+    _attack_timer = attack_cooldown
+    swarm.release_attack_token(body, assigned_player_id)
+    _start_retreat()
+
+
+func _start_retreat() -> void:
+    _is_retreating = true
+    _retreat_timer = retreat_duration
+
+    # Против ближника — отступаем дольше и дальше
+    if _target_is_melee():
+        _retreat_timer *= 1.3
+
+    flank_side *= -1.0
+
+# ─────────────────────────────────────────────
+# СКОРОСТЬ
+# ─────────────────────────────────────────────
+
+func _get_current_speed() -> float:
+    var speed := personal_speed
+
+    # Рашер ускоряется вблизи цели
+    if current_role == swarm.Role.RUSHER:
+        var dist := body.global_position.distance_to(assigned_target.global_position)
+        if dist < swarm.close_range * 1.5:
+            speed = dash_speed
+
+    # Против дальника: базовая скорость чуть выше (нужно добежать)
+    if _target_is_ranged():
+        speed *= 1.1
+
+    # Отступление чуть медленнее
+    if _is_retreating:
+        speed *= 0.8
+
+    # Waiter двигается медленно
+    if current_role == swarm.Role.WAITER:
+        speed *= 0.6
+
+    return speed
+
+# ─────────────────────────────────────────────
+# АДАПТИВНЫЕ МНОЖИТЕЛИ
+# ─────────────────────────────────────────────
+
+## Множитель дистанции по классу цели
+func _get_distance_multiplier() -> float:
+    if _target_is_melee():
+        return melee_distance_multiplier    # 1.3 — держимся дальше
+    elif _target_is_ranged():
+        return ranged_distance_multiplier   # 0.8 — лезем ближе
+    return 1.0
+
+# ─────────────────────────────────────────────
+# УТИЛИТЫ
+# ─────────────────────────────────────────────
+
+func _target_is_melee() -> bool:
+    return _target_info != null and _target_info.is_melee()
+
+func _target_is_ranged() -> bool:
+    return _target_info != null and _target_info.is_ranged()
+
+func _is_in_attack_range() -> bool:
+    if not is_instance_valid(assigned_target):
+        return false
+    return body.global_position.distance_to(
+        assigned_target.global_position
+    ) < attack_range
+
+func _update_target_info() -> void:
+    if assigned_target != _cached_target:
+        _cached_target = assigned_target
+        _target_info = _get_info_for(assigned_target)
+
+func _get_info_for(player: CharacterBody2D) -> PlayerInfo:
+    if is_instance_valid(player) and player.has_node("PlayerInfo"):
+        return player.get_node("PlayerInfo") as PlayerInfo
+    return null
+
+func set_role(role: int, index: int = 0) -> void:
+    current_role = role
+    role_index = index
+    flank_side = 1.0 if index % 2 == 0 else -1.0
+
+    # Уникальное смещение орбиты
+    var squad_size := 1
+    if swarm and assigned_player_id in swarm.squads:
+        squad_size = maxi(swarm.squads[assigned_player_id].size(), 1)
+    orbit_offset = (index * TAU) / squad_size
+
+func _find_swarm_manager() -> Node:
+    var managers := get_tree().get_nodes_in_group("swarm_manager")
+    if managers.size() > 0:
+        return managers[0]
+    var root := get_tree().current_scene
+    if root.has_node("SwarmManager"):
+        return root.get_node("SwarmManager")
+    push_warning("SwarmManager not found!")
+    return null
+```
+
+---
+
+## Как это работает: 4 игрока, 12 слаймов
+
+```
+THREAT CALCULATION (пример):
+┌──────────┬──────┬───────┬────────┬────────┬─────────┐
+│  Игрок   │ Dist │ Kills │ HP%    │ Class  │ THREAT  │
+├──────────┼──────┼───────┼────────┼────────┼─────────┤
+│ Маг      │ 0.7  │ 0.8   │ 0.6    │ 1.0    │  4.22   │
+│ Лучник   │ 0.5  │ 0.4   │ 0.2    │ 0.8    │  2.46   │
+│ Мечник   │ 0.9  │ 0.2   │ 0.1    │ 0.5    │  1.82   │
+│ Паладин  │ 0.3  │ 0.0   │ 0.0    │ 0.3    │  0.66   │
+└──────────┴──────┴───────┴────────┴────────┴─────────┘
+
+Маг — главная угроза (много убивает + стеклянный)
+```
+
+```
+SQUAD DISTRIBUTION (пропорционально threat):
+  Маг      → 5 слаймов (46%)   Strategy: PACK
+  Лучник   → 3 слайма  (27%)   Strategy: PACK
+  Мечник   → 3 слайма  (20%)   Strategy: PACK
+  Паладин  → 1 слайм   (7%)    Strategy: SOLO
+```
+
+```
+VS МАГ (5 слаймов, PACK, target_is_ranged = true):
+    role_plan = [RUSHER, RUSHER, RUSHER, FLANKER, FLANKER]
+    
+            F₄ (зигзагом заходит сбоку)
+           ╱
+    R₁ ──≈→ 🔮 Маг  ←≈── R₂    (рашеры зигзагом в лоб)
+         ↑        ╲
+    R₃ ─≈→        F₅ (с другой стороны)
+    
+    ≈ = зигзаг-движение (сложнее попасть снарядом)
+    3 рашера давят, 2 фланкера обходят
+    Дистанции сжаты (×0.8) — лезут БЛИЖЕ
+
+
+VS МЕЧНИК (3 слайма, PACK, target_is_melee = true):
+    role_plan = [RUSHER, FLANKER, ORBITER]
+    
+         O₃ (кружит на безопасной дистанции)
+        ╱
+    R₁ → ⚔️ Мечник    ← F₂ (обходит сзади)
+    
+    Рашер подходит не в лоб, а чуть со смещением
+    Все дистанции увеличены (×1.3) — держатся дальше
+    Отступление после атаки дольше (×1.3)
+
+
+VS ПАЛАДИН (1 слайм, SOLO, target_is_melee = true):
+    role_plan = [FLANKER]
+    
+    F₁ ╭─→ 🛡️ Паладин
+       ╰──╮  (кружит, ждёт момент)
+           ↓
+    
+    Один слайм просто держит дистанцию
+    Даже не приоритет — остальные давят мага и лучника
+```
+
+```
+РЕАКЦИЯ НА СПОСОБНОСТИ:
+
+1) Маг кастует метеорит:
+    🔮 → activate_danger_zone(pos, 120, "ranged_aoe")
+    
+    Все слаймы В РАДИУСЕ 150 (120 + 30 avoid):
+    ←←← УБЕГАЮТ ОТ ЦЕНТРА →→→
+    (даже те, кто назначен на других игроков)
+
+2) Мечник делает круговой удар:
+    ⚔️ → activate_danger_zone(pos, 80, "melee_aoe")
+    
+    Слаймы вблизи: ←← ОТСКАКИВАЮТ ←←
+    Орбитеры: и так далеко, не реагируют
+
+3) Паладин ставит купол:
+    🛡️ → activate_danger_zone(pos, 100, "shield")
+    
+    urgency × 2.0 — слаймы ВООБЩЕ не лезут в зону
+    (щит и так защищает, нечего ломиться)
+```
+
+---
+
+## Сцена игрока (обновлённая структура)
+
+```
+Player (CharacterBody2D) [warrior.gd / mage.gd / ...]
+├── CollisionShape2D
+├── Sprite2D
+├── PlayerInfo (Node) [player_info.gd]    ← НОВЫЙ КОМПОНЕНТ
+│   └── player_class = WARRIOR (задать в инспекторе)
+├── HealthComponent (Node)
+├── HurtboxComponent (Area2D)
+├── HitboxComponent (Area2D)
+└── StateMachine (Node)
+```
+
+В `PlayerInfo` в инспекторе выставляешь `player_class` для каждого класса и прописываешь путь к `HealthComponent`.
+
+---
+
+## Важные моменты по балансу
+
+```
+┌────────────────────┬──────────────────────────────────────────┐
+│ Параметр           │ Эффект                                   │
+├────────────────────┼──────────────────────────────────────────┤
+│ threat_weight_     │ Меняет, кого слаймы атакуют первым.     │
+│ damage = 3.0       │ Высокий → стая переключается на того,   │
+│                    │ кто убивает больше всех.                 │
+├────────────────────┼──────────────────────────────────────────┤
+│ threat_weight_     │ Высокий → добивают раненых.             │
+│ low_hp = 0.5       │ Низкий → игнорируют полумёртвых.        │
+├────────────────────┼──────────────────────────────────────────┤
+│ min_squad_size     │ 1 = паладин может остаться без внимания. │
+│                    │ 2 = на каждого игрока минимум 2 слайма. │
+├────────────────────┼──────────────────────────────────────────┤
+│ reassign_interval  │ 0.3 = слаймы быстро перестраиваются.    │
+│                    │ 1.0 = медленнее, но менее "читерно".    │
+├────────────────────┼──────────────────────────────────────────┤
+│ zigzag_amplitude   │ Больше → сложнее попасть из лука/магии. │
+│                    │ Слишком много → слаймы еле ползут.      │
+├────────────────────┼──────────────────────────────────────────┤
+│ melee_distance_    │ 1.5 → слаймы очень осторожны с мечником.│
+│ multiplier         │ 1.1 → почти не отличается.              │
+└────────────────────┴──────────────────────────────────────────┘
+```
+
+---
+
+## Чеклист подключения
+
+```
+ 1. Добавь PlayerInfo.gd как компонент к каждому классу игрока
+ 2. Выстави player_class в инспекторе (WARRIOR/RANGER/MAGE/PALADIN)
+ 3. Пропиши health_component_path (обычно "HealthComponent" или "../HealthComponent")
+ 4. В скриптах способностей вызывай activate/deactivate_danger_zone
+ 5. Добавь SwarmManager (Node) в корень игровой сцены
+ 6. Добавь его в группу "swarm_manager"
+ 7. Каждый слайм должен иметь дочерний SlimeAI (Node) со скриптом slime_ai.gd
+ 8. Игроки должны быть в группе "player"
+ 9. У HealthComponent нужен метод get_hp_ratio() или поля hp/max_hp
+10. При смерти слайма — вызвать player_info.register_kill()
+    у игрока-убийцы (для threat-системы)
+```
+
+Пункт 10 — в `health_component.gd` при смерти:
+
+```gdscript
+# health_component.gd
+signal died(killed_by: CharacterBody2D)
+
+func take_damage(amount: int, source: CharacterBody2D = null) -> void:
+    hp -= amount
+    if hp <= 0:
+        hp = 0
+        died.emit(source)
+```
+
+```gdscript
+# slime.gd
+func _ready() -> void:
+    $HealthComponent.died.connect(_on_died)
+
+func _on_died(killed_by: CharacterBody2D) -> void:
+    # Сообщаем убийце для threat-системы
+    if is_instance_valid(killed_by) and killed_by.has_node("PlayerInfo"):
+        killed_by.get_node("PlayerInfo").register_kill()
+    queue_free()
+```

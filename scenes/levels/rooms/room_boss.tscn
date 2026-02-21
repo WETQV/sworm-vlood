@@ -1,50 +1,50 @@
-[gd_scene load_steps=3 format=3 uid="uid://room_boss"]
+[gd_scene format=3 uid="uid://ch5xiimcx7s1p"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scripts/levels/room_boss.gd" id="2_script"]
-[ext_resource type="Script" path="res://scripts/levels/spawn_point.gd" id="3_spawn"]
+[ext_resource type="Script" uid="uid://bxjni243prnqd" path="res://scripts/levels/spawn_point.gd" id="3_spawn"]
 
 [node name="RoomBoss" instance=ExtResource("1_base")]
-## Босс-арена 30x25 — большое открытое пространство.
-## Широкие входы (3+ тайла) для свободного движения 4 игроков.
-## Точки спавна для фаз 1 и 2 босса.
 script = ExtResource("2_script")
 room_type = 4
 room_size = Vector2i(30, 25)
 
-[node name="SpawnPoints" type="Node2D" parent="."]
-
 [node name="BossSpawn" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(960, 768)
 script = ExtResource("3_spawn")
 type = 4
 radius_in_tiles = 2
-## Центр — стартовая позиция босса
-position = Vector2(896, 736)
 
 [node name="PlayerEntry1" type="Marker2D" parent="SpawnPoints"]
 position = Vector2(192, 192)
 
 [node name="PlayerEntry2" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(384, 192)
+position = Vector2(1728, 192)
 
 [node name="PlayerEntry3" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(192, 384)
+position = Vector2(192, 1344)
 
 [node name="PlayerEntry4" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(384, 384)
+position = Vector2(1728, 1344)
 
 [node name="MinionSpawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(512, 448)
 script = ExtResource("3_spawn")
-position = Vector2(704, 288)
+type = 0
 
 [node name="MinionSpawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1408, 448)
 script = ExtResource("3_spawn")
-position = Vector2(1152, 288)
+type = 0
 
 [node name="MinionSpawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(512, 1088)
 script = ExtResource("3_spawn")
-position = Vector2(704, 1152)
+type = 0
 
 [node name="MinionSpawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1408, 1088)
 script = ExtResource("3_spawn")
-position = Vector2(1152, 1152)
+type = 0
+
+[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=535613659]

@@ -2,6 +2,7 @@ extends CharacterBody2D
 ## Player.gd — движение, поворот за мышью, атака
 
 @onready var health_component: HealthComponent = $HealthComponent
+@onready var player_info: PlayerInfo = $PlayerInfo
 @onready var weapon_pivot: Node2D = $WeaponPivot
 @onready var weapon_sprite: ColorRect = $WeaponPivot/WeaponSprite
 @onready var attack_area: Area2D = $WeaponPivot/AttackArea
@@ -62,15 +63,19 @@ func _apply_class_stats() -> void:
 	# Настройка в зависимости от класса
 	match GameManager.selected_class:
 		GameManager.PlayerClass.WARRIOR:
+			player_info.player_class = PlayerInfo.PlayerClass.WARRIOR
 			attack_cooldown = 0.4
 			attack_knockback = 250.0
 		GameManager.PlayerClass.RANGER:
+			player_info.player_class = PlayerInfo.PlayerClass.RANGER
 			attack_cooldown = 0.5
 			attack_knockback = 150.0
 		GameManager.PlayerClass.MAGE:
+			player_info.player_class = PlayerInfo.PlayerClass.MAGE
 			attack_cooldown = 0.6
 			attack_knockback = 100.0
 		GameManager.PlayerClass.PALADIN:
+			player_info.player_class = PlayerInfo.PlayerClass.PALADIN
 			attack_cooldown = 0.5
 			attack_knockback = 300.0
 
@@ -117,6 +122,8 @@ func _perform_attack() -> void:
 
 ## Ближняя атака (воин)
 func _perform_melee_attack() -> void:
+	player_info.activate_danger_zone(global_position, 80.0, "melee_aoe")
+	
 	# Включаем зону урона
 	attack_area.monitoring = true
 	weapon_sprite.color = _weapon_color_attack
@@ -130,6 +137,7 @@ func _perform_melee_attack() -> void:
 
 	attack_area.monitoring = false
 	weapon_sprite.color = _weapon_color_idle
+	player_info.deactivate_danger_zone()
 
 	await get_tree().create_timer(attack_cooldown - attack_duration).timeout
 	_is_attacking = false
@@ -149,18 +157,26 @@ func _shoot_arrow() -> void:
 
 ## Огненный шар (маг)
 func _shoot_fireball() -> void:
+	var target_pos = get_global_mouse_position()
+	player_info.activate_danger_zone(target_pos, 120.0, "ranged_aoe")
+	
 	var fireball = preload("res://scenes/items/fireball.tscn").instantiate()
 	fireball.global_position = global_position
 	fireball.direction = (get_global_mouse_position() - global_position).normalized()
 	fireball.damage = attack_damage
 	get_parent().add_child(fireball)
 	
-	await get_tree().create_timer(attack_cooldown).timeout
+	await get_tree().create_timer(0.3).timeout
+	player_info.deactivate_danger_zone()
+	
+	await get_tree().create_timer(attack_cooldown - 0.3).timeout
 	_is_attacking = false
 
 
 ## Удар щитом (паладин)
 func _perform_shield_bash() -> void:
+	player_info.activate_danger_zone(global_position, 100.0, "shield")
+	
 	# Рывок вперёд
 	var dash_dir = (get_global_mouse_position() - global_position).normalized()
 	_knockback_velocity = dash_dir * 400.0
@@ -173,6 +189,7 @@ func _perform_shield_bash() -> void:
 	
 	attack_area.monitoring = false
 	weapon_sprite.color = _weapon_color_idle
+	player_info.deactivate_danger_zone()
 	
 	await get_tree().create_timer(attack_cooldown - 0.2).timeout
 	_is_attacking = false
@@ -185,7 +202,7 @@ func _on_attack_hit(area: Area2D) -> void:
 		return
 	
 	if area.has_method("receive_damage"):
-		area.receive_damage(attack_damage, attack_knockback, global_position)
+		area.receive_damage(attack_damage, attack_knockback, global_position, self)
 		print("Попал по: ", area.get_parent().name)
 
 

@@ -1,6 +1,7 @@
 [gd_scene load_steps=2 format=3 uid="uid://game_scene"]
 
 [ext_resource type="Script" path="res://scripts/game/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/enemies/swarm_manager.gd" id="2_swarm"]
 
 [node name="Game" type="Node2D"]
 script = ExtResource("1_game")
@@ -10,6 +11,9 @@ script = ExtResource("1_game")
 [node name="EnemyContainer" type="Node2D" parent="."]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="SwarmManager" type="Node" parent="."]
+script = ExtResource("2_swarm")
 
 [node name="InfoLabel" type="Label" parent="CanvasLayer"]
 unique_name_in_owner = true

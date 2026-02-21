@@ -5,7 +5,7 @@ class_name HealthComponent
 ## Используется и для игроков, и для врагов
 
 signal health_changed(current_hp: int, max_hp: int)
-signal died
+signal died(killed_by: Node2D)
 
 @export var max_health: int = 100
 @export var current_health: int = 100
@@ -18,7 +18,7 @@ func _ready() -> void:
 
 
 ## Нанести урон
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, source: Node2D = null) -> void:
 	if is_dead:
 		return
 	
@@ -26,7 +26,7 @@ func take_damage(amount: int) -> void:
 	health_changed.emit(current_health, max_health)
 	
 	if current_health <= 0:
-		die()
+		die(source)
 
 
 ## Исцелить
@@ -48,12 +48,12 @@ func set_health(value: int) -> void:
 
 
 ## Смерть персонажа
-func die() -> void:
+func die(source: Node2D = null) -> void:
 	if is_dead:
 		return
 	
 	is_dead = true
-	died.emit()
+	died.emit(source)
 
 
 ## Проверка — жив ли персонаж
