@@ -1,8 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://slime_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://slime_boss_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
-[ext_resource type="Script" path="res://scripts/enemies/slime.gd" id="3_slime"]
+[ext_resource type="Script" path="res://scripts/enemies/slime_boss.gd" id="3_boss"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 12.0
@@ -13,14 +13,16 @@ radius = 12.0
 [sub_resource type="CircleShape2D" id="shape_attack"]
 radius = 16.0
 
-[node name="Slime" type="CharacterBody2D"]
+[node name="SlimeBoss" type="CharacterBody2D"]
 collision_layer = 3
 collision_mask = 9
-script = ExtResource("3_slime")
+script = ExtResource("3_boss")
+contact_damage = 30
+speed = 40.0
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("1_health")
-max_health = 40
+max_health = 500
 
 [node name="BodyCollision" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_body")
@@ -32,7 +34,7 @@ offset_left = -12.0
 offset_top = -12.0
 offset_right = 12.0
 offset_bottom = 12.0
-color = Color(0.266, 0.8, 0.266, 1)
+color = Color(0.8, 0.2, 0.2, 1)
 
 [node name="AttackArea" type="Area2D" parent="."]
 monitoring = true
@@ -50,11 +52,11 @@ monitoring = false
 shape = SubResource("shape_hurtbox")
 
 [node name="HPBar" type="ProgressBar" parent="."]
-offset_left = -14.0
+offset_left = -28.0
 offset_top = -22.0
-offset_right = 14.0
-offset_bottom = -18.0
-value = 40.0
+offset_right = 28.0
+offset_bottom = -14.0
+value = 500.0
 show_percentage = false
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]

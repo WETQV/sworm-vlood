@@ -90,6 +90,8 @@ func _setup_tileset() -> void:
 	ts.add_physics_layer()
 	ts.set_physics_layer_collision_layer(0, 1)   # бит 1 → "walls"
 	ts.set_physics_layer_collision_mask(0, 0)
+	
+	ts.add_navigation_layer()
 
 	# 2. Создаём картинку
 	var src := TileSetAtlasSource.new()
@@ -118,6 +120,12 @@ func _setup_tileset() -> void:
 	])
 	wall_data.add_collision_polygon(0)
 	wall_data.set_collision_polygon_points(0, 0, wall_polygon)
+
+	var floor_data: TileData = src.get_tile_data(Vector2i(0, 0), 0)
+	var nav_poly := NavigationPolygon.new()
+	nav_poly.add_outline(wall_polygon) # Квадрат на весь тайл
+	nav_poly.make_polygons_from_outlines()
+	floor_data.set_navigation_polygon(0, nav_poly)
 
 	floor_layer.tile_set = ts
 	wall_layer.tile_set  = ts
@@ -265,26 +273,23 @@ func _find(parent: Array, i: int) -> int:
 	return parent[i]
 
 
-# ── Рисование коридоров ───────────────────────────────────────────────────────
 func _draw_corridors() -> void:
 	for edge in _edges:
 		var ca: Vector2i = _rooms[edge["a"]].get_grid_center()
 		var cb: Vector2i = _rooms[edge["b"]].get_grid_center()
-		_draw_l_corridor(ca, cb)
-
+		_draw_l_corridor(ca, cb, edge)
 
 ## Рисует L-образный коридор шириной CORRIDOR_WIDTH между двумя центрами.
 ## Сначала идёт по X, потом по Y (mid-point = (bx, ay)).
-func _draw_l_corridor(a: Vector2i, b: Vector2i) -> void:
+func _draw_l_corridor(a: Vector2i, b: Vector2i, edge: Dictionary) -> void:
 	var mid := Vector2i(b.x, a.y)
 
 	# горизонтальный отрезок a → mid
-	_draw_corridor_segment(a, mid, true)
+	_draw_corridor_segment(a, mid, true, edge)
 	# вертикальный отрезок mid → b
-	_draw_corridor_segment(mid, b, false)
+	_draw_corridor_segment(mid, b, false, edge)
 
-
-func _draw_corridor_segment(from: Vector2i, to: Vector2i, horizontal: bool) -> void:
+func _draw_corridor_segment(from: Vector2i, to: Vector2i, horizontal: bool, edge: Dictionary) -> void:
 	var half := CORRIDOR_WIDTH / 2
 
 	var x_min := mini(from.x, to.x)
@@ -292,22 +297,38 @@ func _draw_corridor_segment(from: Vector2i, to: Vector2i, horizontal: bool) -> v
 	var y_min := mini(from.y, to.y)
 	var y_max := maxi(from.y, to.y)
 
+	var room_a: Node2D = _rooms[edge["a"]]
+	var room_b: Node2D = _rooms[edge["b"]]
+
 	if horizontal:
 		# Расширяем вниз/вверх
 		for x in range(x_min, x_max + 1):
 			for dy in range(-half, CORRIDOR_WIDTH - half):
-				_carve(Vector2i(x, from.y + dy))
+				_carve(Vector2i(x, from.y + dy), room_a, room_b)
 	else:
 		# Расширяем влево/вправо
 		for y in range(y_min, y_max + 1):
 			for dx in range(-half, CORRIDOR_WIDTH - half):
-				_carve(Vector2i(from.x + dx, y))
+				_carve(Vector2i(from.x + dx, y), room_a, room_b)
 
 
 ## «Вырезает» одну тайловую позицию — ставит пол и убирает стену.
-func _carve(tile: Vector2i) -> void:
+func _carve(tile: Vector2i, room_a: Node2D, room_b: Node2D) -> void:
 	if tile.x < 0 or tile.y < 0 or tile.x >= map_width or tile.y >= map_height:
 		return
+		
+	# Ищем: пробиваем ли мы прямо сейчас стену комнаты?
+	# Если мы заменяем стену генератора (которую мы скопировали из локальной комнаты) на пол,
+	# значит, это вход/выход из коридора в саму комнату.
+	var source_id = wall_layer.get_cell_source_id(tile)
+	if source_id != -1: # Тут была стена!
+		# Записываем её в door_slots той комнаты, которой она принадлежит
+		if room_a.get_grid_rect().grow(1).has_point(tile):
+			if tile not in room_a.door_slots:
+				room_a.door_slots.append(tile)
+		elif room_b.get_grid_rect().grow(1).has_point(tile):
+			if tile not in room_b.door_slots:
+				room_b.door_slots.append(tile)
 	floor_layer.set_cell(tile, 0, FLOOR_ATLAS)
 	wall_layer.erase_cell(tile)
 

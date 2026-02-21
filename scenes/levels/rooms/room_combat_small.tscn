@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scripts/levels/room.gd" id="2_room"]
+[ext_resource type="Script" path="res://scripts/levels/spawn_point.gd" id="3_spawn"]
 
 [node name="RoomCombatSmall" instance=ExtResource("1_base")]
 ## Малая боевая комната 15x12 — 6 врагов, простое пространство
@@ -12,19 +13,25 @@ room_size = Vector2i(15, 12)
 [node name="SpawnPoints" type="Node2D" parent="."]
 
 [node name="EnemySpawn1" type="Marker2D" parent="SpawnPoints"]
+script = ExtResource("3_spawn")
 position = Vector2(128, 128)
 
 [node name="EnemySpawn2" type="Marker2D" parent="SpawnPoints"]
+script = ExtResource("3_spawn")
 position = Vector2(320, 128)
 
 [node name="EnemySpawn3" type="Marker2D" parent="SpawnPoints"]
+script = ExtResource("3_spawn")
 position = Vector2(512, 128)
 
 [node name="EnemySpawn4" type="Marker2D" parent="SpawnPoints"]
+script = ExtResource("3_spawn")
 position = Vector2(128, 448)
 
 [node name="EnemySpawn5" type="Marker2D" parent="SpawnPoints"]
+script = ExtResource("3_spawn")
 position = Vector2(320, 448)
 
 [node name="EnemySpawn6" type="Marker2D" parent="SpawnPoints"]
+script = ExtResource("3_spawn")
 position = Vector2(512, 448)

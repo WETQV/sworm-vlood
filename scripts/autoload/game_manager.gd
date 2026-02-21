@@ -43,15 +43,24 @@ const CLASS_DATA: Dictionary = {
 var selected_class: PlayerClass = PlayerClass.WARRIOR
 var is_multiplayer: bool = false
 var current_floor: int = 1
+var difficulty_multiplier: float = 1.0
 
 ## Сменить сцену
 func change_scene(scene_path: String) -> void:
 	get_tree().change_scene_to_file(scene_path)
 
-## Начать новую игру
+## Начать новую игру (с первого этажа)
 func start_new_game() -> void:
 	current_floor = 1
+	difficulty_multiplier = 1.0
 	change_scene("res://scenes/game/game.tscn")
+
+## Переход на следующий этаж
+func next_floor() -> void:
+	current_floor += 1
+	difficulty_multiplier = 1.0 + (current_floor - 1) * 0.25 # +25% статов за каждый этаж
+	print("[GameManager] Переход на этаж %d, Сложность: %.2f" % [current_floor, difficulty_multiplier])
+	get_tree().reload_current_scene()
 
 ## Вернуться в меню
 func go_to_menu() -> void:

@@ -12,7 +12,7 @@ extends CharacterBody2D
 @export var contact_damage: int = 10
 @export var attack_cooldown: float = 1.0
 @export var stop_distance: float = 20.0
-@export var detection_range: float = 250.0
+@export var detection_range: float = 2000.0
 
 # --- Внутреннее состояние ---
 var _target: CharacterBody2D = null
@@ -55,8 +55,13 @@ func _physics_process(delta: float) -> void:
 			body_sprite.color = _color_angry
 
 			if distance > stop_distance:
-				var direction: Vector2 = (_target.global_position - global_position).normalized()
-				move_velocity = direction * speed
+				# Обновляем цель для навигации
+				$NavigationAgent2D.target_position = _target.global_position
+				
+				if not $NavigationAgent2D.is_navigation_finished():
+					var next_pos: Vector2 = $NavigationAgent2D.get_next_path_position()
+					var direction: Vector2 = global_position.direction_to(next_pos)
+					move_velocity = direction * speed
 			else:
 				move_velocity = Vector2.ZERO
 		else:

@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://df2ks83nfkta2"]
+
+[ext_resource type="Script" path="res://scripts/levels/portal.gd" id="1_xxx"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 32.0
+
+[node name="Portal" type="Area2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_xxx")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")

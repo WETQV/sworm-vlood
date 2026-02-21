@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://ciqp1f6xwksk1"]
+
+[ext_resource type="Script" path="res://scripts/levels/door.gd" id="1_door"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall"]
+size = Vector2(64, 64)
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_tex"]
+size = Vector2(64, 64)
+
+[node name="Door" type="StaticBody2D"]
+collision_mask = 0
+script = ExtResource("1_door")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(0.2, 0.6, 1, 0.5)
+texture = SubResource("PlaceholderTexture2D_tex"))
