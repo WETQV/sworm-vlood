@@ -10,6 +10,7 @@ var lifetime: float = 2.5
 
 func _ready() -> void:
 	area_entered.connect(_on_area_entered)
+	body_entered.connect(_on_body_entered)
 	
 	# Повернуть по направлению
 	rotation = direction.angle()
@@ -32,3 +33,8 @@ func _on_area_entered(area: Area2D) -> void:
 		area.receive_damage(damage, 200.0, global_position)
 		print("Фаербол попал в: ", area.get_parent().name)
 		queue_free()
+
+
+func _on_body_entered(_body: Node2D) -> void:
+	# Попали в физическое тело (стену)
+	queue_free()
