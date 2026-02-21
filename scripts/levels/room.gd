@@ -83,6 +83,8 @@ func _setup_activation_area() -> void:
 
 func _on_player_entered(body: Node2D) -> void:
 	if current_state == RoomState.SLEEP and body.is_in_group("player"):
+		if activation_area:
+			activation_area.set_deferred("monitoring", false)
 		set_state(RoomState.FIGHT)
 
 func set_state(new_state: RoomState) -> void:
@@ -195,7 +197,7 @@ func get_grid_rect() -> Rect2i:
 	return Rect2i(grid_position, room_size)
 
 func get_grid_center() -> Vector2i:
-	return grid_position + room_size / 2
+	return grid_position + Vector2i(Vector2(room_size) / 2.0)
 
 func get_local_center() -> Vector2:
 	return Vector2(room_size.x * 64, room_size.y * 64) * 0.5

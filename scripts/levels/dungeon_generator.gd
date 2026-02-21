@@ -46,7 +46,7 @@ var _edges: Array   # Array[{a, b, dist}]
 
 # ─────────────────────────────────────────────────────────────────────────────
 func _ready() -> void:
-	generate()
+	call_deferred("generate")
 
 func generate() -> void:
 	_clear()
@@ -62,6 +62,10 @@ func generate() -> void:
 func _clear() -> void:
 	floor_layer.clear()
 	wall_layer.clear()
+	# Сначала отключаем TileSet, чтобы физический сервер не пытался обращаться к ячейкам
+	floor_layer.tile_set = null
+	wall_layer.tile_set  = null
+	
 	for child in rooms_root.get_children():
 		child.queue_free()
 	_rooms = []
@@ -80,11 +84,13 @@ func _setup_tileset() -> void:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
 
+	# 1. Сначала создаём слои в TileSet
 	ts.add_physics_layer()
-	ts.set_physics_layer_collision_layer(0, 1)
+	ts.set_physics_layer_collision_layer(0, 1) # Стены на 1 слое
 	ts.set_physics_layer_collision_mask(0, 0)
 	ts.add_navigation_layer()
 
+	# 2. Создаём источник
 	var src := TileSetAtlasSource.new()
 	var img := Image.create(TILE_SIZE * 2, TILE_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill_rect(Rect2i(0,         0, TILE_SIZE, TILE_SIZE), Color(0.23, 0.23, 0.29))
@@ -92,27 +98,35 @@ func _setup_tileset() -> void:
 	src.texture = ImageTexture.create_from_image(img)
 	src.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
 
+	# 3. ВАЖНО: Добавляем источник в TileSet ДО создания тайлов и настройки данных
 	ts.add_source(src, 0)
+	
+	# 4. Теперь создаём тайлы — они сразу увидят структуру слоёв TileSet
 	src.create_tile(Vector2i(0, 0))  # Floor
 	src.create_tile(Vector2i(1, 0))  # Wall
 
-	# Коллизия стены — полный квадрат
+	# 5. Настраиваем данные тайлов
 	var half    := float(TILE_SIZE) / 2.0
 	var sq_poly := PackedVector2Array([
 		Vector2(-half, -half), Vector2(half, -half),
 		Vector2( half,  half), Vector2(-half, half),
 	])
+	
+	# Стены (коллизия)
 	var wall_data: TileData = src.get_tile_data(Vector2i(1, 0), 0)
-	wall_data.add_collision_polygon(0)
-	wall_data.set_collision_polygon_points(0, 0, sq_poly)
+	if wall_data:
+		wall_data.add_collision_polygon(0)
+		wall_data.set_collision_polygon_points(0, 0, sq_poly)
 
-	# Навигация пола
+	# Пол (навигация)
 	var floor_data: TileData = src.get_tile_data(Vector2i(0, 0), 0)
-	var nav_poly := NavigationPolygon.new()
-	nav_poly.add_outline(sq_poly)
-	nav_poly.make_polygons_from_outlines()
-	floor_data.set_navigation_polygon(0, nav_poly)
+	if floor_data:
+		var nav_poly := NavigationPolygon.new()
+		nav_poly.vertices = sq_poly
+		nav_poly.add_polygon(PackedInt32Array([0, 1, 2, 3]))
+		floor_data.set_navigation_polygon(0, nav_poly)
 
+	# 6. Назначаем готовый TileSet слоям
 	floor_layer.tile_set = ts
 	wall_layer.tile_set  = ts
 

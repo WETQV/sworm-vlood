@@ -52,6 +52,11 @@ func _spawn_player(class_data: Dictionary) -> void:
 	player.position = spawn_pos
 	player_container.add_child(player)
 
+	# Настройка камеры для корректной работы с интерполяцией
+	var cam: Camera2D = player.get_node_or_null("Camera2D")
+	if cam:
+		cam.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
+
 	# Применяем статы класса
 	var health: HealthComponent = player.get_node("HealthComponent")
 	health.max_health = class_data["stats"]["hp"]
