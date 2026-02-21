@@ -5,6 +5,7 @@ extends Control
 @onready var play_button: Button = %PlayButton
 @onready var host_button: Button = %HostButton
 @onready var join_button: Button = %JoinButton
+@onready var settings_button: Button = %SettingsButton
 @onready var quit_button: Button = %QuitButton
 @onready var title_label: Label = %Title
 
@@ -31,6 +32,7 @@ func _connect_signals() -> void:
 	play_button.pressed.connect(_on_play_pressed)
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
+	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 
 
@@ -48,6 +50,11 @@ func _on_join_pressed() -> void:
 	GameManager.is_multiplayer = true
 	# TODO: показать окно ввода IP
 	pass
+
+
+func _on_settings_pressed() -> void:
+	var settings = preload("res://scenes/ui/settings_menu.tscn").instantiate()
+	add_child(settings)
 
 
 func _on_quit_pressed() -> void:

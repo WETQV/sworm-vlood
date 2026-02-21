@@ -1,0 +1,216 @@
+[gd_scene load_steps=2 format=3 uid="uid://settings_menu_01"]
+
+[ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="1_set"]
+
+[node name="SettingsMenu" type="CanvasLayer"]
+layer = 20
+script = ExtResource("1_set")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.8)
+
+[node name="PanelContainer" type="PanelContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -200.0
+offset_right = 250.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="Control/PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "НАСТРОЙКИ"
+horizontal_alignment = 1
+
+[node name="TabContainer" type="TabContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Звук" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Margin" type="MarginContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MasterLabel" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin/VBox"]
+layout_mode = 2
+text = "Общая громкость"
+
+[node name="MasterSlider" type="HSlider" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 1.0
+
+[node name="MusicLabel" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin/VBox"]
+layout_mode = 2
+text = "Музыка"
+
+[node name="MusicSlider" type="HSlider" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.8
+
+[node name="SFXLabel" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin/VBox"]
+layout_mode = 2
+text = "Звуковые эффекты"
+
+[node name="SFXSlider" type="HSlider" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Звук/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 1.0
+
+[node name="Видео" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Margin" type="MarginContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Видео"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Видео/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FullscreenCheck" type="CheckBox" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Видео/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Полноэкранный режим"
+
+[node name="VSyncCheck" type="CheckBox" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Видео/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Вертикальная синхронизация (VSync)"
+button_pressed = true
+
+[node name="Управление" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Margin" type="MarginContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Управление"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Управление/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MouseLabel" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Управление/Margin/VBox"]
+layout_mode = 2
+text = "Чувствительность мыши"
+
+[node name="MouseSlider" type="HSlider" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Управление/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.1
+max_value = 3.0
+step = 0.1
+value = 1.0
+
+[node name="Сеть" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Margin" type="MarginContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Сеть"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Сеть/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Сеть/Margin/VBox"]
+layout_mode = 2
+text = "Имя игрока"
+
+[node name="NameEdit" type="LineEdit" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Сеть/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Player"
+
+[node name="PortLabel" type="Label" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Сеть/Margin/VBox"]
+layout_mode = 2
+text = "Порт для игры по сети"
+
+[node name="PortSpinBox" type="SpinBox" parent="Control/PanelContainer/MarginContainer/VBoxContainer/TabContainer/Сеть/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1024.0
+max_value = 65535.0
+value = 7000.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Control/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="ApplyButton" type="Button" parent="Control/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 40)
+layout_mode = 2
+text = "Применить"
+
+[node name="BackButton" type="Button" parent="Control/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 40)
+layout_mode = 2
+text = "Назад"

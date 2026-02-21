@@ -92,7 +92,8 @@ func _physics_process(delta: float) -> void:
 
 	# --- Поворот оружия за мышью ---
 	var mouse_pos: Vector2 = get_global_mouse_position()
-	weapon_pivot.rotation = (mouse_pos - global_position).angle()
+	var dir := mouse_pos - global_position
+	weapon_pivot.rotation = (dir * SettingsManager.mouse_sensitivity).angle()
 
 	# --- Атака ---
 	if Input.is_action_just_pressed("attack") and not _is_attacking:
