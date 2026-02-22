@@ -12,7 +12,7 @@ extends Node
 # ─────────────────────────────────────────────
 
 var swarm: SwarmManager = null
-@onready var body: CharacterBody2D = get_parent()
+var body: CharacterBody2D = null
 
 ## Назначенная цель (конкретный игрок, не один на всех)
 var assigned_target: CharacterBody2D = null
@@ -98,11 +98,17 @@ var _cached_target: CharacterBody2D = null
 # ИНИЦИАЛИЗАЦИЯ
 # ─────────────────────────────────────────────
 
+var _is_ready: bool = false
+
 func _ready() -> void:
+	# Получаем ссылку на родительское тело
+	body = get_parent() as CharacterBody2D
+	
 	swarm = _find_swarm_manager()
 	if swarm:
 		swarm.register_slime(body)
 	_randomize_personality()
+	_is_ready = true
 
 
 func _exit_tree() -> void:
@@ -121,10 +127,23 @@ func _randomize_personality() -> void:
 # ─────────────────────────────────────────────
 
 func _physics_process(delta: float) -> void:
-	if not swarm:
+	# Проверяем, что слайм полностью инициализирован
+	if not _is_ready or not body:
+		body.velocity = Vector2.ZERO
 		return
+	
+	# Проверяем, что слайм готов к работе
+	if not swarm:
+		body.velocity = Vector2.ZERO
+		return
+	
 	if not is_instance_valid(assigned_target):
 		# Нет цели — стоим (менеджер скоро назначит)
+		body.velocity = Vector2.ZERO
+		return
+	
+	# Проверяем, что тело имеет доступ к physics space
+	if not body.is_inside_tree() or not body.get_world_2d():
 		body.velocity = Vector2.ZERO
 		return
 
@@ -182,7 +201,8 @@ func _physics_process(delta: float) -> void:
 
 	# ── 8. Двигаемся ──
 	body.velocity = desired * speed
-	body.move_and_slide()
+	if body.is_inside_tree() and body.get_world_2d():
+		body.move_and_slide()
 
 	if desired.length() > 0.1:
 		last_direction = desired

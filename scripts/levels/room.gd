@@ -168,8 +168,8 @@ func _setup_activation_area() -> void:
 		return
 
 	_activation_area = Area2D.new()
-	_activation_area.collision_layer = 0
-	_activation_area.collision_mask  = 2  # слой игрока
+	_activation_area.set_deferred("collision_layer", 0)
+	_activation_area.set_deferred("collision_mask", 2)  # слой игрока
 
 	var col  := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
@@ -319,7 +319,7 @@ func get_side_toward(other: Room) -> String:
 
 
 func get_grid_center() -> Vector2i:
-	return grid_position + room_size / 2
+	return grid_position + Vector2i(room_size / 2)
 
 
 func get_global_connection_point(side: String) -> Vector2i:

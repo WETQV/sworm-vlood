@@ -86,7 +86,7 @@ ability={
 common/physics_interpolation=true
 
 [rendering]
-
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 rendering_device/driver.windows="d3d12"
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
