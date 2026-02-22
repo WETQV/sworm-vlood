@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3 uid="uid://warrior_weapon"]
+
+[node name="WarriorWeapon" type="Node2D"]
+
+[node name="Blade" type="ColorRect" parent="."]
+offset_left = -10.0
+offset_top = -4.0
+offset_right = 14.0
+offset_bottom = 4.0
+color = Color(0.75, 0.75, 0.8, 1)
+
+[node name="Guard" type="ColorRect" parent="."]
+offset_left = -12.0
+offset_top = -6.0
+offset_right = -8.0
+offset_bottom = 6.0
+color = Color(0.6, 0.5, 0.4, 1)
+
+[node name="Handle" type="ColorRect" parent="."]
+offset_left = -18.0
+offset_top = -3.0
+offset_right = -10.0
+offset_bottom = 3.0
+color = Color(0.4, 0.3, 0.2, 1)

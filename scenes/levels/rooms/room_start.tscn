@@ -1,9 +1,10 @@
-[gd_scene format=3 uid="uid://c054ljb1m6wc7"]
+[gd_scene load_steps=2 format=3 uid="uid://c054ljb1m6wc7"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
 
 [node name="RoomStart" unique_id=1644370441 instance=ExtResource("1_base")]
 room_type = 0
+room_size = Vector2i(15, 12)
 
 [node name="PlayerSpawn1" type="Marker2D" parent="SpawnPoints" index="0" unique_id=1230995608]
 position = Vector2(192, 192)
@@ -16,5 +17,3 @@ position = Vector2(192, 320)
 
 [node name="PlayerSpawn4" type="Marker2D" parent="SpawnPoints" index="3" unique_id=1915159290]
 position = Vector2(320, 320)
-
-[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=1130573359]

@@ -306,6 +306,7 @@ func _assign_squads() -> void:
 # ─────────────────────────────────────────────
 # НАЗНАЧЕНИЕ РОЛЕЙ (ПО ОТРЯДАМ)
 # ─────────────────────────────────────────────
+# ТЕПЕРЬ: слаймы сортируются по HP — здоровые впереди, раненые сзади
 
 func _assign_roles_for_all_squads() -> void:
 	for pid in squads:
@@ -328,26 +329,89 @@ func _assign_roles_for_squad(
 	if squad.is_empty():
 		return
 
-	var player_pos := player.global_position
-	var is_melee := info.is_melee() if info else true
-
-	# Сортируем по дистанции до СВОЕГО игрока
+	# ═════════════════════════════════════════════
+	# НОВОЕ: сортируем слаймов по HP (здоровые впереди)
+	# ═════════════════════════════════════════════
 	squad.sort_custom(func(a: CharacterBody2D, b: CharacterBody2D) -> bool:
-		return a.global_position.distance_squared_to(player_pos) \
-			 < b.global_position.distance_squared_to(player_pos)
+		var hp_a := _get_health_percent(a)
+		var hp_b := _get_health_percent(b)
+		return hp_a > hp_b  # Больше HP = ближе к началу (первая линия)
 	)
 
-	# ── Выбираем распределение ролей в зависимости от
-	#    стратегии + класса цели ──
+	var is_melee := info.is_melee() if info else true
 
-	var role_plan: Array = _get_role_plan(strategy, is_melee, squad.size())
-
+	# ── Распределяем роли на основе позиции в отсортированном списке ──
+	# Позиция 0 = самый здоровый, позиция size-1 = самый раненый
+	
 	for i in range(squad.size()):
 		var ai := _get_ai(squad[i])
 		if not ai:
 			continue
-		var role: Role = role_plan[mini(i, role_plan.size() - 1)]
+		
+		# Получаем роль на основе позиции (здоровья) и тактики
+		var role: Role = _get_role_for_position(i, squad.size(), strategy, is_melee)
 		ai.set_role(role, i)
+
+
+## Определяет роль слайма на основе его позиции в отряде (здоровья)
+func _get_role_for_position(
+	position: int, 
+	total: int, 
+	strategy: Strategy, 
+	target_is_melee: bool
+) -> Role:
+	# ═════════════════════════════════════════════
+	# ТАКТИЧЕСКИЕ ЛИНИИ:
+	# FRONT LINE (50% самых здоровых) — атакуют
+	# MIDDLE (30% средних) — поддержка
+	# BACK LINE (20% раненых) — ждут момента
+	# ═════════════════════════════════════════════
+	
+	var front_line_count = maxi(1, ceili(total * 0.5))  # 50% здоровых
+	var middle_count = maxi(1, ceili(total * 0.3))      # 30% средних
+	# Остальные — back line
+	
+	if position < front_line_count:
+		# FRONT LINE: здоровые, атакуют активно
+		return _get_front_line_role(position, strategy, target_is_melee)
+	
+	elif position < front_line_count + middle_count:
+		# MIDDLE: среднее HP, поддержка
+		return Role.ORBITER
+	
+	else:
+		# BACK LINE: раненые, ждут момента, не лезут вперёд
+		return Role.WAITER if position % 2 == 0 else Role.RETREATER
+
+
+## Выбирает конкретную роль для FRONT LINE
+func _get_front_line_role(position: int, strategy: Strategy, target_is_melee: bool) -> Role:
+	match strategy:
+		Strategy.SOLO:
+			return Role.FLANKER  # Один слайм — осторожно
+		
+		Strategy.PACK:
+			if position == 0:
+				return Role.RUSHER if not target_is_melee else Role.FLANKER
+			else:
+				return Role.FLANKER
+		
+		Strategy.SWARM, Strategy.HORDE:
+			# Чередование: рашер, фланкер, рашер, фланкер...
+			if position % 2 == 0:
+				return Role.RUSHER
+			else:
+				return Role.FLANKER
+	
+	return Role.RUSHER
+
+
+## Получить процент HP у слайма (0.0 - 1.0)
+func _get_health_percent(slime: CharacterBody2D) -> float:
+	if slime.has_node("HealthComponent"):
+		var hc = slime.get_node("HealthComponent") as HealthComponent
+		return hc.get_health_percent()
+	return 1.0  # Если нет компонента — считаем здоровым
 
 
 ## Генерирует массив ролей для отряда.

@@ -69,3 +69,15 @@ func go_to_menu() -> void:
 ## Получить данные выбранного класса
 func get_selected_class_data() -> Dictionary:
 	return CLASS_DATA[selected_class]
+
+
+## Показать экран смерти
+func show_death_screen() -> void:
+	# Получаем текущую сцену игры и показываем экран смерти
+	var game_scene = get_tree().current_scene
+	if game_scene and game_scene.has_node("DeathScreen"):
+		var death_screen = game_scene.get_node("DeathScreen")
+		death_screen.show()
+		# Обновляем номер этажа
+		if death_screen.has_method("update_floor"):
+			death_screen.update_floor()

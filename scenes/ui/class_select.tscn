@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://class_select"]
+[gd_scene load_steps=3 format=3 uid="uid://class_select"]
 
 [ext_resource type="Script" path="res://scripts/ui/class_select.gd" id="1_class"]
+[ext_resource type="Theme" path="res://resources/dungeon_theme.tres" id="2_theme"]
 
 [node name="ClassSelect" type="Control"]
 layout_mode = 3
@@ -9,6 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_class")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -16,70 +18,357 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.1, 0.1, 0.15, 1)
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.03, 0.08, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0
-offset_top = -200.0
-offset_right = 400.0
-offset_bottom = 200.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="HeaderLabel" type="Label" parent="VBoxContainer"]
-unique_name_in_owner = true
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-text = "ВЫБЕРИ СВОЙ КЛАСС"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="ClassCardsContainer" type="HBoxContainer" parent="VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
 theme_override_constants/separation = 20
 
-[node name="Spacer" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 30)
+[node name="TitleSection" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_constants/separation = 8
 
-[node name="ButtonsContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "⚔ ВЫБЕРИ КЛАСС ⚔"
+horizontal_alignment = 1
 
-[node name="BackButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 50)
+[node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
 layout_mode = 2
-text = "← Назад"
+text = "Каждый класс имеет уникальные способности"
+horizontal_alignment = 1
 
-[node name="SpacerButton" type="Control" parent="VBoxContainer/ButtonsContainer"]
+[node name="CardsContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 20
+
+[node name="WarriorCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
+custom_minimum_size = Vector2(200, 280)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="StartButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 50)
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard"]
 layout_mode = 2
-text = "Начать! ▶"
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
 
-[node name="SelectedIndicator" type="Label" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -150.0
-offset_top = -60.0
-offset_right = 150.0
-offset_bottom = -30.0
-grow_horizontal = 2
-text = "Выбран: Мечник"
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "⚔️"
 horizontal_alignment = 1
+
+[node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Мечник"
+horizontal_alignment = 1
+
+[node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Ближний бой"
+horizontal_alignment = 1
+add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
+
+[node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 150.0
+value = 120.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "HP: 120"
+horizontal_alignment = 1
+
+[node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 35.0
+value = 25.0
+show_percentage = false
+
+[node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Урон: 25"
+horizontal_alignment = 1
+
+[node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 260.0
+value = 200.0
+show_percentage = false
+
+[node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Скорость: 200"
+horizontal_alignment = 1
+
+[node name="RangerCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
+custom_minimum_size = Vector2(200, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "🏹"
+horizontal_alignment = 1
+
+[node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Лучник"
+horizontal_alignment = 1
+
+[node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Дальний бой"
+horizontal_alignment = 1
+add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
+
+[node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 150.0
+value = 80.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "HP: 80"
+horizontal_alignment = 1
+
+[node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 35.0
+value = 20.0
+show_percentage = false
+
+[node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Урон: 20"
+horizontal_alignment = 1
+
+[node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 260.0
+value = 260.0
+show_percentage = false
+
+[node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Скорость: 260"
+horizontal_alignment = 1
+
+[node name="MageCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
+custom_minimum_size = Vector2(200, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "🔮"
+horizontal_alignment = 1
+
+[node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Маг"
+horizontal_alignment = 1
+
+[node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Магический урон"
+horizontal_alignment = 1
+add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
+
+[node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 150.0
+value = 70.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "HP: 70"
+horizontal_alignment = 1
+
+[node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 35.0
+value = 35.0
+show_percentage = false
+
+[node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Урон: 35"
+horizontal_alignment = 1
+
+[node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 260.0
+value = 200.0
+show_percentage = false
+
+[node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Скорость: 200"
+horizontal_alignment = 1
+
+[node name="PaladinCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
+custom_minimum_size = Vector2(200, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "🛡️"
+horizontal_alignment = 1
+
+[node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Паладин"
+horizontal_alignment = 1
+
+[node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Танк / Поддержка"
+horizontal_alignment = 1
+add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
+
+[node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 150.0
+value = 150.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "HP: 150"
+horizontal_alignment = 1
+
+[node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 35.0
+value = 15.0
+show_percentage = false
+
+[node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Урон: 15"
+horizontal_alignment = 1
+
+[node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+max_value = 260.0
+value = 170.0
+show_percentage = false
+
+[node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
+layout_mode = 2
+text = "Скорость: 170"
+horizontal_alignment = 1
+
+[node name="ButtonsContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(180, 50)
+layout_mode = 2
+text = "⚔  ИГРАТЬ"
+
+[node name="BackButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(180, 50)
+layout_mode = 2
+text = "↩  Назад"
+
+[node name="SelectedIndicator" type="PanelContainer" parent="CenterContainer/VBoxContainer"]
+visible = false
+layout_mode = 2

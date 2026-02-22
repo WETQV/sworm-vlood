@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://player_scene"]
+[gd_scene load_steps=7 format=3 uid="uid://player_scene_v2"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
@@ -42,21 +42,21 @@ color = Color(0.2, 0.4, 0.9, 1)
 
 [node name="WeaponPivot" type="Node2D" parent="."]
 
-[node name="WeaponSprite" type="ColorRect" parent="WeaponPivot"]
-offset_left = 14.0
-offset_top = -3.0
-offset_right = 38.0
-offset_bottom = 3.0
-color = Color(0.8, 0.8, 0.8, 1)
+[node name="Weapon" type="Node2D" parent="WeaponPivot"]
+position = Vector2(50, 0)
 
-[node name="AttackArea" type="Area2D" parent="WeaponPivot"]
+[node name="AttackArea" type="Area2D" parent="WeaponPivot/Weapon"]
 collision_mask = 64
 monitoring = false
 monitorable = false
 
-[node name="AttackShape" type="CollisionShape2D" parent="WeaponPivot/AttackArea"]
+[node name="AttackShape" type="CollisionShape2D" parent="WeaponPivot/Weapon/AttackArea"]
 shape = SubResource("shape_attack")
-position = Vector2(26, 0)
+position = Vector2(14, 0)
+
+[node name="WallRaycast" type="RayCast2D" parent="WeaponPivot"]
+target_position = Vector2(50, 0)
+collision_mask = 1
 
 [node name="Hurtbox" type="Area2D" parent="."]
 script = ExtResource("2_hurtbox")

@@ -15,6 +15,7 @@ var vsync: bool = true
 
 # ── Управление ────────────────────────────────────────────────────────────────
 var mouse_sensitivity: float = 1.0
+var camera_zoom: float = 1.0  # 0.5 = далеко, 1.0 = нормально, 2.0 = близко
 
 # ── Сеть (заготовка) ─────────────────────────────────────────────────────────
 var player_name: String = "Player"
@@ -50,6 +51,7 @@ func save_settings() -> void:
 	config.set_value("video", "fullscreen", fullscreen)
 	config.set_value("video", "vsync", vsync)
 	config.set_value("controls", "mouse_sensitivity", mouse_sensitivity)
+	config.set_value("controls", "camera_zoom", camera_zoom)
 	config.set_value("network", "player_name", player_name)
 	config.set_value("network", "port", port)
 	config.save(SAVE_PATH)
@@ -58,12 +60,13 @@ func load_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load(SAVE_PATH) != OK:
 		return
-	
+
 	master_volume = config.get_value("audio", "master", master_volume)
 	music_volume = config.get_value("audio", "music", music_volume)
 	sfx_volume = config.get_value("audio", "sfx", sfx_volume)
 	fullscreen = config.get_value("video", "fullscreen", fullscreen)
 	vsync = config.get_value("video", "vsync", vsync)
 	mouse_sensitivity = config.get_value("controls", "mouse_sensitivity", mouse_sensitivity)
+	camera_zoom = config.get_value("controls", "camera_zoom", camera_zoom)
 	player_name = config.get_value("network", "player_name", player_name)
 	port = config.get_value("network", "port", port)

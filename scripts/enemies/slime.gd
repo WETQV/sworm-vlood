@@ -19,6 +19,11 @@ var _knockback_velocity: Vector2 = Vector2.ZERO
 
 # --- Цвета ---
 var _color_normal: Color = Color("44cc44")
+var _color_damaged: Color = Color("ccaa44")      # Желтоватый (50-70% HP)
+var _color_wounded: Color = Color("cc8844")       # Оранжевый (30-50% HP)
+var _color_critical: Color = Color("cc4444")      # Красный (< 30% HP)
+
+var _wobble_tween: Tween = null
 
 func _ready() -> void:
 	add_to_group("enemy")
@@ -32,16 +37,19 @@ func _ready() -> void:
 	hp_bar.value = health_component.current_health
 
 	body_sprite.color = _color_normal
+	
+	# Обновляем цвет сразу при старте
+	_update_color_by_health()
 
 
 func _physics_process(_delta: float) -> void:
 	if not health_component.is_alive():
 		return
-	
+
 	# Движение теперь управляется нодой SlimeAI (если она есть)
 	# Отбрасывание всё еще обрабатываем тут
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 600.0 * _delta)
-	
+
 	if not has_node("SlimeAI"):
 		velocity = _knockback_velocity
 		move_and_slide()
@@ -52,10 +60,47 @@ func _on_damage_received(_amount: int, knockback: Vector2) -> void:
 	_knockback_velocity = knockback
 
 
-## HP изменилось
+## HP изменилось — обновляем цвет и визуальные эффекты
 func _on_health_changed(current: int, maximum: int) -> void:
 	hp_bar.max_value = maximum
 	hp_bar.value = current
+	
+	# Обновляем цвет по HP
+	_update_color_by_health()
+
+
+## Обновить цвет слайма в зависимости от процента HP
+func _update_color_by_health() -> void:
+	if not health_component:
+		return
+	
+	var hp_percent = health_component.get_health_percent()
+	
+	# Останавливаем предыдущую дрожь
+	if _wobble_tween:
+		_wobble_tween.kill()
+	
+	if hp_percent < 0.2:
+		# КРИТИЧЕСКОЕ HP (< 20%) — ярко-красный + дрожь
+		body_sprite.color = _color_critical
+		_start_wobble_animation()
+	elif hp_percent < 0.4:
+		# РАНЕНЫЙ (20-40%) — оранжевый
+		body_sprite.color = _color_wounded
+	elif hp_percent < 0.7:
+		# ПОВРЕЖДЁН (40-70%) — желтоватый
+		body_sprite.color = _color_damaged
+	else:
+		# ЗДОРОВ (70-100%) — зелёный
+		body_sprite.color = _color_normal
+
+
+## Анимация дрожи для критического HP
+func _start_wobble_animation() -> void:
+	# Слайм дрожит от боли (быстрое смещение вверх-вниз)
+	_wobble_tween = create_tween().set_loops()
+	_wobble_tween.tween_property(body_sprite, "position:y", -2.0, 0.08)
+	_wobble_tween.tween_property(body_sprite, "position:y", 0.0, 0.08)
 
 
 ## Смерть

@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3 uid="uid://paladin_weapon"]
+
+[node name="PaladinWeapon" type="Node2D"]
+
+[node name="MaceHead" type="ColorRect" parent="."]
+offset_left = -6.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(0.75, 0.75, 0.8, 1)
+
+[node name="MaceSpike1" type="ColorRect" parent="MaceHead"]
+offset_left = -2.0
+offset_top = -14.0
+offset_right = 2.0
+offset_bottom = -10.0
+color = Color(0.6, 0.6, 0.65, 1)
+
+[node name="MaceSpike2" type="ColorRect" parent="MaceHead"]
+offset_left = -2.0
+offset_top = 10.0
+offset_right = 2.0
+offset_bottom = 14.0
+color = Color(0.6, 0.6, 0.65, 1)
+
+[node name="MaceHandle" type="ColorRect" parent="."]
+offset_left = -4.0
+offset_top = -2.0
+offset_right = 0.0
+offset_bottom = 12.0
+color = Color(0.4, 0.3, 0.2, 1)
+
+[node name="Shield" type="ColorRect" parent="."]
+offset_left = -20.0
+offset_top = -14.0
+offset_right = -8.0
+offset_bottom = 14.0
+color = Color(0.3, 0.5, 0.8, 1)
+
+[node name="ShieldBorder" type="ColorRect" parent="Shield"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 12.0
+offset_bottom = 28.0
+color = Color(0.5, 0.65, 0.9, 1)

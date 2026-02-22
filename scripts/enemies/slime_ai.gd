@@ -387,8 +387,25 @@ func _calc_alignment(neighbors: Array[CharacterBody2D]) -> Vector2:
 # ─────────────────────────────────────────────
 # АТАКА
 # ─────────────────────────────────────────────
+# ТЕПЕРЬ: раненые слаймы (WAITER/RETREATER) атакуют реже
 
 func _try_attack() -> void:
+	# ═════════════════════════════════════════════
+	# BACK LINE: раненые слаймы атакуют с шансом
+	# ═════════════════════════════════════════════
+	if current_role == swarm.Role.WAITER:
+		# Раненые ждут момента — атакуют только 30% времени
+		if randf() > 0.3:
+			return  # Ждём, не атакуем
+	
+	if current_role == swarm.Role.RETREATER:
+		# Отступающие атакуют только если игрок очень близко
+		if not _is_in_attack_range():
+			return
+		if randf() > 0.5:
+			return  # 50% шанс атаки
+	
+	# Обычная проверка для здоровых слаймов
 	if _attack_timer > 0.0 or _is_retreating:
 		return
 	if not _is_in_attack_range():
@@ -424,9 +441,17 @@ func _start_retreat() -> void:
 # ─────────────────────────────────────────────
 # СКОРОСТЬ
 # ─────────────────────────────────────────────
+# ТЕПЕРЬ: раненые слаймы двигаются медленнее
 
 func _get_current_speed() -> float:
 	var speed := personal_speed
+
+	# ═════════════════════════════════════════════
+	# BACK LINE: раненые двигаются МЕДЛЕННЕЕ
+	# ═════════════════════════════════════════════
+	if current_role == swarm.Role.WAITER or current_role == swarm.Role.RETREATER:
+		# Раненые не лезут вперёд — двигаются на 50% медленнее
+		speed *= 0.5
 
 	# Рашер ускоряется вблизи цели
 	if current_role == swarm.Role.RUSHER:
@@ -441,10 +466,6 @@ func _get_current_speed() -> float:
 	# Отступление чуть медленнее
 	if _is_retreating:
 		speed *= 0.8
-
-	# Waiter двигается медленно
-	if current_role == swarm.Role.WAITER:
-		speed *= 0.6
 
 	return speed
 

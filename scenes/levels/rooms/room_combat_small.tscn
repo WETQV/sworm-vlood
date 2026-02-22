@@ -1,32 +1,38 @@
-[gd_scene format=3 uid="uid://cpf8mntlwy1uk"]
+[gd_scene load_steps=3 format=3 uid="uid://cpf8mntlwy1uk"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
-[ext_resource type="Script" path="res://scripts/levels/spawn_point.gd" id="3_spawn"]
+[ext_resource type="Script" path="res://scripts/levels/spawn_point.gd" id="2_spawn"]
 
 [node name="RoomCombatSmall" unique_id=351255566 instance=ExtResource("1_base")]
+room_type = 1
+room_size = Vector2i(15, 12)
 
 [node name="EnemySpawn1" type="Marker2D" parent="SpawnPoints" index="0" unique_id=2055755882]
-position = Vector2(128, 128)
-script = ExtResource("3_spawn")
+script = ExtResource("2_spawn")
+position = Vector2(256, 192)
+type = 0
 
 [node name="EnemySpawn2" type="Marker2D" parent="SpawnPoints" index="1" unique_id=821135317]
-position = Vector2(320, 128)
-script = ExtResource("3_spawn")
+script = ExtResource("2_spawn")
+position = Vector2(480, 192)
+type = 0
 
 [node name="EnemySpawn3" type="Marker2D" parent="SpawnPoints" index="2" unique_id=2095975863]
-position = Vector2(512, 128)
-script = ExtResource("3_spawn")
+script = ExtResource("2_spawn")
+position = Vector2(192, 384)
+type = 0
 
 [node name="EnemySpawn4" type="Marker2D" parent="SpawnPoints" index="3" unique_id=642482156]
-position = Vector2(128, 448)
-script = ExtResource("3_spawn")
+script = ExtResource("2_spawn")
+position = Vector2(544, 384)
+type = 0
 
 [node name="EnemySpawn5" type="Marker2D" parent="SpawnPoints" index="4" unique_id=1774495457]
-position = Vector2(320, 448)
-script = ExtResource("3_spawn")
+script = ExtResource("2_spawn")
+position = Vector2(256, 576)
+type = 0
 
 [node name="EnemySpawn6" type="Marker2D" parent="SpawnPoints" index="5" unique_id=336868042]
-position = Vector2(512, 448)
-script = ExtResource("3_spawn")
-
-[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=1857455210]
+script = ExtResource("2_spawn")
+position = Vector2(480, 576)
+type = 0

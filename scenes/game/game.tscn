@@ -1,7 +1,9 @@
-[gd_scene load_steps=2 format=3 uid="uid://game_scene"]
+[gd_scene load_steps=4 format=3 uid="uid://game_scene"]
 
 [ext_resource type="Script" path="res://scripts/game/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://scripts/enemies/swarm_manager.gd" id="2_swarm"]
+[ext_resource type="Script" path="res://scripts/game/death_screen.gd" id="3_death"]
+[ext_resource type="Theme" uid="uid://dungeon_theme_01" path="res://resources/dungeon_theme.tres" id="4_theme"]
 
 [node name="Game" type="Node2D"]
 script = ExtResource("1_game")
@@ -27,3 +29,71 @@ offset_bottom = 120.0
 grow_horizontal = 2
 horizontal_alignment = 1
 text = "Игра началась!"
+
+[node name="DeathScreen" type="CanvasLayer" parent="."]
+layer = 10
+visible = false
+script = ExtResource("3_death")
+
+[node name="Background" type="ColorRect" parent="DeathScreen"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.705882)
+
+[node name="PanelContainer" type="PanelContainer" parent="DeathScreen"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -180.0
+offset_right = 200.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("4_theme")
+
+[node name="MarginContainer" type="MarginContainer" parent="DeathScreen/PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 30
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DeathScreen/PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 25
+alignment = 1
+
+[node name="DeathLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 42
+text = "ВЫ ПОГИБЛИ"
+horizontal_alignment = 1
+
+[node name="FloorLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Этаж: 1"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="RetryButton" type="Button" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "Попробовать снова ↻"
+
+[node name="MenuButton" type="Button" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "В главное меню"

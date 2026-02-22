@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://main_menu"]
+[gd_scene load_steps=3 format=3 uid="uid://main_menu"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_menu"]
+[ext_resource type="Theme" path="res://resources/dungeon_theme.tres" id="2_theme"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -9,6 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_menu")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -16,70 +18,126 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.1, 0.1, 0.12, 1)
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.03, 0.08, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -150.0
-offset_right = 150.0
-offset_bottom = 150.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TitleSection" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitlePanel" type="PanelContainer" parent="CenterContainer/VBoxContainer/TitleSection"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "DUNGEON CRAWL"
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/TitleSection/TitlePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 20
+
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer/TitleSection/TitlePanel/MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "⚔ SWORM VLOOD ⚔"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Spacer" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 40)
+[node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Dungeon Crawler • Roguelike • Co-op"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="VBoxContainer"]
+[node name="ButtonsContainer" type="PanelContainer" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-text = "⚔️  Играть"
+size_flags_horizontal = 4
 
-[node name="HostButton" type="Button" parent="VBoxContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(280, 55)
+layout_mode = 2
+text = "⚔  ИГРАТЬ"
+
+[node name="HostButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 50)
 layout_mode = 2
 text = "🌐  Создать сервер"
 
-[node name="JoinButton" type="Button" parent="VBoxContainer"]
+[node name="JoinButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(280, 50)
 layout_mode = 2
 text = "🔗  Подключиться"
 
-[node name="SettingsButton" type="Button" parent="VBoxContainer"]
+[node name="SettingsButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(280, 50)
 layout_mode = 2
-text = "⚙️  Настройки"
+text = "⚙  Настройки"
 
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
+[node name="CreditsButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(280, 50)
+layout_mode = 2
+text = "📜  Об игре"
+
+[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 50)
 layout_mode = 2
 text = "🚪  Выход"
 
-[node name="VersionLabel" type="Label" parent="."]
+[node name="BottomBar" type="HBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 2
+anchors_preset = 12
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -30.0
-offset_right = 200.0
-offset_bottom = -10.0
-text = "v0.1.0"
+offset_top = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="VersionLabel" type="Label" parent="BottomBar"]
+layout_mode = 2
+text = "v0.1.0 Alpha"
+
+[node name="Spacer" type="Control" parent="BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AuthorsLabel" type="Label" parent="BottomBar"]
+layout_mode = 2
+text = "WETQV & vladbel0727"
+horizontal_alignment = 2

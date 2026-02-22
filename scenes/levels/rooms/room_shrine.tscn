@@ -1,11 +1,13 @@
-[gd_scene format=3 uid="uid://b2seg7yem3etw"]
+[gd_scene load_steps=3 format=3 uid="uid://b2seg7yem3etw"]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/rooms/base_room.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/levels/spawn_point.gd" id="2_spawn"]
 
 [node name="RoomShrine" unique_id=939048808 instance=ExtResource("1_base")]
 room_type = 3
 room_size = Vector2i(13, 11)
 
 [node name="ShrinePoint" type="Marker2D" parent="SpawnPoints" index="0" unique_id=917597230]
-
-[node name="SpawnPoints2" type="Node2D" parent="." index="3" unique_id=1268438592]
+script = ExtResource("2_spawn")
+position = Vector2(416, 352)
+type = 3
