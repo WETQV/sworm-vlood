@@ -99,6 +99,15 @@ func _on_player_died(_killed_by: Node2D) -> void:
 		death_screen.show()
 
 
+## Публичный метод для плавного выхода
+func fade_out(duration: float = 0.5) -> Tween:
+	if _transition_overlay == null:
+		return null
+	var tween = create_tween()
+	tween.tween_property(_transition_overlay, "modulate:a", 1.0, duration)
+	return tween
+
+
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		GameManager.go_to_menu()

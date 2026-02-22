@@ -15,8 +15,8 @@ radius = 30.0
 radius = 40.0
 
 [node name="SlimeBoss" type="CharacterBody2D"]
-collision_layer = 3
-collision_mask = 9
+collision_layer = 4
+collision_mask = 7
 script = ExtResource("3_boss")
 contact_damage = 30
 speed = 40.0
@@ -63,6 +63,10 @@ show_percentage = false
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 path_desired_distance = 20.0
 target_desired_distance = 20.0
+
+[node name="ObstacleRaycast" type="RayCast2D" parent="."]
+target_position = Vector2(50, 0)
+collision_mask = 1
 
 [node name="SlimeAI" type="Node" parent="."]
 script = ExtResource("4_slimeai")

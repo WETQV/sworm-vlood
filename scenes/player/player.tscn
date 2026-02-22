@@ -17,7 +17,7 @@ size = Vector2(28, 16)
 
 [node name="Player" type="CharacterBody2D"]
 collision_layer = 2
-collision_mask = 9
+collision_mask = 5
 script = ExtResource("3_player")
 physics_interpolation_mode = 1
 

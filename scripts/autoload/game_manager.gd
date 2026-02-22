@@ -57,6 +57,13 @@ func start_new_game() -> void:
 
 ## Переход на следующий этаж
 func next_floor() -> void:
+	if current_floor >= 7:
+		# ПОБЕДА! Вместо перехода на 8 этаж, выходим в меню или показываем экран
+		print("[GameManager] ПОБЕДА! 7 этажей зачищено.")
+		# В идеале тут вызвать show_victory_screen(), но для MVP вернемся в меню
+		go_to_menu()
+		return
+		
 	current_floor += 1
 	difficulty_multiplier = 1.0 + (current_floor - 1) * 0.25 # +25% статов за каждый этаж
 	print("[GameManager] Переход на этаж %d, Сложность: %.2f" % [current_floor, difficulty_multiplier])

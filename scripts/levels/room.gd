@@ -15,7 +15,8 @@ const CORRIDOR_HALF  := 1
 const FLOOR_ATLAS    := Vector2i(0, 0)
 const WALL_ATLAS     := Vector2i(1, 0)
 
-const DOOR_SCENE := preload("res://scenes/levels/door.tscn")
+const DOOR_SCENE   := preload("res://scenes/levels/door.tscn")
+const PORTAL_SCENE := preload("res://scenes/levels/portal.tscn")
 
 var room_id:         int            = -1
 var grid_position:   Vector2i       = Vector2i.ZERO
@@ -211,6 +212,14 @@ func _end_fight() -> void:
 	print("[Room %d] CLEARED" % room_id)
 	_remove_doors()
 	_spawn_loot()
+	
+	# Если это комната босса — спавним портал в центре
+	if room_type == RoomType.BOSS:
+		var portal = PORTAL_SCENE.instantiate()
+		# Позиция в центре комнаты (пиксельные координаты)
+		portal.position = Vector2(room_size) * TILE_SIZE / 2.0
+		add_child(portal)
+		print("[Room %d] Портал заспавнен в позиции: %s" % [room_id, portal.position])
 
 
 # ── Двери ────────────────────────────────────────────────────────────────────
@@ -271,10 +280,17 @@ func _spawn_enemies() -> void:
 	for p in _enemy_points:
 		_spawn_enemy_at(slime_scene, p.position)
 	
-	# Спавним босса
-	var boss_scene = load("res://scenes/enemies/slime_boss.tscn")
-	for p in _boss_points:
-		_spawn_enemy_at(boss_scene, p.position)
+	# Спавним босса ТОЛЬКО на 7 этаже
+	if GameManager.current_floor == 7:
+		var boss_scene = load("res://scenes/enemies/slime_boss.tscn")
+		for p in _boss_points:
+			_spawn_enemy_at(boss_scene, p.position)
+	else:
+		# На этажах 1-6 вместо босса спавним группу обычных слаймов в те же точки
+		slime_scene = load("res://scenes/enemies/slime.tscn")
+		for p in _boss_points:
+			_spawn_enemy_at(slime_scene, p.position)
+			_spawn_enemy_at(slime_scene, p.position + Vector2(40, 0))
 	
 	# Если врагов нет, сразу завершаем бой
 	if _spawned_enemies_count == 0:
@@ -283,14 +299,25 @@ func _spawn_enemies() -> void:
 
 func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
 	if scene == null: return
+
+	# --- ПРОВЕРКА БЕЗОПАСНОСТИ СПАВНА ---
+	# Проверяем по тайлам: есть ли в этой точке пол?
+	var map_pos := floor_layer.local_to_map(local_pos)
 	
+	if floor_layer.get_cell_source_id(map_pos) == -1:
+		# Точка в стене/колонне — сдвигаем к центру на 1.5 тайла
+		var center := Vector2(room_size) * TILE_SIZE / 2.0
+		var dir_to_center := (center - local_pos).normalized()
+		local_pos += dir_to_center * TILE_SIZE * 1.5
+		print("[Room %d] Спавн в препятствии! Сдвинуто к центру: %s" % [room_id, local_pos])
+
 	var enemy = scene.instantiate()
 	enemy.position = local_pos
-	
+
 	# Враги — дети spawn_root (так удобнее по координатам)
 	spawn_root.add_child(enemy)
 	_spawned_enemies_count += 1
-	
+
 	# Следим за смертью врага через HealthComponent
 	var health = enemy.get_node_or_null("HealthComponent")
 	if health:
@@ -319,7 +346,7 @@ func get_side_toward(other: Room) -> String:
 
 
 func get_grid_center() -> Vector2i:
-	return grid_position + Vector2i(room_size / 2)
+	return grid_position + (room_size / 2)
 
 
 func get_global_connection_point(side: String) -> Vector2i:

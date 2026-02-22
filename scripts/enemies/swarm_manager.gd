@@ -80,6 +80,18 @@ var _attack_tokens: Dictionary = {}  # { int: Array[CharacterBody2D] }
 ## Угрозы PER PLAYER
 var _threat_scores: Dictionary = {}  # { int: float }
 
+# ─────────────────────────────────────────────
+# ВОЛНОВАЯ АТАКА
+# ─────────────────────────────────────────────
+## Таймер между волнами
+var _wave_timer: float = 0.0
+## Интервал между волнами (секунды)
+@export var wave_interval: float = 1.5
+## Текущая активная волна (0, 1, 2)
+var _current_wave: int = 0
+## Максимум слаймов в одной волне
+@export var max_per_wave: int = 3
+
 ## Таймер
 var _reassign_timer: float = 0.0
 
@@ -101,6 +113,12 @@ func _physics_process(delta: float) -> void:
 		_assign_squads()
 		_assign_roles_for_all_squads()
 		_cleanup_all_tokens()
+	
+	# Обработка волновой атаки
+	_wave_timer -= delta
+	if _wave_timer <= 0.0:
+		_current_wave = (_current_wave + 1) % 3
+		_wave_timer = wave_interval
 
 # ─────────────────────────────────────────────
 # РЕГИСТРАЦИЯ
@@ -322,7 +340,7 @@ func _assign_roles_for_all_squads() -> void:
 
 func _assign_roles_for_squad(
 	squad: Array,
-	player: CharacterBody2D,
+	_player: CharacterBody2D,
 	strategy: Strategy,
 	info: PlayerInfo
 ) -> void:
@@ -618,3 +636,41 @@ func get_all_neighbors(slime: CharacterBody2D, radius: float) -> Array[Character
 		if pos.distance_squared_to(other.global_position) < radius * radius:
 			result.append(other)
 	return result
+
+
+# ─────────────────────────────────────────────
+# ВОЛНОВАЯ АТАКА — ПУБЛИЧНЫЕ МЕТОДЫ
+# ─────────────────────────────────────────────
+## Проверить, активна ли текущая волна для слайма
+func is_slime_active_wave(slime: CharacterBody2D, player_id: int) -> bool:
+	if player_id not in squads:
+		return false
+	
+	var squad: Array = squads[player_id]
+	var index := squad.find(slime)
+	if index < 0:
+		return false
+	
+	# ═════════════════════════════════════════════
+	# ПОПРАВКА ДЛЯ МАЛЫХ ГРУПП:
+	# Если в отряде мало врагов, они все атакуют сразу
+	# ═════════════════════════════════════════════
+	if squad.size() < 4:
+		return true
+	
+	# Первые max_per_wave слаймов — активная волна
+	var wave_index := index % 3
+	return wave_index == _current_wave
+
+
+## Получить индекс волны для слайма (0, 1, 2)
+func get_wave_index_for_slime(slime: CharacterBody2D, player_id: int) -> int:
+	if player_id not in squads:
+		return 0
+	
+	var squad: Array = squads[player_id]
+	var index := squad.find(slime)
+	if index < 0:
+		return 0
+	
+	return index % 3

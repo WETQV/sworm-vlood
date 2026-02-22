@@ -16,20 +16,20 @@ type = 4
 
 [node name="MinionSpawn1" type="Marker2D" parent="SpawnPoints"]
 script = ExtResource("3_spawn")
-position = Vector2(640, 512)
+position = Vector2(832, 640)
 type = 0
 
 [node name="MinionSpawn2" type="Marker2D" parent="SpawnPoints"]
 script = ExtResource("3_spawn")
-position = Vector2(1280, 512)
+position = Vector2(1088, 640)
 type = 0
 
 [node name="MinionSpawn3" type="Marker2D" parent="SpawnPoints"]
 script = ExtResource("3_spawn")
-position = Vector2(640, 1024)
+position = Vector2(832, 896)
 type = 0
 
 [node name="MinionSpawn4" type="Marker2D" parent="SpawnPoints"]
 script = ExtResource("3_spawn")
-position = Vector2(1280, 1024)
+position = Vector2(1088, 896)
 type = 0

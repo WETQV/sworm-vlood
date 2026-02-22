@@ -1,5 +1,6 @@
 # scripts/enemies/slime_ai.gd
 extends Node
+class_name SlimeAI
 
 # ═════════════════════════════════════════════
 # МОЗГ СЛАЙМА v2
@@ -13,6 +14,7 @@ extends Node
 
 var swarm: SwarmManager = null
 var body: CharacterBody2D = null
+var nav_agent: NavigationAgent2D = null
 
 ## Назначенная цель (конкретный игрок, не один на всех)
 var assigned_target: CharacterBody2D = null
@@ -30,6 +32,12 @@ var assigned_player_id: int = 0
 @export var neighbor_radius: float = 120.0
 
 # ─────────────────────────────────────────────
+# ОБХОД ПРЕПЯТСТВИЙ (RAYCAST)
+# ─────────────────────────────────────────────
+@export var obstacle_avoidance_range: float = 30.0
+@export var obstacle_avoidance_force: float = 50.0
+
+# ─────────────────────────────────────────────
 # НАСТРОЙКИ РОЛЕЙ
 # ─────────────────────────────────────────────
 
@@ -38,7 +46,7 @@ var assigned_player_id: int = 0
 @export var orbit_speed: float = 1.5
 @export var retreat_distance: float = 120.0
 @export var retreat_duration: float = 1.2
-@export var attack_range: float = 35.0
+@export var attack_range: float = 40.0
 @export var attack_cooldown: float = 1.5
 
 # ─────────────────────────────────────────────
@@ -89,10 +97,34 @@ var _attack_timer: float = 0.0
 var _retreat_timer: float = 0.0
 var _is_retreating: bool = false
 var last_direction: Vector2 = Vector2.RIGHT
+var _stuck_timer: float = 0.0
+var _last_position: Vector2 = Vector2.ZERO
+
+## Параметры для прыжка (Leap)
+var _is_lunging: bool = false
+var _lunge_timer: float = 0.0
+@export var lunge_duration: float = 0.3
+@export var lunge_speed_mult: float = 2.5
 
 ## Кэш: PlayerInfo цели (обновляется при смене цели)
 var _target_info: PlayerInfo = null
 var _cached_target: CharacterBody2D = null
+
+# ─────────────────────────────────────────────
+# ПРЕДСКАЗАНИЕ ДВИЖЕНИЯ ИГРОКА
+# ─────────────────────────────────────────────
+var _player_position_history: Array[Vector2] = []
+var _predicted_player_position: Vector2 = Vector2.ZERO
+
+# ─────────────────────────────────────────────
+# УЯЗВИМЫЕ МОМЕНТЫ (EXPLOIT OPENINGS)
+# ─────────────────────────────────────────────
+## Игрок только что атаковал — есть окно для атаки
+var _player_attack_window: float = 0.0
+## Слайм находится за спиной игрока
+var _is_behind_player: bool = false
+## Бонус к урону за backstab
+var backstab_multiplier: float = 1.5
 
 # ─────────────────────────────────────────────
 # ИНИЦИАЛИЗАЦИЯ
@@ -104,11 +136,19 @@ func _ready() -> void:
 	# Получаем ссылку на родительское тело
 	body = get_parent() as CharacterBody2D
 	
+	# Навигацию получаем через call_deferred, чтобы убедиться, что все ноды добавлены
+	call_deferred("_init_navigation")
+	
 	swarm = _find_swarm_manager()
 	if swarm:
 		swarm.register_slime(body)
 	_randomize_personality()
 	_is_ready = true
+
+
+func _init_navigation() -> void:
+	if body:
+		nav_agent = body.get_node_or_null("NavigationAgent2D")
 
 
 func _exit_tree() -> void:
@@ -131,17 +171,21 @@ func _physics_process(delta: float) -> void:
 	if not _is_ready or not body:
 		body.velocity = Vector2.ZERO
 		return
-	
+
 	# Проверяем, что слайм готов к работе
 	if not swarm:
 		body.velocity = Vector2.ZERO
 		return
-	
+
 	if not is_instance_valid(assigned_target):
 		# Нет цели — стоим (менеджер скоро назначит)
 		body.velocity = Vector2.ZERO
 		return
 	
+	# Отладка: проверка позиции
+	if Engine.get_frames_drawn() % 120 == 0:
+		print("[SlimeAI] My pos: ", body.global_position, " Target: ", assigned_target.global_position, " Role: ", current_role)
+
 	# Проверяем, что тело имеет доступ к physics space
 	if not body.is_inside_tree() or not body.get_world_2d():
 		body.velocity = Vector2.ZERO
@@ -149,6 +193,15 @@ func _physics_process(delta: float) -> void:
 
 	# Обновляем кэш PlayerInfo
 	_update_target_info()
+	
+	# Предсказываем движение игрока
+	_update_player_prediction()
+	
+	# Проверяем уязвимые моменты
+	_update_exploit_openings(delta)
+	
+	# Проверка на застревание
+	_check_if_stuck(delta)
 
 	# Таймеры
 	_attack_timer -= delta
@@ -157,50 +210,65 @@ func _physics_process(delta: float) -> void:
 		if _retreat_timer <= 0.0:
 			_is_retreating = false
 
-	# ── 1. Целевая позиция по роли + адаптация к классу ──
+	# ── 1. Целевая позиция по роли ──
 	var target_pos := _get_role_target_position()
 
-	# ── 2. Boids-силы ──
-	# Separation — ОТ ВСЕХ слаймов (чтобы разные отряды не слипались)
+	# ── 2. Навигация через NavigationAgent2D ──
+	var nav_direction := Vector2.ZERO
+	if nav_agent:
+		nav_agent.target_position = target_pos
+		
+		# Если мы еще не у цели
+		if not nav_agent.is_navigation_finished():
+			var next_path_pos := nav_agent.get_next_path_position()
+			nav_direction = (next_path_pos - body.global_position).normalized()
+	else:
+		# Фолбэк, если навигация не инициализирована
+		if body.global_position.distance_to(target_pos) > 10.0:
+			nav_direction = (target_pos - body.global_position).normalized()
+
+	# ── 3. Boids-силы ──
 	var all_neighbors: Array[CharacterBody2D] = swarm.get_all_neighbors(body, neighbor_radius)
 	var separation := _calc_separation(all_neighbors) * weight_separation
+	
+	# УСИЛЕННОЕ ОТТАЛКИВАНИЕ ОТ ИГРОКА (чтобы не залипать в хитбоксе)
+	var dist_to_player_actual := body.global_position.distance_to(assigned_target.global_position)
+	if dist_to_player_actual < 25.0 and not _is_lunging:
+		var push_away := (body.global_position - assigned_target.global_position).normalized()
+		# Сила выталкивания растёт при приближении к центру игрока
+		var push_strength := (25.0 - dist_to_player_actual) * 2.5
+		separation += push_away * push_strength
 
-	# Cohesion + Alignment — только среди СВОЕГО отряда
-	var squad_neighbors: Array[CharacterBody2D] = swarm.get_squad_neighbors(
-		body, assigned_player_id, neighbor_radius
-	)
-	var cohesion := _calc_cohesion(squad_neighbors) * weight_cohesion
-	var alignment := _calc_alignment(squad_neighbors) * weight_alignment
+	# ── 4. Избегание препятствий (дополнительное к навигации) ──
+	var obstacle_avoid := _calc_obstacle_avoidance() * obstacle_avoidance_force
 
-	# ── 3. Направление к целевой позиции ──
-	var to_target := Vector2.ZERO
-	if body.global_position.distance_to(target_pos) > 5.0:
-		to_target = (target_pos - body.global_position).normalized() * weight_target
-
-	# ── 4. Уклонение от опасных зон ──
+	# ── 5. Уклонение от опасных зон ──
 	var danger_avoid := _calc_danger_avoidance() * weight_avoid_danger
 
-	# ── 5. Зигзаг (против дальников) ──
+	# ── 6. Зигзаг (против дальников) ──
 	var zigzag := _calc_zigzag()
 
-	# ── 6. Суммируем ──
-	var desired := (
-		to_target
-		+ separation
-		+ cohesion
-		+ alignment
-		+ danger_avoid
-		+ zigzag
-	).normalized()
+	# ── 7. Суммируем ──
+	var desired := (nav_direction + separation + obstacle_avoid + danger_avoid + zigzag).normalized()
 
 	if desired.length() < 0.01:
 		desired = Vector2.ZERO
 
-	# ── 7. Скорость ──
+	# ── 8. Скорость и движение ──
 	var speed := _get_current_speed()
+	
+	# Проверка дистанции остановки, чтобы не "колбасило" в упор
+	# Но для RUSHER или при атаке — не останавливаемся
+	var stop_dist := 18.0
+	if current_role == swarm.Role.RUSHER or _is_retreating:
+		stop_dist = 5.0
+		
+	if dist_to_player_actual < stop_dist and not _is_retreating:
+		# Если мы очень близко — только Boids (separation) чтобы разойтись
+		body.velocity = separation * speed * 0.5
+	else:
+		body.velocity = desired * speed
 
-	# ── 8. Двигаемся ──
-	body.velocity = desired * speed
 	if body.is_inside_tree() and body.get_world_2d():
 		body.move_and_slide()
 
@@ -210,19 +278,46 @@ func _physics_process(delta: float) -> void:
 	# ── 9. Атака ──
 	_try_attack()
 
+	# ── 10. Таймер прыжка ──
+	if _is_lunging:
+		_lunge_timer -= delta
+		if _lunge_timer <= 0.0:
+			_is_lunging = false
+
 # ─────────────────────────────────────────────
 # АДАПТИВНАЯ ЦЕЛЕВАЯ ПОЗИЦИЯ
 # ─────────────────────────────────────────────
 
 func _get_role_target_position() -> Vector2:
+	# ИСПОЛЬЗУЕМ ПРЕДСКАЗАННУЮ ПОЗИЦИЮ для RUSHER и FLANKER
 	var player_pos: Vector2 = assigned_target.global_position
 	var my_pos: Vector2 = body.global_position
 	var dist_mult := _get_distance_multiplier()
+	
+	# Для RUSHER и FLANKER используем предсказанную позицию (перерезаем путь)
+	var target_player_pos := player_pos
+	if current_role == swarm.Role.RUSHER or current_role == swarm.Role.FLANKER:
+		if _predicted_player_position != Vector2.ZERO:
+			target_player_pos = _predicted_player_position
 
-	# Отступление
-	if _is_retreating:
+	# Отступление (после атаки или при низком HP)
+	if _is_retreating or current_role == swarm.Role.RETREATER:
+		# ТАКТИКА "ЖИВОЙ ЩИТ": ищем союзника, чтобы спрятаться
+		var shield_pos := _find_meat_shield_position(player_pos)
+		if shield_pos != Vector2.ZERO:
+			return shield_pos
+		
+		# Если щита нет — используем умный отход от игрока
 		var away := (my_pos - player_pos).normalized()
-		return my_pos + away * retreat_distance * dist_mult
+		var retreat_target := my_pos + away * retreat_distance * dist_mult
+		
+		# Если сзади стена (RayCast или NavMesh) — уходим вбок
+		if _is_wall_at(retreat_target):
+			# Вектор вбок (перпендикуляр)
+			var side := Vector2(-away.y, away.x) * flank_side
+			retreat_target = my_pos + side * retreat_distance
+		
+		return retreat_target
 
 	match current_role:
 		# ── RUSHER ──
@@ -230,43 +325,45 @@ func _get_role_target_position() -> Vector2:
 			# Против мечника: целимся чуть МИМО (не прямо в лоб)
 			# Чтобы не попасть под AoE удар
 			if _target_is_melee():
-				var to_player := (player_pos - my_pos)
+				var to_player := (target_player_pos - my_pos)
 				if to_player.length() < 1.0:
-					return player_pos
+					return target_player_pos
 				var offset_angle := to_player.angle() + 0.3 * flank_side
-				var offset_pos := player_pos + Vector2.from_angle(offset_angle) * 20.0
+				var offset_pos := target_player_pos + Vector2.from_angle(offset_angle) * 20.0
 				return offset_pos
 			else:
-				# Против дальника: рашим прямо
-				return player_pos
+				# Против дальника: рашим прямо к предсказанной позиции
+				return target_player_pos
 
 		# ── FLANKER ──
 		swarm.Role.FLANKER:
-			var to_player := (player_pos - my_pos)
+			var to_player := (target_player_pos - my_pos)
 			if to_player.length() < 1.0:
-				return player_pos
+				return target_player_pos
 
 			var base_angle: float = to_player.angle()
 			var flank_angle: float = base_angle + (PI / 2.0) * flank_side
 
 			# Адаптивная дистанция фланга
 			var adaptive_flank := flank_distance * dist_mult
-			var flank_pos := player_pos + Vector2.from_angle(flank_angle) * adaptive_flank
+			var flank_pos := target_player_pos + Vector2.from_angle(flank_angle) * adaptive_flank
 
 			# Если близко к точке фланга — атакуем
 			if my_pos.distance_to(flank_pos) < 30.0:
-				return player_pos
+				return target_player_pos
 
 			return flank_pos
 
 		# ── ORBITER ──
 		swarm.Role.ORBITER:
+			# НОВОЕ: Нырок для атаки, если игрок уязвим или просто шанс "пробы"
+			var should_dive := _check_for_opening() or (randf() < 0.015) 
+			
+			if should_dive:
+				return target_player_pos # Летим прямо к игроку
+			
 			var time := Time.get_ticks_msec() / 1000.0
-
-			# Против мечника кружим ДАЛЬШЕ
 			var adaptive_orbit := orbit_radius * dist_mult
-
-			# Против дальника кружим быстрее (чтобы сложнее попасть)
 			var adaptive_speed := orbit_speed
 			if _target_is_ranged():
 				adaptive_speed *= 1.4
@@ -282,10 +379,120 @@ func _get_role_target_position() -> Vector2:
 
 		# ── RETREATER ──
 		swarm.Role.RETREATER:
+			# Уже обработано в блоке _is_retreating выше
+			var shield_pos := _find_meat_shield_position(player_pos)
+			if shield_pos != Vector2.ZERO:
+				return shield_pos
 			var away := (my_pos - player_pos).normalized()
 			return my_pos + away * retreat_distance
 
 	return player_pos
+
+# ─────────────────────────────────────────────
+# ПРЕДСКАЗАНИЕ ДВИЖЕНИЯ ИГРОКА
+# ─────────────────────────────────────────────
+# Запоминаем последние позиции игрока и предсказываем,
+# где он будет через 0.5 секунды
+
+func _update_player_prediction() -> void:
+	if not is_instance_valid(assigned_target):
+		_player_position_history.clear()
+		_predicted_player_position = Vector2.ZERO
+		return
+	
+	# Запоминаем последние 10 позиций (при 60 FPS = ~0.17 сек)
+	_player_position_history.append(assigned_target.global_position)
+	if _player_position_history.size() > 10:
+		_player_position_history.pop_front()
+
+	# Предсказываем: куда игрок движется?
+	if _player_position_history.size() >= 2:
+		var first := _player_position_history[0]
+		var last := _player_position_history[-1]
+		var velocity := (last - first) / float(_player_position_history.size())
+
+		# Предсказываем на 0.5 сек вперёд (ограничиваем скорость)
+		var max_predict := 100.0  # Максимум 100px вперёд
+		_predicted_player_position = last + velocity.normalized() * minf(velocity.length() * 5.0, max_predict)
+	else:
+		_predicted_player_position = assigned_target.global_position
+	
+	# Отладка: выводим позицию раз в 60 кадров
+	if Engine.get_frames_drawn() % 60 == 0:
+		print("[SlimeAI] Target: ", assigned_target.global_position, " Predicted: ", _predicted_player_position)
+
+
+# ─────────────────────────────────────────────
+# УЯЗВИМЫЕ МОМЕНТЫ (EXPLOIT OPENINGS)
+# ─────────────────────────────────────────────
+# Слаймы видят, когда игрок атакует (окно для контратаки)
+# и когда находятся за спиной игрока (backstab)
+
+func _update_exploit_openings(delta: float) -> void:
+	if not is_instance_valid(assigned_target):
+		_player_attack_window = 0.0
+		_is_behind_player = false
+		return
+	
+	# Таймер окна атаки игрока
+	if _player_attack_window > 0.0:
+		_player_attack_window -= delta
+	
+	# Проверяем, атакует ли игрок сейчас (через PlayerInfo)
+	if _target_info and _target_info.is_ability_active:
+		# Игрок кастует способность — окно для атаки!
+		_player_attack_window = 0.5  # 0.5 сек на атаку
+	
+	# Проверяем, находимся ли за спиной игрока
+	var player_dir := assigned_target.velocity.normalized()
+	if player_dir.length() < 0.1:
+		# Игрок стоит — определяем по направлению к ближайшему слайму
+		player_dir = (assigned_target.global_position - body.global_position).normalized()
+	
+	var to_player := (assigned_target.global_position - body.global_position).normalized()
+	var dot := player_dir.dot(to_player)
+	
+	# Если dot < -0.5 — мы за спиной игрока (он смотрит в другую сторону)
+	_is_behind_player = dot < -0.5
+
+
+## Проверка на уязвимый момент для атаки
+func _check_for_opening() -> bool:
+	# Игрок атакует — окно для контратаки
+	if _player_attack_window > 0.0:
+		return true
+	
+	# Мы за спиной игрока — backstab!
+	if _is_behind_player:
+		return true
+	
+	return false
+
+
+# ─────────────────────────────────────────────
+# ПРОВЕРКА НА ЗАСТРЕВАНИЕ
+# ─────────────────────────────────────────────
+# Если слайм застрял на 1 сек — сбрасываем отступление
+
+func _check_if_stuck(delta: float) -> void:
+	if _last_position == Vector2.ZERO:
+		_last_position = body.global_position
+		return
+	
+	var moved := body.global_position.distance_to(_last_position)
+	_last_position = body.global_position
+	
+	if moved < 5.0:  # Почти не двигается
+		_stuck_timer += delta
+		if _stuck_timer > 1.0:
+			# Застрял на 1 сек — сбрасываем отступление
+			if _is_retreating:
+				_is_retreating = false
+				_retreat_timer = 0.0
+			_stuck_timer = 0.0
+	else:
+		_stuck_timer = 0.0
+
 
 # ─────────────────────────────────────────────
 # ЗИГЗАГ (ПРОТИВ ДАЛЬНИКОВ)
@@ -358,8 +565,10 @@ func _calc_danger_avoidance() -> Vector2:
 	return force.normalized() if force.length() > 0.01 else Vector2.ZERO
 
 # ─────────────────────────────────────────────
-# BOIDS
+# BOIDS — УМНОЕ ИЗБЕГАНИЕ СОЮЗНИКОВ
 # ─────────────────────────────────────────────
+# ТЕПЕРЬ: слаймы сильнее избегают атакующих союзников,
+# чтобы не мешать им атаковать
 
 func _calc_separation(neighbors: Array[CharacterBody2D]) -> Vector2:
 	var force := Vector2.ZERO
@@ -368,10 +577,53 @@ func _calc_separation(neighbors: Array[CharacterBody2D]) -> Vector2:
 	for other in neighbors:
 		var diff := my_pos - other.global_position
 		var dist := diff.length()
+		
 		if dist < separation_radius and dist > 0.01:
-			force += diff.normalized() * (separation_radius / dist)
+			var avoidance_strength := separation_radius / dist
+			
+			# УСИЛЕННОЕ ИЗБЕГАНИЕ: если союзник атакует — не мешаем ему
+			var other_ai := _get_ai(other)
+			if other_ai and other_ai.current_role == swarm.Role.RUSHER:
+				# Атакующего слайма избегаем в 2 раза сильнее
+				avoidance_strength *= 2.0
+			
+			# Также избегаем тех, кто ближе к игроку (они в "очереди" впереди)
+			var dist_to_player := body.global_position.distance_to(assigned_target.global_position)
+			var other_dist_to_player := other.global_position.distance_to(assigned_target.global_position)
+			
+			if other_dist_to_player < dist_to_player:
+				# Этот слайм ближе к игроку — значит он в очереди впереди
+				avoidance_strength *= 1.5
+			
+			force += diff.normalized() * avoidance_strength
 
 	return force.normalized() if force.length() > 0.01 else Vector2.ZERO
+
+
+# ─────────────────────────────────────────────
+# ИЗБЕГАНИЕ ПРЕПЯТСТВИЙ
+# ─────────────────────────────────────────────
+# Простая проверка: если впереди стена — смещаемся вбок
+
+func _calc_obstacle_avoidance() -> Vector2:
+	var avoidance := Vector2.ZERO
+	
+	# Получаем RayCast из тела
+	var raycast: RayCast2D = body.get_node_or_null("ObstacleRaycast")
+	if not raycast:
+		return Vector2.ZERO
+	
+	# Поворачиваем raycast в направлении движения
+	if body.velocity.length() > 1.0:
+		raycast.target_position = body.velocity.normalized() * obstacle_avoidance_range
+		raycast.force_raycast_update()
+		
+		if raycast.is_colliding():
+			# Препятствие найдено — смещаемся вбок
+			var normal := raycast.get_collision_normal()
+			avoidance = Vector2(-normal.y, normal.x)  # Перпендикулярно нормали
+	
+	return avoidance
 
 
 func _calc_cohesion(neighbors: Array[CharacterBody2D]) -> Vector2:
@@ -408,8 +660,16 @@ func _calc_alignment(neighbors: Array[CharacterBody2D]) -> Vector2:
 # АТАКА
 # ─────────────────────────────────────────────
 # ТЕПЕРЬ: раненые слаймы (WAITER/RETREATER) атакуют реже
+# + ВОЛНОВАЯ АТАКА: только активная волна атакует
 
 func _try_attack() -> void:
+	# ═════════════════════════════════════════════
+	# ПРОВЕРКА ВОЛНЫ: только активная волна атакует
+	# ═════════════════════════════════════════════
+	if swarm and not swarm.is_slime_active_wave(body, assigned_player_id):
+		# Не наша волна — ждём (но двигаемся к позиции)
+		return
+	
 	# ═════════════════════════════════════════════
 	# BACK LINE: раненые слаймы атакуют с шансом
 	# ═════════════════════════════════════════════
@@ -417,7 +677,7 @@ func _try_attack() -> void:
 		# Раненые ждут момента — атакуют только 30% времени
 		if randf() > 0.3:
 			return  # Ждём, не атакуем
-	
+
 	if current_role == swarm.Role.RETREATER:
 		# Отступающие атакуют только если игрок очень близко
 		if not _is_in_attack_range():
@@ -439,9 +699,30 @@ func _try_attack() -> void:
 
 
 func _perform_attack() -> void:
+	# ═════════════════════════════════════════════
+	# РЫВОК (LUNGE)
+	# ═════════════════════════════════════════════
+	_is_lunging = true
+	_lunge_timer = lunge_duration
+	
+	# Небольшая пауза для эффекта замаха
+	await get_tree().create_timer(0.05).timeout
+	if not is_instance_valid(assigned_target): return
+
+	# ═════════════════════════════════════════════
+	# DAMAGE CALCULATION
+	# ═════════════════════════════════════════════
+	var damage := 10
+	if body and "contact_damage" in body:
+		damage = body.contact_damage
+	
+	if _check_for_opening():
+		# Уязвимый момент — наносим больше урона!
+		damage = int(damage * backstab_multiplier)
+	
 	# Урон через HealthComponent
 	if assigned_target.has_node("HealthComponent"):
-		assigned_target.get_node("HealthComponent").take_damage(10, body)
+		assigned_target.get_node("HealthComponent").take_damage(damage, body)
 
 	_attack_timer = attack_cooldown
 	swarm.release_attack_token(body, assigned_player_id)
@@ -465,6 +746,12 @@ func _start_retreat() -> void:
 
 func _get_current_speed() -> float:
 	var speed := personal_speed
+	
+	# ═════════════════════════════════════════════
+	# ПРЫЖОК (Leap Attack)
+	# ═════════════════════════════════════════════
+	if _is_lunging:
+		return personal_speed * lunge_speed_mult
 
 	# ═════════════════════════════════════════════
 	# BACK LINE: раненые двигаются МЕДЛЕННЕЕ
@@ -527,6 +814,48 @@ func _get_info_for(player: CharacterBody2D) -> PlayerInfo:
 	if is_instance_valid(player) and player.has_node("PlayerInfo"):
 		return player.get_node("PlayerInfo") as PlayerInfo
 	return null
+
+
+## Получить AI компонент от другого слайма
+func _get_ai(slime: CharacterBody2D) -> SlimeAI:
+	if is_instance_valid(slime) and slime.has_node("SlimeAI"):
+		return slime.get_node("SlimeAI") as SlimeAI
+	return null
+
+
+## Поиск позиции за спиной здорового союзника
+func _find_meat_shield_position(player_pos: Vector2) -> Vector2:
+	if not swarm: return Vector2.ZERO
+	
+	var best_shield: CharacterBody2D = null
+	var min_dist := 9999.0
+	
+	# Ищем ближайшего здорового союзника (Рашер или Фланкер)
+	for other in swarm.slimes:
+		if other == body: continue
+		
+		var other_ai := _get_ai(other)
+		if other_ai and (other_ai.current_role == swarm.Role.RUSHER or other_ai.current_role == swarm.Role.FLANKER):
+			var d = body.global_position.distance_squared_to(other.global_position)
+			if d < min_dist:
+				min_dist = d
+				best_shield = other
+	
+	if best_shield:
+		# Позиция: за союзником относительно игрока
+		var dir_from_player = (best_shield.global_position - player_pos).normalized()
+		return best_shield.global_position + dir_from_player * 40.0 # Вставам на 40px сзади
+	
+	return Vector2.ZERO
+
+
+## Проверка: есть ли в этой точке стена/препятствие?
+func _is_wall_at(pos: Vector2) -> bool:
+	if nav_agent and nav_agent.get_navigation_map():
+		var closest = NavigationServer2D.map_get_closest_point(nav_agent.get_navigation_map(), pos)
+		return pos.distance_to(closest) > 10.0 # Если ближайшая точка нави меша далеко — там стена
+	return false
+
 
 func set_role(role: int, index: int = 0) -> void:
 	current_role = role
