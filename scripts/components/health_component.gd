@@ -1,10 +1,10 @@
 extends Node
 class_name HealthComponent
-## HealthComponent.gd
-## Компонент для управления здоровьем персонажа
-## Используется и для игроков, и для врагов
+## HealthComponent — инкапсулирует здоровье, урон, лечение и смерть сущности.
 
 signal health_changed(current_hp: int, max_hp: int)
+signal damage_taken(amount: int, source: Node2D)
+signal healed(amount: int)
 signal died(killed_by: Node2D)
 
 @export var max_health: int = 100
@@ -14,15 +14,17 @@ var is_dead: bool = false
 
 
 func _ready() -> void:
-	current_health = max_health
+	if current_health <= 0 or current_health > max_health:
+		current_health = max_health
 
 
 ## Нанести урон
 func take_damage(amount: int, source: Node2D = null) -> void:
-	if is_dead:
+	if is_dead or amount <= 0:
 		return
 	
 	current_health = max(0, current_health - amount)
+	damage_taken.emit(amount, source)
 	health_changed.emit(current_health, max_health)
 	
 	if current_health <= 0:
@@ -31,10 +33,11 @@ func take_damage(amount: int, source: Node2D = null) -> void:
 
 ## Исцелить
 func heal(amount: int) -> void:
-	if is_dead:
+	if is_dead or amount <= 0:
 		return
 	
 	current_health = min(max_health, current_health + amount)
+	healed.emit(amount)
 	health_changed.emit(current_health, max_health)
 
 
@@ -45,6 +48,8 @@ func set_health(value: int) -> void:
 	
 	current_health = clamp(value, 0, max_health)
 	health_changed.emit(current_health, max_health)
+	if current_health <= 0:
+		die(null)
 
 
 ## Смерть персонажа

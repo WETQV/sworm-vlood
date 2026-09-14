@@ -4,7 +4,7 @@
 
 [node name="RoomStart" unique_id=1644370441 instance=ExtResource("1_base")]
 room_type = 0
-room_size = Vector2i(15, 12)
+room_size = Vector2i(16, 12)
 
 [node name="PlayerSpawn1" type="Marker2D" parent="SpawnPoints" index="0" unique_id=1230995608]
 position = Vector2(192, 192)

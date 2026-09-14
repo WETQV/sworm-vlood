@@ -43,6 +43,7 @@ var _activation_area: Area2D  = null
 func _ready() -> void:
 	_create_layers()
 	_build_room()
+	update_autotiles()
 	_collect_spawn_points()
 	_setup_activation_area()
 
@@ -70,11 +71,20 @@ func _create_layers() -> void:
 		spawn_root.name = "SpawnPoints"
 		add_child(spawn_root)
 
-	# TileSet нужен только если не назначен через редактор
+	# TileSet берем из единого ресурса или генерируем
 	if floor_layer.tile_set == null:
-		floor_layer.tile_set = _make_tileset()
+		if ResourceLoader.exists("res://tilesets/dungeon_tileset.tres"):
+			floor_layer.tile_set = load("res://tilesets/dungeon_tileset.tres")
+		else:
+			floor_layer.tile_set = _make_tileset()
 	if wall_layer.tile_set == null:
 		wall_layer.tile_set = floor_layer.tile_set  # общий TileSet!
+
+	# Процедурные шейдеры для объёма каменных плит и кладки
+	if floor_layer.material == null:
+		floor_layer.material = preload("res://resources/shaders/dungeon_floor_material.tres")
+	if wall_layer.material == null:
+		wall_layer.material = preload("res://resources/shaders/dungeon_wall_material.tres")
 
 
 func _make_tileset() -> TileSet:
@@ -90,7 +100,7 @@ func _make_tileset() -> TileSet:
 	var src := TileSetAtlasSource.new()
 	var img := Image.create(TILE_SIZE * 2, TILE_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill_rect(Rect2i(0,         0, TILE_SIZE, TILE_SIZE), Color(0.23, 0.23, 0.29))  # пол
-	img.fill_rect(Rect2i(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), Color(0.42, 0.42, 0.48))  # стена
+	img.fill_rect(Rect2i(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), Color.WHITE)             # стена (белая, чтобы modulate передавался без искажений)
 	src.texture = ImageTexture.create_from_image(img)
 	src.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
 	ts.add_source(src, 0)  # источник добавляем ДО создания тайлов
@@ -104,20 +114,56 @@ func _make_tileset() -> TileSet:
 		Vector2(-half, -half), Vector2(half, -half),
 		Vector2( half,  half), Vector2(-half,  half),
 	])
-	var wall_data: TileData = src.get_tile_data(WALL_ATLAS, 0)
-	if wall_data:
-		wall_data.add_collision_polygon(0)
-		wall_data.set_collision_polygon_points(0, 0, sq)
 
-	# Навигация пола
-	var floor_data: TileData = src.get_tile_data(FLOOR_ATLAS, 0)
-	if floor_data:
-		var nav := NavigationPolygon.new()
-		nav.vertices = sq
-		nav.add_polygon(PackedInt32Array([0, 1, 2, 3]))
-		floor_data.set_navigation_polygon(0, nav)
+	# 16 вариантов альтернативных тайлов стены: битовая маска N(1) | S(2) | W(4) | E(8)
+	for mask in range(16):
+		var td: TileData
+		if mask == 0:
+			td = src.get_tile_data(WALL_ATLAS, 0)
+		else:
+			src.create_alternative_tile(WALL_ATLAS, mask)
+			td = src.get_tile_data(WALL_ATLAS, mask)
+		
+		td.modulate = Color(float(mask) / 15.0, 0.0, 0.0, 1.0)
+		td.add_collision_polygon(0)
+		td.set_collision_polygon_points(0, 0, sq)
+
+	# ── Навигация пола и 8 альтернативных тайлов для контактных теней ──
+	var nav := NavigationPolygon.new()
+	nav.vertices = sq
+	nav.add_polygon(PackedInt32Array([0, 1, 2, 3]))
+
+	for mask in range(8):
+		var fd: TileData
+		if mask == 0:
+			fd = src.get_tile_data(FLOOR_ATLAS, 0)
+		else:
+			src.create_alternative_tile(FLOOR_ATLAS, mask)
+			fd = src.get_tile_data(FLOOR_ATLAS, mask)
+		
+		fd.modulate = Color(float(mask) / 7.0, 0.0, 0.0, 1.0)
+		fd.set_navigation_polygon(0, nav)
 
 	return ts
+
+## Обновление автотайлов стен и теней пола с учетом соседей
+func update_autotiles() -> void:
+	if wall_layer == null:
+		return
+	var used_walls: Array[Vector2i] = wall_layer.get_used_cells()
+	var wall_dict: Dictionary = {}
+	for c in used_walls:
+		wall_dict[c] = true
+
+	for c in used_walls:
+		var n: int = 1 if wall_dict.has(c + Vector2i(0, -1)) else 0
+		var s: int = 2 if wall_dict.has(c + Vector2i(0, 1)) else 0
+		var w: int = 4 if wall_dict.has(c + Vector2i(-1, 0)) else 0
+		var e: int = 8 if wall_dict.has(c + Vector2i(1, 0)) else 0
+		wall_layer.set_cell(c, 0, WALL_ATLAS, n | s | w | e)
+
+	if floor_layer:
+		pass
 
 # ── Построение геометрии комнаты ────────────────────────────────────────────
 func _build_room() -> void:
@@ -189,7 +235,7 @@ func _on_player_entered(body: Node2D) -> void:
 	if not body.is_in_group("player"):
 		return
 	_activation_area.set_deferred("monitoring", false)
-	set_room_state(RoomState.FIGHT)
+	call_deferred("set_room_state", RoomState.FIGHT)
 
 
 # ── Состояния ────────────────────────────────────────────────────────────────
@@ -210,6 +256,9 @@ func _start_fight() -> void:
 
 func _end_fight() -> void:
 	print("[Room %d] CLEARED" % room_id)
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd:
+		snd.play_room_cleared()
 	_remove_doors()
 	_spawn_loot()
 	
@@ -227,6 +276,7 @@ func _end_fight() -> void:
 # Дверной объект должен сам закрывать проём шириной CORRIDOR_WIDTH.
 func _spawn_doors() -> void:
 	print("[Room %d] Спавн дверей. Открытые стороны: %s" % [room_id, used_connections])
+	var is_first: bool = true
 	for side in used_connections:
 		var local_center: Vector2i = connection_points[side]
 		var world_pos := Vector2(
@@ -239,17 +289,23 @@ func _spawn_doors() -> void:
 		door.push_direction = _get_push_dir(side)
 		door.rotation       = _get_door_rot(side)
 		
-		# Убеждаемся, что дверь видна (на всякий случай)
 		door.visible = true
-		
 		add_child(door)
 		spawned_doors.append(door)
+		if door.has_method("play_appear"):
+			door.play_appear(is_first)
+			is_first = false
 
 
 func _remove_doors() -> void:
+	var is_first: bool = true
 	for door in spawned_doors:
 		if is_instance_valid(door):
-			door.queue_free()
+			if door.has_method("play_disappear"):
+				door.play_disappear(is_first)
+				is_first = false
+			else:
+				door.queue_free()
 	spawned_doors.clear()
 
 
@@ -281,7 +337,9 @@ func _spawn_enemies() -> void:
 		_spawn_enemy_at(slime_scene, p.position)
 	
 	# Спавним босса ТОЛЬКО на 7 этаже
-	if GameManager.current_floor == 7:
+	var gm = get_node_or_null("/root/GameManager")
+	var floor_num: int = gm.current_floor if gm else 1
+	if floor_num == 7:
 		var boss_scene = load("res://scenes/enemies/slime_boss.tscn")
 		for p in _boss_points:
 			_spawn_enemy_at(boss_scene, p.position)
@@ -327,7 +385,7 @@ func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
 func _on_enemy_died(_killer) -> void:
 	_spawned_enemies_count -= 1
 	if _spawned_enemies_count <= 0:
-		set_room_state(RoomState.CLEARED)
+		call_deferred("set_room_state", RoomState.CLEARED)
 
 
 func _spawn_loot() -> void:
@@ -362,6 +420,16 @@ func open_connection(side: String) -> void:
 	for tile in _get_opening_tiles(side, center):
 		wall_layer.erase_cell(tile)
 		floor_layer.set_cell(tile, 0, FLOOR_ATLAS)
+	update_autotiles()
+
+
+func clear_wall_tiles(global_tiles: Array[Vector2i]) -> void:
+	for g_tile in global_tiles:
+		var local_tile: Vector2i = g_tile - grid_position
+		if local_tile.x >= 0 and local_tile.x < room_size.x and local_tile.y >= 0 and local_tile.y < room_size.y:
+			wall_layer.erase_cell(local_tile)
+			floor_layer.set_cell(local_tile, 0, FLOOR_ATLAS)
+	update_autotiles()
 
 
 func _get_opening_tiles(side: String, center: Vector2i) -> Array[Vector2i]:

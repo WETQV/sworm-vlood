@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/dungeon_ambient.gdshader" id="1_ambient"]
+
+[resource]
+shader = ExtResource("1_ambient")
+shader_parameter/bg_color = Color(0.07, 0.06, 0.09, 1)
+shader_parameter/fog_color = Color(0.16, 0.11, 0.22, 1)
+shader_parameter/blood_accent = Color(0.32, 0.06, 0.12, 1)
+shader_parameter/fog_speed = 0.04
+shader_parameter/vignette_intensity = 0.75

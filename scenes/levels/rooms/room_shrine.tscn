@@ -5,9 +5,9 @@
 
 [node name="RoomShrine" unique_id=939048808 instance=ExtResource("1_base")]
 room_type = 3
-room_size = Vector2i(13, 11)
+room_size = Vector2i(14, 10)
 
 [node name="ShrinePoint" type="Marker2D" parent="SpawnPoints" index="0" unique_id=917597230]
 script = ExtResource("2_spawn")
-position = Vector2(416, 352)
+position = Vector2(448, 320)
 type = 3

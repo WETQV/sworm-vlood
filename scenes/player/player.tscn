@@ -1,19 +1,17 @@
-[gd_scene load_steps=7 format=3 uid="uid://player_scene_v2"]
+[gd_scene load_steps=8 format=3 uid="uid://player_scene_v2"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="3_player"]
 [ext_resource type="Script" path="res://scripts/components/smooth_camera.gd" id="4_camera"]
 [ext_resource type="Script" path="res://scripts/components/player_info.gd" id="5_playerinfo"]
+[ext_resource type="Material" path="res://resources/shaders/entity_stylized_material.tres" id="6_flash"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 14.0
 
 [sub_resource type="CircleShape2D" id="shape_hurtbox"]
 radius = 14.0
-
-[sub_resource type="RectangleShape2D" id="shape_attack"]
-size = Vector2(28, 16)
 
 [node name="Player" type="CharacterBody2D"]
 collision_layer = 2
@@ -34,6 +32,7 @@ shape = SubResource("shape_body")
 [node name="Visuals" type="Node2D" parent="."]
 
 [node name="Body" type="ColorRect" parent="Visuals"]
+material = ExtResource("6_flash")
 offset_left = -16.0
 offset_top = -16.0
 offset_right = 16.0
@@ -44,15 +43,6 @@ color = Color(0.2, 0.4, 0.9, 1)
 
 [node name="Weapon" type="Node2D" parent="WeaponPivot"]
 position = Vector2(50, 0)
-
-[node name="AttackArea" type="Area2D" parent="WeaponPivot/Weapon"]
-collision_mask = 64
-monitoring = false
-monitorable = false
-
-[node name="AttackShape" type="CollisionShape2D" parent="WeaponPivot/Weapon/AttackArea"]
-shape = SubResource("shape_attack")
-position = Vector2(14, 0)
 
 [node name="WallRaycast" type="RayCast2D" parent="WeaponPivot"]
 target_position = Vector2(50, 0)

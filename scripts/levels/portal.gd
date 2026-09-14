@@ -17,6 +17,11 @@ func _ready() -> void:
 	timer.timeout.connect(_on_timer_timeout)
 	status_label.text = ""
 
+	# Эффектное появление портала при спавне
+	scale = Vector2(0.05, 0.05)
+	var tween := create_tween()
+	tween.tween_property(self, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
 
 func _process(_delta: float) -> void:
 	if _transitioning:
@@ -68,18 +73,41 @@ func _on_timer_timeout() -> void:
 func _trigger_transition() -> void:
 	if _transitioning: return
 	_transitioning = true
-	
+
 	timer.stop()
 	status_label.text = "ПЕРЕХОД..."
-	
-	# Вызываем эффект затемнения в Game сцене
+
+	# Эффект вихря частиц портала
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("spawn_spark"):
+		vfx.spawn_spark(global_position, Color(0.85, 0.45, 1.0, 1.0))
+
+	# Затягивание игроков в центр портала
+	for p in _players_inside:
+		if is_instance_valid(p):
+			p.set_physics_process(false)
+			var p_tween := create_tween()
+			p_tween.set_parallel(true)
+			p_tween.tween_property(p, "global_position", global_position, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			p_tween.tween_property(p, "scale", Vector2(0.1, 0.1), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	# Затемнение экрана с указанием следующего этажа
 	var game = get_tree().current_scene
 	if game and game.has_method("fade_out"):
-		var tween = game.fade_out(0.6)
+		var gm = get_node_or_null("/root/GameManager")
+		var fl: int = (gm.current_floor + 1) if gm else 2
+		var tween: Tween = game.fade_out(0.8, fl)
 		if tween:
 			await tween.finished
-	
-	GameManager.next_floor()
+	else:
+		await get_tree().create_timer(0.8).timeout
+
+	# Пауза для комфортного чтения надписи этажа
+	await get_tree().create_timer(1.8).timeout
+
+	var gm = get_node_or_null("/root/GameManager")
+	if gm and gm.has_method("next_floor"):
+		gm.next_floor()
 
 
 func _get_total_players_count() -> int:

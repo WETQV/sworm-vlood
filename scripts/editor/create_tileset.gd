@@ -1,16 +1,16 @@
-@tool
-extends EditorScript
+extends SceneTree
 
 # Скрипт для создания TileSet ресурса
-# Запустить через Editor → Run
+# Запуск: godot --headless -s scripts/editor/create_tileset.gd
 
-func _run() -> void:
+func _init() -> void:
 	var ts := _create_dungeon_tileset()
 	var err := ResourceSaver.save(ts, "res://tilesets/dungeon_tileset.tres")
 	if err == OK:
 		print("✅ TileSet создан: res://tilesets/dungeon_tileset.tres")
 	else:
 		print("❌ Ошибка сохранения: %d" % err)
+	quit()
 
 
 func _create_dungeon_tileset() -> TileSet:
@@ -28,10 +28,10 @@ func _create_dungeon_tileset() -> TileSet:
 	# ── Источник тайлов ──
 	var src := TileSetAtlasSource.new()
 	
-	# Создаём текстуру: пол (серый) и стена (коричневый)
+	# Текстура: пол (серый) и стена (коричнево-серый)
 	var img := Image.create(128, 64, false, Image.FORMAT_RGBA8)
 	img.fill_rect(Rect2i(0, 0, 64, 64), Color(0.23, 0.23, 0.29))   # пол
-	img.fill_rect(Rect2i(64, 0, 64, 64), Color(0.42, 0.42, 0.48))  # стена
+	img.fill_rect(Rect2i(64, 0, 64, 64), Color.WHITE)               # стена (белая, чтобы modulate передавался без искажений)
 	
 	var tex := ImageTexture.create_from_image(img)
 	src.texture = tex
@@ -39,7 +39,7 @@ func _create_dungeon_tileset() -> TileSet:
 	
 	ts.add_source(src, 0)
 	
-	# Создаём тайлы
+	# Создаём базовые тайлы
 	src.create_tile(Vector2i(0, 0))  # пол
 	src.create_tile(Vector2i(1, 0))  # стена
 
@@ -49,18 +49,35 @@ func _create_dungeon_tileset() -> TileSet:
 		Vector2(-half, -half), Vector2(half, -half),
 		Vector2( half,  half), Vector2(-half,  half),
 	])
-	
-	var wall_data: TileData = src.get_tile_data(Vector2i(1, 0), 0)
-	if wall_data:
-		wall_data.add_collision_polygon(0)
-		wall_data.set_collision_polygon_points(0, 0, sq)
 
-	# ── Навигация пола ──
-	var floor_data: TileData = src.get_tile_data(Vector2i(0, 0), 0)
-	if floor_data:
-		var nav := NavigationPolygon.new()
-		nav.vertices = sq
-		nav.add_polygon(PackedInt32Array([0, 1, 2, 3]))
-		floor_data.set_navigation_polygon(0, nav)
+	# 16 вариантов альтернативных тайлов стены: битовая маска N(1) | S(2) | W(4) | E(8)
+	# Кодируем маску как нормализованное число в канале R, а альфу оставляем 1.0!
+	for mask in range(16):
+		var td: TileData
+		if mask == 0:
+			td = src.get_tile_data(Vector2i(1, 0), 0)
+		else:
+			src.create_alternative_tile(Vector2i(1, 0), mask)
+			td = src.get_tile_data(Vector2i(1, 0), mask)
+		
+		td.modulate = Color(float(mask) / 15.0, 0.0, 0.0, 1.0)
+		td.add_collision_polygon(0)
+		td.set_collision_polygon_points(0, 0, sq)
+
+	# ── Навигация пола и 8 альтернативных тайлов для контактных теней от стен ──
+	var nav := NavigationPolygon.new()
+	nav.vertices = sq
+	nav.add_polygon(PackedInt32Array([0, 1, 2, 3]))
+
+	for mask in range(8):
+		var fd: TileData
+		if mask == 0:
+			fd = src.get_tile_data(Vector2i(0, 0), 0)
+		else:
+			src.create_alternative_tile(Vector2i(0, 0), mask)
+			fd = src.get_tile_data(Vector2i(0, 0), mask)
+		
+		fd.modulate = Color(float(mask) / 7.0, 0.0, 0.0, 1.0)
+		fd.set_navigation_polygon(0, nav)
 
 	return ts

@@ -7,7 +7,7 @@
 [node name="RoomCombatLarge" unique_id=136556820 instance=ExtResource("1_base")]
 script = ExtResource("2_script")
 room_type = 1
-room_size = Vector2i(22, 18)
+room_size = Vector2i(22, 16)
 
 [node name="EnemySpawn1" type="Marker2D" parent="SpawnPoints" index="0" unique_id=1434696257]
 script = ExtResource("3_spawn")

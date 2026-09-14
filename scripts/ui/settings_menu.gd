@@ -61,33 +61,31 @@ func _ready() -> void:
 
 
 func _create_tab_styles() -> void:
-	# Активная вкладка
+	# Активная вкладка в готическом стиле
 	_tab_style_active = StyleBoxFlat.new()
-	_tab_style_active.bg_color = Color(0.15, 0.12, 0.18, 1)
+	_tab_style_active.bg_color = Color(0.18, 0.14, 0.22, 1)
 	_tab_style_active.border_width_left = 2
 	_tab_style_active.border_width_top = 2
 	_tab_style_active.border_width_right = 2
 	_tab_style_active.border_width_bottom = 2
 	_tab_style_active.border_color = Color(0.85, 0.68, 0.35, 1)
-	_tab_style_active.corner_radius_top_left = 6
-	_tab_style_active.corner_radius_top_right = 6
-	_tab_style_active.corner_radius_bottom_left = 6
-	_tab_style_active.corner_radius_bottom_right = 6
-	_tab_style_active.shadow_color = Color(0.85, 0.68, 0.35, 0.3)
-	_tab_style_active.shadow_size = 6
+	_tab_style_active.corner_radius_top_left = 2
+	_tab_style_active.corner_radius_top_right = 2
+	_tab_style_active.corner_radius_bottom_left = 2
+	_tab_style_active.corner_radius_bottom_right = 2
 	
-	# Неактивная вкладка
+	# Неактивная вкладка в готическом стиле
 	_tab_style_inactive = StyleBoxFlat.new()
-	_tab_style_inactive.bg_color = Color(0.1, 0.08, 0.12, 0.6)
+	_tab_style_inactive.bg_color = Color(0.08, 0.07, 0.11, 0.8)
 	_tab_style_inactive.border_width_left = 1
 	_tab_style_inactive.border_width_top = 1
 	_tab_style_inactive.border_width_right = 1
 	_tab_style_inactive.border_width_bottom = 1
-	_tab_style_inactive.border_color = Color(0.4, 0.35, 0.25, 0.5)
-	_tab_style_inactive.corner_radius_top_left = 6
-	_tab_style_inactive.corner_radius_top_right = 6
-	_tab_style_inactive.corner_radius_bottom_left = 6
-	_tab_style_inactive.corner_radius_bottom_right = 6
+	_tab_style_inactive.border_color = Color(0.35, 0.28, 0.18, 0.6)
+	_tab_style_inactive.corner_radius_top_left = 2
+	_tab_style_inactive.corner_radius_top_right = 2
+	_tab_style_inactive.corner_radius_bottom_left = 2
+	_tab_style_inactive.corner_radius_bottom_right = 2
 
 
 func _setup_ui() -> void:
@@ -120,6 +118,10 @@ func _update_tab_styles() -> void:
 func _switch_tab(tab_index: int) -> void:
 	if tab_index == _current_tab:
 		return
+	
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd:
+		snd.play_ui_click()
 	
 	_current_tab = tab_index
 	
@@ -205,6 +207,9 @@ func _setup_button_hover(btn: Button) -> void:
 		tween.tween_property(btn, "modulate", Color.WHITE, 0.15)
 	)
 	btn.button_down.connect(func():
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd:
+			snd.play_ui_click()
 		var tween = create_tween()
 		tween.tween_property(btn, "scale", Vector2(0.95, 0.95), 0.08)
 	)

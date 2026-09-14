@@ -13,17 +13,21 @@ func _build_room() -> void:
 
 
 func _add_pylons() -> void:
-	# Пилоны 3×3 в углах с отступом 3 тайла от стен
+	# Пилоны 2×2 в углах с симметричным отступом 3 тайла от стен
+	var pylon_size := 2
+	var pad := 3
 	var pylon_positions: Array[Vector2i] = [
-		Vector2i(3, 3),      # верх-лево
-		Vector2i(24, 3),     # верх-право
-		Vector2i(3, 19),     # низ-лево
-		Vector2i(24, 19),    # низ-право
+		Vector2i(pad, pad),                                                      # верх-лево
+		Vector2i(room_size.x - pad - pylon_size, pad),                           # верх-право
+		Vector2i(pad, room_size.y - pad - pylon_size),                           # низ-лево
+		Vector2i(room_size.x - pad - pylon_size, room_size.y - pad - pylon_size) # низ-право
 	]
 
 	for pos in pylon_positions:
-		for dx in range(3):
-			for dy in range(3):
+		for dx in range(pylon_size):
+			for dy in range(pylon_size):
 				var tile := pos + Vector2i(dx, dy)
 				wall_layer.set_cell(tile, 0, WALL_ATLAS)
 				floor_layer.erase_cell(tile)
+
+	update_autotiles()

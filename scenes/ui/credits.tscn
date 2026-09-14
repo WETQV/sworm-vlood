@@ -1,22 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://credits_01"]
 
 [ext_resource type="Script" path="res://scripts/ui/credits.gd" id="1_credits"]
-[ext_resource type="Theme" path="res://resources/dungeon_theme.tres" id="2_theme"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_credits_panel"]
-bg_color = Color(0.08, 0.06, 0.1, 0.95)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.76, 0.6, 0.32, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0, 0, 0, 0.6)
-shadow_size = 20
-shadow_offset = Vector2(0, 8)
+[ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
+[ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
 
 [node name="Credits" type="CanvasLayer"]
 layer = 25
@@ -43,8 +29,7 @@ grow_vertical = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme = ExtResource("2_theme")
-theme_override_styles/panel = SubResource("StyleBoxFlat_credits_panel")
-custom_minimum_size = Vector2(600, 500)
+custom_minimum_size = Vector2(620, 520)
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer"]
 layout_mode = 2
@@ -60,15 +45,17 @@ theme_override_constants/separation = 20
 [node name="Title" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 36
-text = "⚔ SWORM VLOOD ⚔"
+theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
+theme_override_fonts/font = ExtResource("3_font")
+theme_override_font_sizes/font_size = 40
+text = "SWORM VLOOD"
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.6, 0.4, 1)
 theme_override_font_sizes/font_size = 14
-text = "Roguelike • Twin-Stick Shooter • Co-op"
+text = "✦   О Б   И Г Р Е   ✦"
 horizontal_alignment = 1
 
 [node name="HSeparator" type="HSeparator" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
@@ -91,17 +78,17 @@ theme_override_constants/separation = 8
 [node name="SectionTitle" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/AuthorsSection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.68, 0.35, 1)
-theme_override_font_sizes/font_size = 20
-text = "👥 Авторы"
+theme_override_font_sizes/font_size = 18
+text = "АВТОРЫ"
 
 [node name="WETQV" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/AuthorsSection"]
 layout_mode = 2
-text = "    WETQV — Разработка"
+text = "WETQV — Разработка"
 horizontal_alignment = 1
 
 [node name="Vladbel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/AuthorsSection"]
 layout_mode = 2
-text = "    vladbel0727 — Разработка"
+text = "vladbel0727 — Разработка"
 horizontal_alignment = 1
 
 [node name="TechSection" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content"]
@@ -111,22 +98,22 @@ theme_override_constants/separation = 8
 [node name="SectionTitle" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/TechSection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.68, 0.35, 1)
-theme_override_font_sizes/font_size = 20
-text = "🛠️ Технологии"
+theme_override_font_sizes/font_size = 18
+text = "ТЕХНОЛОГИИ"
 
 [node name="Engine" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/TechSection"]
 layout_mode = 2
-text = "    Godot Engine 4.6.1"
+text = "Godot Engine 4.8 Mono"
 horizontal_alignment = 1
 
 [node name="Language" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/TechSection"]
 layout_mode = 2
-text = "    GDScript"
+text = "GDScript"
 horizontal_alignment = 1
 
 [node name="Physics" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/TechSection"]
 layout_mode = 2
-text = "    Jolt Physics 2D"
+text = "Jolt Physics 2D"
 horizontal_alignment = 1
 
 [node name="FeaturesSection" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content"]
@@ -136,32 +123,32 @@ theme_override_constants/separation = 8
 [node name="SectionTitle" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/FeaturesSection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.68, 0.35, 1)
-theme_override_font_sizes/font_size = 20
-text = "🎮 Особенности"
+theme_override_font_sizes/font_size = 18
+text = "ОСОБЕННОСТИ"
 
 [node name="Feature1" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/FeaturesSection"]
 layout_mode = 2
-text = "    4 уникальных класса персонажей"
+text = "4 уникальных класса персонажей"
 horizontal_alignment = 1
 
 [node name="Feature2" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/FeaturesSection"]
 layout_mode = 2
-text = "    Процедурная генерация подземелий"
+text = "Сеточная процедурная генерация подземелий"
 horizontal_alignment = 1
 
 [node name="Feature3" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/FeaturesSection"]
 layout_mode = 2
-text = "    Кооперативный мультиплеер (2-4 игрока)"
+text = "Кооперативный мультиплеер"
 horizontal_alignment = 1
 
 [node name="Feature4" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/FeaturesSection"]
 layout_mode = 2
-text = "    7 этажей + финальный босс"
+text = "7 этажей испытаний и финальный босс"
 horizontal_alignment = 1
 
 [node name="Feature5" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/FeaturesSection"]
 layout_mode = 2
-text = "    Система лута и прогрессии"
+text = "Динамическая боевая система и рывки"
 horizontal_alignment = 1
 
 [node name="StorySection" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content"]
@@ -171,17 +158,13 @@ theme_override_constants/separation = 8
 [node name="SectionTitle" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/StorySection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.68, 0.35, 1)
-theme_override_font_sizes/font_size = 20
-text = "📜 Лор"
+theme_override_font_sizes/font_size = 18
+text = "ПРЕДЫСТОРИЯ"
 
 [node name="StoryText" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ScrollContainer/Content/StorySection"]
 layout_mode = 2
 theme_override_constants/line_spacing = 4
-text = "    Глубоко под землёй, в древних катакомбах, 
-    пробудилось древнее зло. Отряд героев — 
-    Мечник, Лучник, Маг и Паладин — 
-    спускаются в подземелья, чтобы 
-    победить Некроманта и его приспешников."
+text = "В глубинах древних склепов пробудилась первородная тьма. Отряд героев спускается в подземелья, чтобы очистить катакомбы от скверны."
 autowrap_mode = 2
 horizontal_alignment = 1
 
@@ -193,7 +176,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 custom_minimum_size = Vector2(200, 45)
-text = "← Назад"
+text = "НАЗАД"
 
 [node name="HintLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2

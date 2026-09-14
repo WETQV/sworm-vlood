@@ -1,9 +1,21 @@
-[gd_scene load_steps=3 format=3 uid="uid://fireball_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://fireball_scene"]
 
 [ext_resource type="Script" path="res://scripts/items/fireball.gd" id="1_fireball"]
+[ext_resource type="Shader" path="res://resources/shaders/fireball_plasma.gdshader" id="2_shader"]
+
+[sub_resource type="Gradient" id="Gradient_embers"]
+offsets = PackedFloat32Array(0, 0.45, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.85, 1, 1, 1, 0)
+
+[sub_resource type="ShaderMaterial" id="mat_fireball"]
+shader = ExtResource("2_shader")
+shader_parameter/core_color = Color(1, 0.96, 0.7, 1)
+shader_parameter/inner_flame = Color(1, 0.45, 0.06, 1)
+shader_parameter/outer_flame = Color(0.85, 0.1, 0.02, 1)
+shader_parameter/speed = 9.0
 
 [sub_resource type="CircleShape2D" id="shape_fireball"]
-radius = 8.0
+radius = 9.0
 
 [node name="Fireball" type="Area2D"]
 script = ExtResource("1_fireball")
@@ -14,8 +26,22 @@ collision_mask = 65
 shape = SubResource("shape_fireball")
 
 [node name="Sprite" type="ColorRect" parent="."]
-offset_left = -8.0
-offset_top = -8.0
-offset_right = 8.0
-offset_bottom = 8.0
-color = Color(1, 0.4, 0.1, 1)
+material = SubResource("mat_fireball")
+offset_left = -16.0
+offset_top = -14.0
+offset_right = 16.0
+offset_bottom = 14.0
+
+[node name="Embers" type="CPUParticles2D" parent="."]
+position = Vector2(-6, 0)
+emitting = true
+amount = 12
+lifetime = 0.22
+spread = 25.0
+gravity = Vector2(-20, 0)
+initial_velocity_min = 30.0
+initial_velocity_max = 70.0
+scale_amount_min = 1.5
+scale_amount_max = 3.0
+color = Color(1, 0.55, 0.1, 0.8)
+color_ramp = SubResource("Gradient_embers")

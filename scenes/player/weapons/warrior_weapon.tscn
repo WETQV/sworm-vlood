@@ -1,24 +1,62 @@
-[gd_scene load_steps=2 format=3 uid="uid://warrior_weapon"]
+[gd_scene format=3 uid="uid://warrior_weapon"]
 
 [node name="WarriorWeapon" type="Node2D"]
 
-[node name="Blade" type="ColorRect" parent="."]
-offset_left = -10.0
-offset_top = -4.0
-offset_right = 14.0
-offset_bottom = 4.0
-color = Color(0.75, 0.75, 0.8, 1)
+[node name="BladeBase" type="Polygon2D" parent="."]
+color = Color(0.25, 0.28, 0.36, 1)
+polygon = PackedVector2Array(-6, -4, 20, -3.5, 26, 0, 20, 3.5, -6, 4)
 
-[node name="Guard" type="ColorRect" parent="."]
-offset_left = -12.0
-offset_top = -6.0
-offset_right = -8.0
-offset_bottom = 6.0
-color = Color(0.6, 0.5, 0.4, 1)
+[node name="BladeMain" type="Polygon2D" parent="."]
+color = Color(0.78, 0.82, 0.9, 1)
+polygon = PackedVector2Array(-5, -3.5, 19, -3, 25, 0, 19, 3, -5, 3.5)
 
-[node name="Handle" type="ColorRect" parent="."]
-offset_left = -18.0
-offset_top = -3.0
-offset_right = -10.0
-offset_bottom = 3.0
-color = Color(0.4, 0.3, 0.2, 1)
+[node name="BladeHighlight" type="Polygon2D" parent="."]
+color = Color(0.96, 0.98, 1, 0.9)
+polygon = PackedVector2Array(-5, -3.5, 19, -3, 25, 0, 18, 0, -5, 0)
+
+[node name="Fuller" type="Line2D" parent="."]
+points = PackedVector2Array(-3, 0, 16, 0)
+width = 1.4
+default_color = Color(0.42, 0.46, 0.56, 0.85)
+
+[node name="FullerRune" type="Line2D" parent="."]
+points = PackedVector2Array(-1, 0, 12, 0)
+width = 0.8
+default_color = Color(0.5, 0.85, 1, 0.65)
+
+[node name="GuardBack" type="Polygon2D" parent="."]
+color = Color(0.35, 0.28, 0.16, 1)
+polygon = PackedVector2Array(-8, -10, -5, -11, -4, 0, -5, 11, -8, 10, -6, 0)
+
+[node name="GuardGold" type="Polygon2D" parent="."]
+color = Color(0.92, 0.82, 0.42, 1)
+polygon = PackedVector2Array(-7.5, -9.5, -5.5, -10.5, -4.5, 0, -5.5, 10.5, -7.5, 9.5, -6.2, 0)
+
+[node name="GuardGem" type="Polygon2D" parent="."]
+color = Color(0.3, 0.75, 1, 1)
+polygon = PackedVector2Array(-4, 0, -5.5, -2, -7, 0, -5.5, 2)
+
+[node name="HiltShaft" type="Line2D" parent="."]
+points = PackedVector2Array(-16, 0, -6, 0)
+width = 4.0
+default_color = Color(0.24, 0.16, 0.12, 1)
+antialiased = true
+
+[node name="HiltWrap1" type="Line2D" parent="."]
+points = PackedVector2Array(-14, -2, -12, 2)
+width = 1.2
+default_color = Color(0.85, 0.72, 0.38, 1)
+
+[node name="HiltWrap2" type="Line2D" parent="."]
+points = PackedVector2Array(-11, -2, -9, 2)
+width = 1.2
+default_color = Color(0.85, 0.72, 0.38, 1)
+
+[node name="PommelSteel" type="Polygon2D" parent="."]
+color = Color(0.88, 0.8, 0.45, 1)
+polygon = PackedVector2Array(-19, 0, -17.5, -3.5, -15.5, -3.5, -14.5, 0, -15.5, 3.5, -17.5, 3.5)
+
+[node name="PommelBoss" type="Polygon2D" parent="."]
+color = Color(0.25, 0.65, 0.95, 1)
+polygon = PackedVector2Array(-17.5, 0, -16.5, -1.5, -15.5, 0, -16.5, 1.5)
+

@@ -74,6 +74,9 @@ func _on_button_exit() -> void:
 
 
 func _on_button_press() -> void:
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd:
+		snd.play_ui_click()
 	var tween = create_tween()
 	tween.tween_property(back_button, "scale", Vector2(0.95, 0.95), 0.08)
 

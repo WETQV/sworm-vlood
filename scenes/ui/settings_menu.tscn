@@ -1,48 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://settings_menu_01"]
 
 [ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="1_set"]
-[ext_resource type="Theme" path="res://resources/dungeon_theme.tres" id="2_theme"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_panel"]
-bg_color = Color(0.1, 0.08, 0.12, 0.95)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.76, 0.6, 0.32, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0, 0, 0, 0.6)
-shadow_size = 20
-shadow_offset = Vector2(0, 8)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_inactive"]
-bg_color = Color(0.1, 0.08, 0.12, 0.6)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 0.35, 0.25, 0.5)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_left = 6
-corner_radius_bottom_right = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_active"]
-bg_color = Color(0.15, 0.12, 0.18, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.85, 0.68, 0.35, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_left = 6
-corner_radius_bottom_right = 6
-shadow_color = Color(0.85, 0.68, 0.35, 0.3)
-shadow_size = 6
+[ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
+[ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
 
 [node name="SettingsMenu" type="CanvasLayer"]
 layer = 20
@@ -69,15 +29,14 @@ grow_vertical = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme = ExtResource("2_theme")
-theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
-custom_minimum_size = Vector2(550, 480)
+custom_minimum_size = Vector2(580, 500)
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer"]
 layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer"]
 layout_mode = 2
@@ -86,8 +45,10 @@ theme_override_constants/separation = 16
 [node name="Title" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "⚙ НАСТРОЙКИ"
+theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
+theme_override_fonts/font = ExtResource("3_font")
+theme_override_font_sizes/font_size = 32
+text = "НАСТРОЙКИ"
 horizontal_alignment = 1
 
 [node name="TabsContainer" type="HBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
@@ -98,32 +59,32 @@ alignment = 1
 
 [node name="TabSound" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/TabsContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 36)
+custom_minimum_size = Vector2(110, 36)
 layout_mode = 2
 toggle_mode = true
 button_pressed = true
-text = "🔊 Звук"
+text = "ЗВУК"
 
 [node name="TabVideo" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/TabsContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 36)
+custom_minimum_size = Vector2(110, 36)
 layout_mode = 2
 toggle_mode = true
-text = "🖥 Видео"
+text = "ВИДЕО"
 
 [node name="TabControls" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/TabsContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 36)
+custom_minimum_size = Vector2(130, 36)
 layout_mode = 2
 toggle_mode = true
-text = "🖱 Управление"
+text = "УПРАВЛЕНИЕ"
 
 [node name="TabNetwork" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/TabsContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(90, 36)
+custom_minimum_size = Vector2(110, 36)
 layout_mode = 2
 toggle_mode = true
-text = "🌐 Сеть"
+text = "СЕТЬ"
 
 [node name="ContentContainer" type="PanelContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
@@ -144,7 +105,7 @@ theme_override_constants/separation = 14
 
 [node name="MasterLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/SoundContent"]
 layout_mode = 2
-text = "🔊 Общая громкость"
+text = "Общая громкость"
 
 [node name="MasterSlider" type="HSlider" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/SoundContent"]
 unique_name_in_owner = true
@@ -155,7 +116,7 @@ value = 1.0
 
 [node name="MusicLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/SoundContent"]
 layout_mode = 2
-text = "🎵 Музыка"
+text = "Громкость музыки"
 
 [node name="MusicSlider" type="HSlider" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/SoundContent"]
 unique_name_in_owner = true
@@ -166,7 +127,7 @@ value = 0.8
 
 [node name="SFXLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/SoundContent"]
 layout_mode = 2
-text = "💥 Звуковые эффекты"
+text = "Звуковые эффекты"
 
 [node name="SFXSlider" type="HSlider" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/SoundContent"]
 unique_name_in_owner = true
@@ -184,18 +145,18 @@ theme_override_constants/separation = 14
 [node name="FullscreenCheck" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/VideoContent"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "🖥 Полноэкранный режим"
+text = "Полноэкранный режим"
 
 [node name="VSyncCheck" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/VideoContent"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "⚡ Вертикальная синхронизация (VSync)"
+text = "Вертикальная синхронизация (VSync)"
 button_pressed = true
 
 [node name="BorderlessCheck" type="CheckBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/VideoContent"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "🪟 Безрамочный режим"
+text = "Окно без рамки"
 
 [node name="ControlsContent" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin"]
 unique_name_in_owner = true
@@ -205,7 +166,7 @@ theme_override_constants/separation = 14
 
 [node name="MouseLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/ControlsContent"]
 layout_mode = 2
-text = "🖱 Чувствительность мыши"
+text = "Чувствительность мыши"
 
 [node name="MouseSlider" type="HSlider" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/ControlsContent"]
 unique_name_in_owner = true
@@ -217,7 +178,7 @@ value = 1.0
 
 [node name="CameraZoomLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/ControlsContent"]
 layout_mode = 2
-text = "🔍 Приближение камеры"
+text = "Масштаб камеры"
 
 [node name="CameraZoomSlider" type="HSlider" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/ControlsContent"]
 unique_name_in_owner = true
@@ -235,7 +196,7 @@ theme_override_constants/separation = 14
 
 [node name="NameLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/NetworkContent"]
 layout_mode = 2
-text = "👤 Имя игрока"
+text = "Имя персонажа"
 
 [node name="NameEdit" type="LineEdit" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/NetworkContent"]
 unique_name_in_owner = true
@@ -245,7 +206,7 @@ placeholder_text = "Введите имя..."
 
 [node name="PortLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/NetworkContent"]
 layout_mode = 2
-text = "🔌 Порт для игры по сети"
+text = "Сетевой порт"
 
 [node name="PortSpinBox" type="SpinBox" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ContentContainer/Margin/NetworkContent"]
 unique_name_in_owner = true
@@ -263,13 +224,13 @@ alignment = 1
 unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 42)
 layout_mode = 2
-text = "✓ Применить"
+text = "ПРИМЕНИТЬ"
 
 [node name="BackButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 42)
 layout_mode = 2
-text = "← Назад"
+text = "НАЗАД"
 
 [node name="HintLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2

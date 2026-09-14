@@ -5,29 +5,29 @@
 
 [node name="RoomChest" unique_id=452107752 instance=ExtResource("1_base")]
 room_type = 2
-room_size = Vector2i(11, 9)
+room_size = Vector2i(14, 10)
 
 [node name="ChestSpawn" type="Marker2D" parent="SpawnPoints" index="0" unique_id=646283551]
 script = ExtResource("2_spawn")
-position = Vector2(352, 288)
+position = Vector2(448, 320)
 type = 2
 
 [node name="GuardSpawn1" type="Marker2D" parent="SpawnPoints" index="1" unique_id=1709003457]
 script = ExtResource("2_spawn")
-position = Vector2(192, 192)
+position = Vector2(256, 192)
 type = 0
 
 [node name="GuardSpawn2" type="Marker2D" parent="SpawnPoints" index="2" unique_id=1555886127]
 script = ExtResource("2_spawn")
-position = Vector2(512, 192)
+position = Vector2(640, 192)
 type = 0
 
 [node name="GuardSpawn3" type="Marker2D" parent="SpawnPoints" index="3" unique_id=642482156]
 script = ExtResource("2_spawn")
-position = Vector2(192, 384)
+position = Vector2(256, 448)
 type = 0
 
 [node name="GuardSpawn4" type="Marker2D" parent="SpawnPoints" index="4" unique_id=1774495457]
 script = ExtResource("2_spawn")
-position = Vector2(512, 384)
+position = Vector2(640, 448)
 type = 0

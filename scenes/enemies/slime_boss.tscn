@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://slime_boss_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://slime_boss_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_boss.gd" id="3_boss"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_ai.gd" id="4_slimeai"]
+[ext_resource type="Material" path="res://resources/shaders/slime_boss_material.tres" id="4_mat"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 30.0
@@ -31,6 +32,7 @@ shape = SubResource("shape_body")
 [node name="Visuals" type="Node2D" parent="."]
 
 [node name="Body" type="ColorRect" parent="Visuals"]
+material = ExtResource("4_mat")
 offset_left = -30.0
 offset_top = -30.0
 offset_right = 30.0

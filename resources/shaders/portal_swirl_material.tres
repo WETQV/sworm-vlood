@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/portal_swirl.gdshader" id="1_swirl"]
+
+[resource]
+shader = ExtResource("1_swirl")
+shader_parameter/void_color = Color(0.12, 0.03, 0.24, 1)
+shader_parameter/rune_color = Color(0.75, 0.25, 0.98, 1)
+shader_parameter/rim_glow_color = Color(0.92, 0.7, 1, 1)
+shader_parameter/swirl_speed = 2.4
+shader_parameter/wave_intensity = 0.025

@@ -1,32 +1,52 @@
-[gd_scene format=3 uid="uid://df2ks83nfkta2"]
+[gd_scene load_steps=5 format=3 uid="uid://df2ks83nfkta2"]
 
-[ext_resource type="Script" path="res://scripts/levels/portal.gd" id="1_xxx"]
+[ext_resource type="Script" uid="uid://yvg6kn7232rq" path="res://scripts/levels/portal.gd" id="1_portal"]
+[ext_resource type="Material" path="res://resources/shaders/portal_swirl_material.tres" id="2_mat"]
+
+[sub_resource type="Gradient" id="Gradient_vortex"]
+offsets = PackedFloat32Array(0, 0.25, 0.8, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0.9, 1, 1, 1, 0)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
-radius = 128.0
+radius = 48.0
 
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_portal"]
-size = Vector2(128, 128)
-
-[node name="Portal" type="Area2D"]
+[node name="Portal" type="Area2D" unique_id=386595889]
 z_index = 2
 collision_layer = 4
 collision_mask = 2
-script = ExtResource("1_xxx")
+script = ExtResource("1_portal")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-modulate = Color(0.4, 0.2, 0.8, 0.6)
-texture = SubResource("PlaceholderTexture2D_portal")
+[node name="CosmicVortex" type="CPUParticles2D" parent="." unique_id=1781989433]
+amount = 24
+lifetime = 0.8
+emission_shape = 1
+emission_sphere_radius = 46.0
+gravity = Vector2(0, 0)
+orbit_velocity_min = 1.8
+orbit_velocity_max = 3.2
+radial_accel_min = -120.0
+radial_accel_max = -120.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(0.85, 0.45, 1, 0.85)
+color_ramp = SubResource("Gradient_vortex")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="Visual" type="ColorRect" parent="." unique_id=1070033723]
+material = ExtResource("2_mat")
+offset_left = -52.0
+offset_top = -52.0
+offset_right = 52.0
+offset_bottom = 52.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1561555049]
 shape = SubResource("CircleShape2D_1")
 
-[node name="Timer" type="Timer" parent="."]
+[node name="Timer" type="Timer" parent="." unique_id=1867525402]
 one_shot = true
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1636154873]
 
-[node name="StatusLabel" type="Label" parent="UI"]
+[node name="StatusLabel" type="Label" parent="UI" unique_id=148324393]
 unique_name_in_owner = true
 anchors_preset = 8
 anchor_left = 0.5

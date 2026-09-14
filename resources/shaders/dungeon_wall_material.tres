@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bcfcyobb2jix1"]
+
+[ext_resource type="Shader" uid="uid://c4xvffe7msxcd" path="res://resources/shaders/dungeon_wall.gdshader" id="1_wall"]
+
+[resource]
+shader = ExtResource("1_wall")
+shader_parameter/wall_base = Color(0.25, 0.25, 0.31, 1)
+shader_parameter/wall_highlight = Color(0.38, 0.38, 0.46, 1)
+shader_parameter/wall_dark = Color(0.13, 0.13, 0.18, 1)
+shader_parameter/mortar_color = Color(0.06, 0.06, 0.09, 1)

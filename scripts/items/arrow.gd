@@ -1,40 +1,53 @@
 extends Area2D
 class_name Arrow
-## Стрела — снаряд лучника
+## Стрела — снаряд лучника.
 
 var direction: Vector2 = Vector2.RIGHT
 var damage: int = 20
-var speed: float = 400.0
+var speed: float = 450.0
 var lifetime: float = 3.0
+var knockback_force: float = 160.0
+
+var _elapsed_time: float = 0.0
 
 
 func _ready() -> void:
 	area_entered.connect(_on_area_entered)
 	body_entered.connect(_on_body_entered)
-	
-	# Повернуть по направлению
-	rotation = direction.angle()
-	
-	# Уничтожить через время
-	await get_tree().create_timer(lifetime).timeout
-	queue_free()
+	if direction != Vector2.ZERO:
+		rotation = direction.angle()
+
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_bow_shoot"):
+		snd.play_bow_shoot()
 
 
 func _process(delta: float) -> void:
 	global_position += direction * speed * delta
+	_elapsed_time += delta
+	if _elapsed_time >= lifetime:
+		queue_free()
 
 
 func _on_area_entered(area: Area2D) -> void:
-	# Защита: бьём только врагов
-	if not area.get_parent().is_in_group("enemy"):
-		return
-	
-	if area.has_method("receive_damage"):
-		area.receive_damage(damage, 150.0, global_position)
-		print("Стрела попала в: ", area.get_parent().name)
+	# Наносим урон только врагам
+	if area.has_method("receive_damage") and area.get_parent().is_in_group("enemy"):
+		area.receive_damage(damage, knockback_force, global_position, null)
+		var vfx = get_node_or_null("/root/VFXManager")
+		if vfx and vfx.has_method("spawn_pierce_spark"):
+			vfx.spawn_pierce_spark(global_position, direction)
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd and snd.has_method("play_arrow_hit"):
+			snd.play_arrow_hit()
 		queue_free()
 
 
 func _on_body_entered(_body: Node2D) -> void:
-	# Попали в физическое тело (например, стену)
+	# Столкновение со стеной
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("spawn_pierce_spark"):
+		vfx.spawn_pierce_spark(global_position, direction)
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_arrow_hit"):
+		snd.play_arrow_hit()
 	queue_free()

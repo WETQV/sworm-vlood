@@ -1,9 +1,22 @@
-[gd_scene load_steps=3 format=3 uid="uid://arrow_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://arrow_scene"]
 
 [ext_resource type="Script" path="res://scripts/items/arrow.gd" id="1_arrow"]
+[ext_resource type="Shader" path="res://resources/shaders/arrow_trail.gdshader" id="2_shader"]
+
+[sub_resource type="Gradient" id="Gradient_arrow"]
+offsets = PackedFloat32Array(0, 0.4, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.8, 1, 1, 1, 0)
+
+[sub_resource type="ShaderMaterial" id="mat_arrow"]
+shader = ExtResource("2_shader")
+shader_parameter/shaft_color = Color(0.2, 0.88, 0.42, 1)
+shader_parameter/core_glow = Color(0.75, 1, 0.85, 1)
+shader_parameter/tip_color = Color(0.95, 0.95, 1, 1)
+shader_parameter/trail_color = Color(0.12, 0.65, 0.32, 0.6)
+shader_parameter/trail_speed = 10.0
 
 [sub_resource type="RectangleShape2D" id="shape_arrow"]
-size = Vector2(16, 4)
+size = Vector2(20, 6)
 
 [node name="Arrow" type="Area2D"]
 script = ExtResource("1_arrow")
@@ -14,8 +27,22 @@ collision_mask = 65
 shape = SubResource("shape_arrow")
 
 [node name="Sprite" type="ColorRect" parent="."]
-offset_left = -8.0
-offset_top = -2.0
-offset_right = 8.0
-offset_bottom = 2.0
-color = Color(0.2, 0.7, 0.3, 1)
+material = SubResource("mat_arrow")
+offset_left = -14.0
+offset_top = -6.0
+offset_right = 14.0
+offset_bottom = 6.0
+
+[node name="TrailParticles" type="CPUParticles2D" parent="."]
+position = Vector2(-10, 0)
+emitting = true
+amount = 8
+lifetime = 0.18
+spread = 15.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 20.0
+initial_velocity_max = 50.0
+scale_amount_min = 1.0
+scale_amount_max = 2.0
+color = Color(0.3, 0.9, 0.5, 0.7)
+color_ramp = SubResource("Gradient_arrow")

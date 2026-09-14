@@ -24,3 +24,5 @@ func _add_columns() -> void:
 				var tile := pos + Vector2i(dx, dy)
 				wall_layer.set_cell(tile, 0, WALL_ATLAS)
 				floor_layer.erase_cell(tile)
+
+	update_autotiles()

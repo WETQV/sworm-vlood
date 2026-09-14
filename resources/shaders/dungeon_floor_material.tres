@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/dungeon_floor.gdshader" id="1_floor"]
+
+[resource]
+shader = ExtResource("1_floor")
+shader_parameter/stone_base = Color(0.2, 0.2, 0.26, 1)
+shader_parameter/stone_highlight = Color(0.27, 0.27, 0.35, 1)
+shader_parameter/mortar_color = Color(0.1, 0.1, 0.14, 1)
+shader_parameter/tile_size = 64.0

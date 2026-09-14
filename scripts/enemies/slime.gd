@@ -1,29 +1,20 @@
 extends CharacterBody2D
-## Slime.gd — простой враг, идёт к игроку и бьёт контактом
+class_name Slime
+## Slime.gd — базовый противник (слайм).
 
 @onready var health_component: HealthComponent = $HealthComponent
-@onready var attack_area: Area2D = $AttackArea
 @onready var body_sprite: ColorRect = $Visuals/Body
+@onready var visuals: Node2D = $Visuals
 @onready var hurtbox: Hurtbox = $Hurtbox
 @onready var hp_bar: ProgressBar = $HPBar
 
-# --- Настройки ---
 @export var speed: float = 70.0
+@export var detection_range: float = 1000.0
 @export var contact_damage: int = 10
-@export var attack_cooldown: float = 1.0
-@export var stop_distance: float = 20.0
-@export var detection_range: float = 2000.0
+@export var knockback_resistance: float = 1.0
 
-	# --- Внутреннее состояние ---
 var _knockback_velocity: Vector2 = Vector2.ZERO
 
-# --- Цвета ---
-var _color_normal: Color = Color("44cc44")
-var _color_damaged: Color = Color("ccaa44")      # Желтоватый (50-70% HP)
-var _color_wounded: Color = Color("cc8844")       # Оранжевый (30-50% HP)
-var _color_critical: Color = Color("cc4444")      # Красный (< 30% HP)
-
-var _wobble_tween: Tween = null
 
 func _ready() -> void:
 	add_to_group("enemy")
@@ -32,87 +23,107 @@ func _ready() -> void:
 	health_component.health_changed.connect(_on_health_changed)
 	hurtbox.damage_received.connect(_on_damage_received)
 
-	# HP бар
 	hp_bar.max_value = health_component.max_health
 	hp_bar.value = health_component.current_health
 
-	body_sprite.color = _color_normal
-	
-	# Обновляем цвет сразу при старте
-	_update_color_by_health()
+	# Эффект материализации слизи при появлении
+	_play_spawn_animation()
 
 
-func _physics_process(_delta: float) -> void:
+func _play_spawn_animation() -> void:
+	visuals.scale = Vector2(0.1, 0.1)
+	visuals.modulate.a = 0.0
+	hp_bar.modulate.a = 0.0
+
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("spawn_enemy_spawn_burst"):
+		var part_col: Color = Color("ee3333") if name.contains("Boss") else Color("44cc44")
+		vfx.spawn_enemy_spawn_burst(global_position, part_col)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(visuals, "modulate:a", 1.0, 0.22)
+	tween.tween_property(hp_bar, "modulate:a", 1.0, 0.22)
+	tween.tween_property(visuals, "scale", Vector2(1.25, 0.75), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_property(visuals, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_SINE)
+
+
+func _physics_process(delta: float) -> void:
 	if not health_component.is_alive():
 		return
 
-	# Движение теперь управляется нодой SlimeAI (если она есть)
-	# Отбрасывание всё еще обрабатываем тут
-	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 600.0 * _delta)
-
-	if not has_node("SlimeAI"):
+	# Четкое затухание отбрасывания без накопления скорости
+	if _knockback_velocity.length_squared() > 1.0:
+		_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 1400.0 * delta)
 		velocity = _knockback_velocity
 		move_and_slide()
 
 
-## Получил урон — отбрасывание
 func _on_damage_received(_amount: int, knockback: Vector2) -> void:
-	_knockback_velocity = knockback
+	# Ограничиваем силу импульса, чтобы мобы не улетали в космос
+	var impulse: Vector2 = knockback * (1.0 / max(0.2, knockback_resistance))
+	_knockback_velocity = impulse.limit_length(220.0)
+
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_enemy_hit"):
+		snd.play_enemy_hit()
 
 
-## HP изменилось — обновляем цвет и визуальные эффекты
 func _on_health_changed(current: int, maximum: int) -> void:
 	hp_bar.max_value = maximum
 	hp_bar.value = current
-	
-	# Обновляем цвет по HP
-	_update_color_by_health()
 
 
-## Обновить цвет слайма в зависимости от процента HP
-func _update_color_by_health() -> void:
-	if not health_component:
-		return
-	
-	var hp_percent = health_component.get_health_percent()
-	
-	# Останавливаем предыдущую дрожь
-	if _wobble_tween:
-		_wobble_tween.kill()
-	
-	if hp_percent < 0.2:
-		# КРИТИЧЕСКОЕ HP (< 20%) — ярко-красный + дрожь
-		body_sprite.color = _color_critical
-		_start_wobble_animation()
-	elif hp_percent < 0.4:
-		# РАНЕНЫЙ (20-40%) — оранжевый
-		body_sprite.color = _color_wounded
-	elif hp_percent < 0.7:
-		# ПОВРЕЖДЁН (40-70%) — желтоватый
-		body_sprite.color = _color_damaged
-	else:
-		# ЗДОРОВ (70-100%) — зелёный
-		body_sprite.color = _color_normal
-
-
-## Анимация дрожи для критического HP
-func _start_wobble_animation() -> void:
-	# Слайм дрожит от боли (быстрое смещение вверх-вниз)
-	_wobble_tween = create_tween().set_loops()
-	_wobble_tween.tween_property(body_sprite, "position:y", -2.0, 0.08)
-	_wobble_tween.tween_property(body_sprite, "position:y", 0.0, 0.08)
-
-
-## Смерть
 func _on_died(killed_by: Node2D) -> void:
-	# Сообщаем убийце для threat-системы
+	set_physics_process(false)
+	set_process(false)
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector2.ZERO
+	hp_bar.visible = false
+
+	# 1. Мгновенно отключаем и удаляем боевой хитбокс, чтобы мёртвый моб не мог бить игрока
+	var attack_area := get_node_or_null("AttackArea") as HitboxComponent
+	if attack_area:
+		attack_area.is_active = false
+		attack_area.set_deferred("monitoring", false)
+		attack_area.set_deferred("monitorable", false)
+		attack_area.queue_free()
+
+	# 2. Мгновенно отключаем получение урона (Hurtbox)
+	if hurtbox:
+		hurtbox.set_deferred("monitoring", false)
+		hurtbox.set_deferred("monitorable", false)
+		hurtbox.set_deferred("collision_layer", 0)
+		hurtbox.set_deferred("collision_mask", 0)
+
+	# 3. Мгновенно останавливаем контроллер ИИ
+	var ai := get_node_or_null("SlimeAI") as SlimeAI
+	if ai:
+		ai.set_physics_process(false)
+		ai.set_process(false)
+
 	if is_instance_valid(killed_by) and killed_by.has_node("PlayerInfo"):
 		killed_by.get_node("PlayerInfo").register_kill()
-	
-	set_physics_process(false)
 
+	# Всплеск частиц смерти
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("spawn_death_burst"):
+		var part_col: Color = Color("ee3333") if name.contains("Boss") else Color("44cc44")
+		vfx.spawn_death_burst(global_position, part_col)
+
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_enemy_death"):
+		snd.play_enemy_death()
+
+	# Эффект растворения (Dissolve)
 	var tween: Tween = create_tween()
-	tween.tween_property(self, "modulate:a", 0.0, 0.4)
+	body_sprite.set_instance_shader_parameter("dissolve_amount", 0.0)
+	tween.tween_method(
+		func(val: float) -> void:
+			if is_instance_valid(body_sprite):
+				body_sprite.set_instance_shader_parameter("dissolve_amount", val),
+		0.0, 1.0, 0.35
+	)
+	tween.parallel().tween_property(visuals, "scale", Vector2(1.3, 0.4), 0.35)
 	tween.tween_callback(queue_free)
-
-	print("%s убит!" % name)

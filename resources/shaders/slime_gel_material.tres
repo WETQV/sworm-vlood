@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/slime_gel.gdshader" id="1_gel"]
+
+[resource]
+shader = ExtResource("1_gel")
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/base_color = Color(0.28, 0.82, 0.32, 1)
+shader_parameter/rim_color = Color(0.1, 0.45, 0.16, 1)
+shader_parameter/core_color = Color(0.7, 0.98, 0.58, 1)
+shader_parameter/wobble_speed = 4.2
+shader_parameter/wobble_intensity = 0.032

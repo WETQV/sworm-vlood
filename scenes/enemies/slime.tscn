@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://slime_scene"]
+[gd_scene load_steps=9 format=3 uid="uid://slime_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime.gd" id="3_slime"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_ai.gd" id="4_slimeai"]
+[ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="5_hitbox"]
+[ext_resource type="Material" path="res://resources/shaders/slime_gel_material.tres" id="6_flash"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 12.0
@@ -29,6 +31,7 @@ shape = SubResource("shape_body")
 [node name="Visuals" type="Node2D" parent="."]
 
 [node name="Body" type="ColorRect" parent="Visuals"]
+material = ExtResource("6_flash")
 offset_left = -12.0
 offset_top = -12.0
 offset_right = 12.0
@@ -36,8 +39,10 @@ offset_bottom = 12.0
 color = Color(0.266, 0.8, 0.266, 1)
 
 [node name="AttackArea" type="Area2D" parent="."]
-monitoring = true
+script = ExtResource("5_hitbox")
 collision_mask = 32
+damage = 10
+knockback_force = 180.0
 
 [node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
 shape = SubResource("shape_attack")
@@ -59,14 +64,8 @@ value = 40.0
 show_percentage = false
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
-path_desired_distance = 20.0
-target_desired_distance = 20.0
-
-[node name="ObstacleRaycast" type="RayCast2D" parent="."]
-target_position = Vector2(30, 0)
-collision_mask = 1
+path_desired_distance = 15.0
+target_desired_distance = 25.0
 
 [node name="SlimeAI" type="Node" parent="."]
 script = ExtResource("4_slimeai")
-dash_speed = 150.0
-attack_range = 25.0

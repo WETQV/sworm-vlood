@@ -50,13 +50,13 @@ func _create_transition_overlay() -> void:
 
 
 func _setup_ui() -> void:
-	# Текст кнопок
-	play_button.text = "⚔  ИГРАТЬ"
-	host_button.text = "🌐  Создать сервер"
-	join_button.text = "🔗  Подключиться"
-	settings_button.text = "⚙  Настройки"
-	credits_button.text = "📜  Об игре"
-	quit_button.text = "🚪  Выход"
+	# Текст кнопок в готическом стиле без эмодзи
+	play_button.text = "В БОЙ"
+	host_button.text = "СОЗДАТЬ СЕРВЕР"
+	join_button.text = "ПОДКЛЮЧИТЬСЯ"
+	settings_button.text = "НАСТРОЙКИ"
+	credits_button.text = "ОБ ИГРЕ"
+	quit_button.text = "ВЫХОД"
 	
 	# Мультиплеер пока не готов
 	host_button.visible = false
@@ -139,6 +139,9 @@ func _on_button_exit(btn: Button) -> void:
 
 
 func _on_button_press(btn: Button) -> void:
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd:
+		snd.play_ui_click()
 	var tween = create_tween()
 	tween.tween_property(btn, "scale", Vector2(0.95, 0.95), 0.08).set_ease(Tween.EASE_IN)
 

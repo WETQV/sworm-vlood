@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://class_select"]
+[gd_scene load_steps=5 format=3 uid="uid://class_select"]
 
 [ext_resource type="Script" path="res://scripts/ui/class_select.gd" id="1_class"]
-[ext_resource type="Theme" path="res://resources/dungeon_theme.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
+[ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
+[ext_resource type="Material" path="res://resources/shaders/dungeon_ambient_material.tres" id="4_mat"]
 
 [node name="ClassSelect" type="Control"]
 layout_mode = 3
@@ -14,13 +16,14 @@ theme = ExtResource("2_theme")
 script = ExtResource("1_class")
 
 [node name="Background" type="ColorRect" parent="."]
+material = ExtResource("4_mat")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.05, 0.03, 0.08, 1)
+color = Color(0.04, 0.03, 0.06, 1)
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -40,13 +43,18 @@ theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 36
-text = "⚔ ВЫБЕРИ КЛАСС ⚔"
+theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
+theme_override_colors/font_shadow_color = Color(0.7, 0.15, 0.15, 0.7)
+theme_override_constants/shadow_offset_y = 3
+theme_override_fonts/font = ExtResource("3_font")
+theme_override_font_sizes/font_size = 46
+text = "ВЫБЕРИТЕ КЛАСС"
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
 layout_mode = 2
-text = "Каждый класс имеет уникальные способности"
+theme_override_colors/font_color = Color(0.65, 0.6, 0.55, 1)
+text = "Каждый герой обладает уникальным стилем боя и боевыми навыками"
 horizontal_alignment = 1
 
 [node name="CardsContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
@@ -362,12 +370,12 @@ alignment = 1
 [node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
 custom_minimum_size = Vector2(180, 50)
 layout_mode = 2
-text = "⚔  ИГРАТЬ"
+text = "В БОЙ"
 
 [node name="BackButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
 custom_minimum_size = Vector2(180, 50)
 layout_mode = 2
-text = "↩  Назад"
+text = "НАЗАД"
 
 [node name="SelectedIndicator" type="PanelContainer" parent="CenterContainer/VBoxContainer"]
 visible = false

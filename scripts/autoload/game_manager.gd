@@ -17,25 +17,25 @@ const CLASS_DATA: Dictionary = {
 		"name": "Мечник",
 		"description": "Ближний бой. Высокий урон и крепкое здоровье.",
 		"color": Color(0.8, 0.2, 0.2),
-		"stats": {"hp": 120, "damage": 25, "speed": 200}
+		"stats": {"hp": 120, "damage": 25, "speed": 280}
 	},
 	PlayerClass.RANGER: {
 		"name": "Лучник",
 		"description": "Дальний бой. Быстрый и ловкий.",
 		"color": Color(0.2, 0.7, 0.3),
-		"stats": {"hp": 80, "damage": 20, "speed": 260}
+		"stats": {"hp": 80, "damage": 20, "speed": 340}
 	},
 	PlayerClass.MAGE: {
 		"name": "Маг",
 		"description": "Мощная магия. Хрупкий, но смертоносный.",
 		"color": Color(0.3, 0.5, 0.9),
-		"stats": {"hp": 70, "damage": 35, "speed": 200}
+		"stats": {"hp": 70, "damage": 35, "speed": 270}
 	},
 	PlayerClass.PALADIN: {
 		"name": "Паладин",
-		"description": "Щит и вера. Защищает союзников.",
-		"color": Color(0.9, 0.8, 0.2),
-		"stats": {"hp": 150, "damage": 15, "speed": 170}
+		"description": "Священный джаггернаут. Молот со взрывной волной, таран щитом при рывке и -25% к урону.",
+		"color": Color(0.95, 0.82, 0.25),
+		"stats": {"hp": 180, "damage": 38, "speed": 260}
 	}
 }
 

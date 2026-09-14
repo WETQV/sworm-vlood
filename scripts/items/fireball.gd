@@ -1,40 +1,53 @@
 extends Area2D
 class_name Fireball
-## Огненный шар — снаряд мага
+## Огненный шар — снаряд мага.
 
 var direction: Vector2 = Vector2.RIGHT
 var damage: int = 35
-var speed: float = 300.0
+var speed: float = 340.0
 var lifetime: float = 2.5
+var knockback_force: float = 120.0
+
+var _elapsed_time: float = 0.0
 
 
 func _ready() -> void:
 	area_entered.connect(_on_area_entered)
 	body_entered.connect(_on_body_entered)
-	
-	# Повернуть по направлению
-	rotation = direction.angle()
-	
-	# Уничтожить через время
-	await get_tree().create_timer(lifetime).timeout
-	queue_free()
+	if direction != Vector2.ZERO:
+		rotation = direction.angle()
+
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_fireball_cast"):
+		snd.play_fireball_cast()
 
 
 func _process(delta: float) -> void:
 	global_position += direction * speed * delta
+	_elapsed_time += delta
+	if _elapsed_time >= lifetime:
+		queue_free()
 
 
 func _on_area_entered(area: Area2D) -> void:
-	# Защита: бьём только врагов
-	if not area.get_parent().is_in_group("enemy"):
-		return
-	
-	if area.has_method("receive_damage"):
-		area.receive_damage(damage, 200.0, global_position)
-		print("Фаербол попал в: ", area.get_parent().name)
+	# Наносим урон только врагам
+	if area.has_method("receive_damage") and area.get_parent().is_in_group("enemy"):
+		area.receive_damage(damage, knockback_force, global_position, null)
+		var vfx = get_node_or_null("/root/VFXManager")
+		if vfx and vfx.has_method("spawn_fire_explosion"):
+			vfx.spawn_fire_explosion(global_position)
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd and snd.has_method("play_fireball_explosion"):
+			snd.play_fireball_explosion()
 		queue_free()
 
 
 func _on_body_entered(_body: Node2D) -> void:
-	# Попали в физическое тело (стену)
+	# Столкновение со стеной
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("spawn_fire_explosion"):
+		vfx.spawn_fire_explosion(global_position)
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_fireball_explosion"):
+		snd.play_fireball_explosion()
 	queue_free()

@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/dungeon_gate.gdshader" id="1_gate"]
+
+[resource]
+shader = ExtResource("1_gate")
+shader_parameter/iron_base = Color(0.22, 0.22, 0.27, 1)
+shader_parameter/iron_highlight = Color(0.65, 0.65, 0.75, 1)
+shader_parameter/iron_shadow = Color(0.08, 0.08, 0.12, 1)
+shader_parameter/rune_glow = Color(1, 0.25, 0.15, 1)
+shader_parameter/bar_count = 10.0
+shader_parameter/seal_pulse_speed = 3.2
