@@ -322,10 +322,11 @@ func _start_dash(input_dir: Vector2, aim_vector: Vector2) -> void:
 	_dashed_hit_targets.clear()
 	_dash_ghost_timer = 0.0
 
-	if input_dir.length_squared() > 0.01:
-		_dash_direction = input_dir.normalized()
-	elif aim_vector.length_squared() > 0.01:
+	# Дэш всегда направлен в сторону курсора мыши
+	if aim_vector.length_squared() > 0.01:
 		_dash_direction = aim_vector.normalized()
+	elif input_dir.length_squared() > 0.01:
+		_dash_direction = input_dir.normalized()
 	else:
 		_dash_direction = Vector2.RIGHT
 

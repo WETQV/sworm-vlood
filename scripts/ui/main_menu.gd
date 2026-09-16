@@ -93,10 +93,12 @@ func _connect_signals() -> void:
 	credits_button.pressed.connect(_on_credits_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	
-	# Hover эффекты для всех кнопок
+	# Hover и Focus эффекты для всех кнопок
 	for btn in _all_buttons:
 		btn.mouse_entered.connect(_on_button_hover.bind(btn))
+		btn.focus_entered.connect(_on_button_hover.bind(btn))
 		btn.mouse_exited.connect(_on_button_exit.bind(btn))
+		btn.focus_exited.connect(_on_button_exit.bind(btn))
 		btn.button_down.connect(_on_button_press.bind(btn))
 		btn.button_up.connect(_on_button_release.bind(btn))
 
@@ -125,10 +127,12 @@ func _start_entrance_animation() -> void:
 
 
 func _on_button_hover(btn: Button) -> void:
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_ui_hover"):
+		snd.play_ui_hover()
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(btn, "scale", Vector2(button_scale_hover, button_scale_hover), 0.15).set_ease(Tween.EASE_OUT)
-	tween.tween_property(btn, "modulate", Color(1.1, 1.05, 0.95, 1.0), 0.15)
 
 
 func _on_button_exit(btn: Button) -> void:
@@ -202,3 +206,12 @@ func _transition_to(scene_path: String) -> void:
 	var tween = _fade_to_black(0.25)
 	tween.tween_callback(func(): GameManager.change_scene(scene_path))
 	tween.play()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		for child in get_children():
+			if child is CanvasLayer:
+				return
+		_on_quit_pressed()
+		get_viewport().set_input_as_handled()

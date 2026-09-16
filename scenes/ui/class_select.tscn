@@ -1,9 +1,138 @@
-[gd_scene load_steps=5 format=3 uid="uid://class_select"]
+[gd_scene load_steps=19 format=3 uid="uid://class_select"]
 
 [ext_resource type="Script" path="res://scripts/ui/class_select.gd" id="1_class"]
 [ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
 [ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
 [ext_resource type="Material" path="res://resources/shaders/dungeon_ambient_material.tres" id="4_mat"]
+[ext_resource type="Script" path="res://scripts/ui/class_card.gd" id="5_card"]
+[ext_resource type="Shader" path="res://resources/shaders/liquid_card.gdshader" id="6_card_shader"]
+[ext_resource type="Shader" path="res://resources/shaders/liquid_orb.gdshader" id="7_orb_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_card_warrior"]
+shader = ExtResource("6_card_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.32, 0.25, 0.16, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.88, 0.2, 0.22, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/card_size = Vector2(220, 340)
+shader_parameter/corner_radius_px = 16.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_orb_warrior"]
+shader = ExtResource("7_orb_shader")
+shader_parameter/core_color = Color(0.06, 0.04, 0.09, 0.9)
+shader_parameter/rim_color = Color(0.42, 0.32, 0.2, 0.85)
+shader_parameter/glow_color = Color(0.88, 0.2, 0.22, 0.65)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/radius_px = 35.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_card_ranger"]
+shader = ExtResource("6_card_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.32, 0.25, 0.16, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.22, 0.82, 0.45, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/card_size = Vector2(220, 340)
+shader_parameter/corner_radius_px = 16.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_orb_ranger"]
+shader = ExtResource("7_orb_shader")
+shader_parameter/core_color = Color(0.06, 0.04, 0.09, 0.9)
+shader_parameter/rim_color = Color(0.42, 0.32, 0.2, 0.85)
+shader_parameter/glow_color = Color(0.22, 0.82, 0.45, 0.65)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/radius_px = 35.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_card_mage"]
+shader = ExtResource("6_card_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.32, 0.25, 0.16, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.35, 0.55, 0.95, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/card_size = Vector2(220, 340)
+shader_parameter/corner_radius_px = 16.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_orb_mage"]
+shader = ExtResource("7_orb_shader")
+shader_parameter/core_color = Color(0.06, 0.04, 0.09, 0.9)
+shader_parameter/rim_color = Color(0.42, 0.32, 0.2, 0.85)
+shader_parameter/glow_color = Color(0.35, 0.55, 0.95, 0.65)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/radius_px = 35.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_card_paladin"]
+shader = ExtResource("6_card_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.32, 0.25, 0.16, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.95, 0.82, 0.25, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/card_size = Vector2(220, 340)
+shader_parameter/corner_radius_px = 16.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_orb_paladin"]
+shader = ExtResource("7_orb_shader")
+shader_parameter/core_color = Color(0.06, 0.04, 0.09, 0.9)
+shader_parameter/rim_color = Color(0.42, 0.32, 0.2, 0.85)
+shader_parameter/glow_color = Color(0.95, 0.82, 0.25, 0.65)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/radius_px = 35.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.12, 0.09, 0.16, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.44, 0.35, 0.22, 0.85)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.22, 0.16, 0.28, 0.98)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.85, 0.48, 1)
+shadow_color = Color(0.96, 0.85, 0.48, 0.25)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+bg_color = Color(0.08, 0.06, 0.12, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.9, 0.5, 1)
 
 [node name="ClassSelect" type="Control"]
 layout_mode = 3
@@ -35,11 +164,11 @@ grow_vertical = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 18
 
 [node name="TitleSection" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
 layout_mode = 2
@@ -47,28 +176,36 @@ theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
 theme_override_colors/font_shadow_color = Color(0.7, 0.15, 0.15, 0.7)
 theme_override_constants/shadow_offset_y = 3
 theme_override_fonts/font = ExtResource("3_font")
-theme_override_font_sizes/font_size = 46
+theme_override_font_sizes/font_size = 44
 text = "ВЫБЕРИТЕ КЛАСС"
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer/TitleSection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.6, 0.55, 1)
+theme_override_font_sizes/font_size = 14
 text = "Каждый герой обладает уникальным стилем боя и боевыми навыками"
 horizontal_alignment = 1
 
 [node name="CardsContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/separation = 20
+theme_override_constants/separation = 18
 
 [node name="WarriorCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
-custom_minimum_size = Vector2(200, 280)
+custom_minimum_size = Vector2(220, 340)
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("5_card")
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard"]
+material = SubResource("ShaderMaterial_card_warrior")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
@@ -76,74 +213,117 @@ theme_override_constants/margin_bottom = 16
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 12
+mouse_filter = 2
+theme_override_constants/separation = 8
 alignment = 1
 
-[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
+[node name="WeaponDisplay" type="Control" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "⚔️"
-horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="OrbBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+material = SubResource("ShaderMaterial_orb_warrior")
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WeaponPivot" type="Marker2D" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+position = Vector2(94, 40)
 
 [node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+mouse_filter = 2
+theme_override_font_sizes/font_size = 19
 text = "Мечник"
 horizontal_alignment = 1
 
 [node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.7, 0.65, 0.6, 1)
+theme_override_font_sizes/font_size = 13
 text = "Ближний бой"
 horizontal_alignment = 1
-add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
 
 [node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 150.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 200.0
 value = 120.0
 show_percentage = false
 
 [node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "HP: 120"
 horizontal_alignment = 1
 
 [node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 35.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 50.0
 value = 25.0
 show_percentage = false
 
 [node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "Урон: 25"
 horizontal_alignment = 1
 
 [node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 260.0
-value = 200.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 350.0
+value = 280.0
 show_percentage = false
 
 [node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/WarriorCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
-text = "Скорость: 200"
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "Скорость: 280"
 horizontal_alignment = 1
 
 [node name="RangerCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
-custom_minimum_size = Vector2(200, 280)
+custom_minimum_size = Vector2(220, 340)
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("5_card")
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard"]
+material = SubResource("ShaderMaterial_card_ranger")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
@@ -151,74 +331,117 @@ theme_override_constants/margin_bottom = 16
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 12
+mouse_filter = 2
+theme_override_constants/separation = 8
 alignment = 1
 
-[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
+[node name="WeaponDisplay" type="Control" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "🏹"
-horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="OrbBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+material = SubResource("ShaderMaterial_orb_ranger")
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WeaponPivot" type="Marker2D" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+position = Vector2(94, 40)
 
 [node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+mouse_filter = 2
+theme_override_font_sizes/font_size = 19
 text = "Лучник"
 horizontal_alignment = 1
 
 [node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.7, 0.65, 0.6, 1)
+theme_override_font_sizes/font_size = 13
 text = "Дальний бой"
 horizontal_alignment = 1
-add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
 
 [node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 150.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 200.0
 value = 80.0
 show_percentage = false
 
 [node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "HP: 80"
 horizontal_alignment = 1
 
 [node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 35.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 50.0
 value = 20.0
 show_percentage = false
 
 [node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "Урон: 20"
 horizontal_alignment = 1
 
 [node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 260.0
-value = 260.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 350.0
+value = 340.0
 show_percentage = false
 
 [node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/RangerCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
-text = "Скорость: 260"
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "Скорость: 340"
 horizontal_alignment = 1
 
 [node name="MageCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
-custom_minimum_size = Vector2(200, 280)
+custom_minimum_size = Vector2(220, 340)
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("5_card")
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard"]
+material = SubResource("ShaderMaterial_card_mage")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
@@ -226,74 +449,117 @@ theme_override_constants/margin_bottom = 16
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 12
+mouse_filter = 2
+theme_override_constants/separation = 8
 alignment = 1
 
-[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
+[node name="WeaponDisplay" type="Control" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "🔮"
-horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="OrbBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+material = SubResource("ShaderMaterial_orb_mage")
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WeaponPivot" type="Marker2D" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+position = Vector2(94, 40)
 
 [node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+mouse_filter = 2
+theme_override_font_sizes/font_size = 19
 text = "Маг"
 horizontal_alignment = 1
 
 [node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.7, 0.65, 0.6, 1)
+theme_override_font_sizes/font_size = 13
 text = "Магический урон"
 horizontal_alignment = 1
-add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
 
 [node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 150.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 200.0
 value = 70.0
 show_percentage = false
 
 [node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "HP: 70"
 horizontal_alignment = 1
 
 [node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 35.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 50.0
 value = 35.0
 show_percentage = false
 
 [node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "Урон: 35"
 horizontal_alignment = 1
 
 [node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 260.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 350.0
 value = 200.0
 show_percentage = false
 
 [node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/MageCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
 text = "Скорость: 200"
 horizontal_alignment = 1
 
 [node name="PaladinCard" type="PanelContainer" parent="CenterContainer/VBoxContainer/CardsContainer"]
-custom_minimum_size = Vector2(200, 280)
+custom_minimum_size = Vector2(220, 340)
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("5_card")
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard"]
+material = SubResource("ShaderMaterial_card_paladin")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
@@ -301,82 +567,126 @@ theme_override_constants/margin_bottom = 16
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 12
+mouse_filter = 2
+theme_override_constants/separation = 8
 alignment = 1
 
-[node name="Icon" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
+[node name="WeaponDisplay" type="Control" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "🛡️"
-horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="OrbBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+material = SubResource("ShaderMaterial_orb_paladin")
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="WeaponPivot" type="Marker2D" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/WeaponDisplay"]
+position = Vector2(94, 40)
 
 [node name="Name" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+mouse_filter = 2
+theme_override_font_sizes/font_size = 19
 text = "Паладин"
 horizontal_alignment = 1
 
 [node name="Role" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.7, 0.65, 0.6, 1)
+theme_override_font_sizes/font_size = 13
 text = "Танк / Поддержка"
 horizontal_alignment = 1
-add_theme_color_override("font_color") = Color(0.7, 0.65, 0.6, 1)
 
 [node name="StatsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="HPBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 150.0
-value = 150.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 200.0
+value = 180.0
 show_percentage = false
 
 [node name="HPLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
-text = "HP: 150"
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "HP: 180"
 horizontal_alignment = 1
 
 [node name="DamageBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 35.0
-value = 15.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 50.0
+value = 38.0
 show_percentage = false
 
 [node name="DamageLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
-text = "Урон: 15"
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "Урон: 38"
 horizontal_alignment = 1
 
 [node name="SpeedBar" type="ProgressBar" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
-custom_minimum_size = Vector2(140, 18)
+custom_minimum_size = Vector2(148, 16)
 layout_mode = 2
-max_value = 260.0
-value = 170.0
+size_flags_horizontal = 4
+mouse_filter = 2
+max_value = 350.0
+value = 260.0
 show_percentage = false
 
 [node name="SpeedLabel" type="Label" parent="CenterContainer/VBoxContainer/CardsContainer/PaladinCard/MarginContainer/VBoxContainer/StatsContainer"]
 layout_mode = 2
-text = "Скорость: 170"
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "Скорость: 260"
 horizontal_alignment = 1
 
 [node name="ButtonsContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 24
 alignment = 1
 
 [node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
-custom_minimum_size = Vector2(180, 50)
+custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.88, 0.65, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "В БОЙ"
 
 [node name="BackButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
-custom_minimum_size = Vector2(180, 50)
+custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.72, 0.68, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "НАЗАД"
-
-[node name="SelectedIndicator" type="PanelContainer" parent="CenterContainer/VBoxContainer"]
-visible = false
-layout_mode = 2

@@ -1,11 +1,65 @@
-[gd_scene load_steps=4 format=3 uid="uid://settings_menu_01"]
+[gd_scene load_steps=11 format=3 uid="uid://settings_menu_01"]
 
 [ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="1_set"]
 [ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
 [ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
+[ext_resource type="Shader" path="res://resources/shaders/liquid_card.gdshader" id="4_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_panel"]
+shader = ExtResource("4_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.38, 0.3, 0.18, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.45, 0.35, 0.22, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.3
+shader_parameter/card_size = Vector2(580, 500)
+shader_parameter/corner_radius_px = 18.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.12, 0.09, 0.16, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.44, 0.35, 0.22, 0.85)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.22, 0.16, 0.28, 0.98)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.85, 0.48, 1)
+shadow_color = Color(0.96, 0.85, 0.48, 0.25)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+bg_color = Color(0.08, 0.06, 0.12, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.9, 0.5, 1)
 
 [node name="SettingsMenu" type="CanvasLayer"]
-layer = 20
+layer = 100
 script = ExtResource("1_set")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -29,7 +83,13 @@ grow_vertical = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
 custom_minimum_size = Vector2(580, 500)
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/PanelContainer"]
+material = SubResource("ShaderMaterial_panel")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer"]
 layout_mode = 2
@@ -222,14 +282,26 @@ alignment = 1
 
 [node name="ApplyButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(150, 44)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.88, 0.65, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "ПРИМЕНИТЬ"
 
 [node name="BackButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 42)
+custom_minimum_size = Vector2(150, 44)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.72, 0.68, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "НАЗАД"
 
 [node name="HintLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]

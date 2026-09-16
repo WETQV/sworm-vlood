@@ -1,9 +1,104 @@
-[gd_scene load_steps=5 format=3 uid="uid://main_menu"]
+[gd_scene load_steps=14 format=3 uid="uid://main_menu"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_menu"]
 [ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
 [ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
 [ext_resource type="Material" path="res://resources/shaders/dungeon_ambient_material.tres" id="4_mat"]
+[ext_resource type="Shader" path="res://resources/shaders/liquid_card.gdshader" id="5_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_title"]
+shader = ExtResource("5_shader")
+shader_parameter/bg_color = Color(0.08, 0.05, 0.11, 0.96)
+shader_parameter/border_color = Color(0.42, 0.32, 0.2, 0.85)
+shader_parameter/hover_border_color = Color(0.9, 0.72, 0.35, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.48, 1)
+shader_parameter/accent_color = Color(0.85, 0.2, 0.22, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.4
+shader_parameter/card_size = Vector2(480, 110)
+shader_parameter/corner_radius_px = 16.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_buttons"]
+shader = ExtResource("5_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.35, 0.28, 0.18, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.4, 0.3, 0.2, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.0
+shader_parameter/card_size = Vector2(340, 290)
+shader_parameter/corner_radius_px = 18.0
+shader_parameter/border_width_px = 2.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.11, 0.08, 0.15, 0.95)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.34, 0.22, 0.85)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.2, 0.15, 0.26, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.85, 0.48, 1)
+shadow_color = Color(0.96, 0.85, 0.48, 0.25)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+bg_color = Color(0.08, 0.06, 0.12, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.9, 0.5, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_play_normal"]
+bg_color = Color(0.18, 0.08, 0.12, 0.96)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.32, 0.25, 0.9)
+shadow_color = Color(0.85, 0.2, 0.2, 0.2)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_play_hover"]
+bg_color = Color(0.28, 0.12, 0.18, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.65, 0.35, 1)
+shadow_color = Color(0.95, 0.35, 0.25, 0.4)
+shadow_size = 10
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -43,10 +138,18 @@ theme_override_constants/separation = 8
 
 [node name="TitlePanel" type="PanelContainer" parent="CenterContainer/VBoxContainer/TitleSection"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 110)
 layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/TitleSection/TitlePanel"]
+material = SubResource("ShaderMaterial_title")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/TitleSection/TitlePanel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 40
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 40
@@ -55,6 +158,7 @@ theme_override_constants/margin_bottom = 20
 [node name="Title" type="Label" parent="CenterContainer/VBoxContainer/TitleSection/TitlePanel/MarginContainer"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
 theme_override_colors/font_shadow_color = Color(0.7, 0.15, 0.15, 0.7)
 theme_override_constants/shadow_offset_y = 3
@@ -72,60 +176,95 @@ text = "✦   Т Ь М А   И   К Р О В Ь   ✦"
 horizontal_alignment = 1
 
 [node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 
 [node name="ButtonsContainer" type="PanelContainer" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(340, 290)
 layout_mode = 2
 size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+material = SubResource("ShaderMaterial_buttons")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 30
-theme_override_constants/margin_top = 20
+theme_override_constants/margin_top = 24
 theme_override_constants/margin_right = 30
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_bottom = 24
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 55)
+custom_minimum_size = Vector2(280, 50)
 layout_mode = 2
-text = "⚔  ИГРАТЬ"
+theme_override_colors/font_color = Color(1, 0.92, 0.75, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0.9, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_play_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_play_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_play_hover")
+text = "В БОЙ"
 
 [node name="HostButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 50)
+visible = false
+custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
-text = "🌐  Создать сервер"
+text = "Создать сервер"
 
 [node name="JoinButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 50)
+visible = false
+custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
-text = "🔗  Подключиться"
+text = "Подключиться"
 
 [node name="SettingsButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 50)
+custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
-text = "⚙  Настройки"
+theme_override_colors/font_color = Color(0.85, 0.8, 0.75, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "НАСТРОЙКИ"
 
 [node name="CreditsButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 50)
+custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
-text = "📜  Об игре"
+theme_override_colors/font_color = Color(0.85, 0.8, 0.75, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "ОБ ИГРЕ"
 
 [node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 50)
+custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
-text = "🚪  Выход"
+theme_override_colors/font_color = Color(0.75, 0.7, 0.65, 1)
+theme_override_colors/font_hover_color = Color(1, 0.9, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
+text = "ВЫХОД"
 
 [node name="BottomBar" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -133,12 +272,16 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 24.0
 offset_top = -40.0
+offset_right = -24.0
 grow_horizontal = 2
 grow_vertical = 0
 
 [node name="VersionLabel" type="Label" parent="BottomBar"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.45, 0.4, 0.8)
+theme_override_font_sizes/font_size = 13
 text = "v0.1.0 Alpha"
 
 [node name="Spacer" type="Control" parent="BottomBar"]
@@ -147,5 +290,7 @@ size_flags_horizontal = 3
 
 [node name="AuthorsLabel" type="Label" parent="BottomBar"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.45, 0.4, 0.8)
+theme_override_font_sizes/font_size = 13
 text = "WETQV & vladbel0727"
 horizontal_alignment = 2

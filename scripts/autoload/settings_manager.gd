@@ -26,14 +26,14 @@ func _ready() -> void:
 	apply_settings()
 
 func apply_settings() -> void:
-	# Видео
-	if fullscreen:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	# Видео: меняем режим окна только если он реально отличается
+	var target_mode := DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+	if DisplayServer.window_get_mode() != target_mode:
+		DisplayServer.window_set_mode(target_mode)
 		
-	var vsync_mode := DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED
-	DisplayServer.window_set_vsync_mode(vsync_mode)
+	var target_vsync := DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED
+	if DisplayServer.window_get_vsync_mode() != target_vsync:
+		DisplayServer.window_set_vsync_mode(target_vsync)
 	
 	# Аудио
 	if AudioServer.bus_count > 0:

@@ -144,6 +144,9 @@ func fade_out(duration: float = 0.6, next_floor: int = -1) -> Tween:
 	return tween
 
 
+var _btn_resume: Button = null
+
+
 func _setup_pause_menu() -> void:
 	_pause_layer = CanvasLayer.new()
 	_pause_layer.name = "PauseLayer"
@@ -160,7 +163,7 @@ func _setup_pause_menu() -> void:
 	# Полупрозрачная темная вуаль
 	var backdrop := ColorRect.new()
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0.04, 0.04, 0.06, 0.82)
+	backdrop.color = Color(0.04, 0.04, 0.06, 0.85)
 	_pause_overlay.add_child(backdrop)
 
 	var center := CenterContainer.new()
@@ -168,46 +171,81 @@ func _setup_pause_menu() -> void:
 	_pause_overlay.add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.theme = load("res://resources/themes/gothic_theme.tres")
-	panel.custom_minimum_size = Vector2(340, 260)
+	panel.custom_minimum_size = Vector2(360, 360)
+	var empty_style := StyleBoxEmpty.new()
+	panel.add_theme_stylebox_override("panel", empty_style)
 	center.add_child(panel)
 
+	# Ликвид-шейдер для фона паузы
+	var shader_bg := ColorRect.new()
+	shader_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shader_mat := ShaderMaterial.new()
+	shader_mat.shader = load("res://resources/shaders/liquid_card.gdshader")
+	shader_mat.set_shader_parameter("bg_color", Color(0.08, 0.05, 0.11, 0.96))
+	shader_mat.set_shader_parameter("border_color", Color(0.42, 0.32, 0.20, 0.85))
+	shader_mat.set_shader_parameter("hover_border_color", Color(0.88, 0.68, 0.32, 1.0))
+	shader_mat.set_shader_parameter("select_border_color", Color(1.0, 0.88, 0.46, 1.0))
+	shader_mat.set_shader_parameter("accent_color", Color(0.85, 0.20, 0.22, 1.0))
+	shader_mat.set_shader_parameter("card_size", Vector2(360, 360))
+	shader_mat.set_shader_parameter("corner_radius_px", 18.0)
+	shader_mat.set_shader_parameter("border_width_px", 2.5)
+	shader_mat.set_shader_parameter("select_amount", 0.35)
+	shader_bg.material = shader_mat
+	panel.add_child(shader_bg)
+
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 32)
+	margin.add_theme_constant_override("margin_right", 32)
+	margin.add_theme_constant_override("margin_top", 26)
+	margin.add_theme_constant_override("margin_bottom", 26)
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_theme_constant_override("separation", 12)
 	margin.add_child(vbox)
 
 	var title := Label.new()
 	title.text = "ПАУЗА"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", load("res://resources/fonts/RuslanDisplay-Regular.ttf"))
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", 36)
 	title.add_theme_color_override("font_color", Color(0.96, 0.85, 0.52, 1.0))
+	title.add_theme_color_override("font_shadow_color", Color(0.7, 0.15, 0.15, 0.7))
+	title.add_theme_constant_override("shadow_offset_y", 2)
 	vbox.add_child(title)
 
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 8)
+	spacer.custom_minimum_size = Vector2(0, 4)
 	vbox.add_child(spacer)
 
-	var btn_resume := Button.new()
-	btn_resume.text = "ПРОДОЛЖИТЬ"
-	btn_resume.custom_minimum_size = Vector2(0, 44)
-	btn_resume.pressed.connect(func():
+	_btn_resume = Button.new()
+	_btn_resume.text = "ПРОДОЛЖИТЬ"
+	_btn_resume.custom_minimum_size = Vector2(0, 46)
+	_style_pause_button(_btn_resume, true)
+	_btn_resume.pressed.connect(func():
 		var snd = get_node_or_null("/root/SoundManager")
 		if snd: snd.play_ui_click()
 		_toggle_pause(false)
 	)
-	vbox.add_child(btn_resume)
+	vbox.add_child(_btn_resume)
+
+	var btn_settings := Button.new()
+	btn_settings.text = "НАСТРОЙКИ"
+	btn_settings.custom_minimum_size = Vector2(0, 44)
+	_style_pause_button(btn_settings, false)
+	btn_settings.pressed.connect(func():
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd: snd.play_ui_click()
+		_open_settings()
+	)
+	vbox.add_child(btn_settings)
 
 	var btn_restart := Button.new()
 	btn_restart.text = "НАЧАТЬ ЗАНОВО"
 	btn_restart.custom_minimum_size = Vector2(0, 44)
+	_style_pause_button(btn_restart, false)
 	btn_restart.pressed.connect(func():
 		var snd = get_node_or_null("/root/SoundManager")
 		if snd: snd.play_ui_click()
@@ -219,6 +257,7 @@ func _setup_pause_menu() -> void:
 	var btn_menu := Button.new()
 	btn_menu.text = "В ГЛАВНОЕ МЕНЮ"
 	btn_menu.custom_minimum_size = Vector2(0, 44)
+	_style_pause_button(btn_menu, false)
 	btn_menu.pressed.connect(func():
 		var snd = get_node_or_null("/root/SoundManager")
 		if snd: snd.play_ui_click()
@@ -228,14 +267,87 @@ func _setup_pause_menu() -> void:
 	vbox.add_child(btn_menu)
 
 
+func _style_pause_button(btn: Button, is_primary: bool) -> void:
+	btn.pivot_offset = Vector2(148, 22)
+	var normal_style = StyleBoxFlat.new()
+	normal_style.corner_radius_top_left = 12
+	normal_style.corner_radius_top_right = 12
+	normal_style.corner_radius_bottom_left = 12
+	normal_style.corner_radius_bottom_right = 12
+	normal_style.border_width_left = 2
+	normal_style.border_width_top = 2
+	normal_style.border_width_right = 2
+	normal_style.border_width_bottom = 2
+	
+	if is_primary:
+		normal_style.bg_color = Color(0.18, 0.08, 0.12, 0.96)
+		normal_style.border_color = Color(0.85, 0.32, 0.25, 0.9)
+		btn.add_theme_color_override("font_color", Color(1.0, 0.92, 0.75, 1.0))
+	else:
+		normal_style.bg_color = Color(0.11, 0.08, 0.15, 0.95)
+		normal_style.border_color = Color(0.42, 0.34, 0.22, 0.85)
+		btn.add_theme_color_override("font_color", Color(0.85, 0.80, 0.75, 1.0))
+	
+	var hover_style = normal_style.duplicate() as StyleBoxFlat
+	hover_style.bg_color = Color(0.22, 0.15, 0.26, 0.98)
+	hover_style.border_color = Color(0.96, 0.85, 0.48, 1.0)
+	hover_style.shadow_color = Color(0.96, 0.85, 0.48, 0.25)
+	hover_style.shadow_size = 6
+	
+	btn.add_theme_stylebox_override("normal", normal_style)
+	btn.add_theme_stylebox_override("hover", hover_style)
+	btn.add_theme_stylebox_override("pressed", hover_style)
+	btn.add_theme_stylebox_override("focus", hover_style)
+	
+	var on_focus = func():
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd and snd.has_method("play_ui_hover"):
+			snd.play_ui_hover()
+		var t = create_tween()
+		t.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		t.tween_property(btn, "scale", Vector2(1.04, 1.04), 0.15)
+	
+	var on_unfocus = func():
+		var t = create_tween()
+		t.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		t.tween_property(btn, "scale", Vector2.ONE, 0.15)
+	
+	btn.mouse_entered.connect(on_focus)
+	btn.focus_entered.connect(on_focus)
+	btn.mouse_exited.connect(on_unfocus)
+	btn.focus_exited.connect(on_unfocus)
+
+
+func _open_settings() -> void:
+	if _pause_layer and _pause_layer.has_node("SettingsMenu"):
+		return
+	var settings_scene = preload("res://scenes/ui/settings_menu.tscn").instantiate()
+	settings_scene.name = "SettingsMenu"
+	settings_scene.layer = 100
+	if _pause_overlay:
+		_pause_overlay.visible = false
+	settings_scene.tree_exited.connect(func():
+		if get_tree().paused and _pause_overlay:
+			_pause_overlay.visible = true
+			if _btn_resume:
+				_btn_resume.grab_focus()
+	)
+	_pause_layer.add_child(settings_scene)
+
+
 func _toggle_pause(do_pause: bool) -> void:
 	if _pause_overlay:
 		_pause_overlay.visible = do_pause
 	get_tree().paused = do_pause
+	if do_pause and _btn_resume:
+		_btn_resume.grab_focus()
 
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		# Если открыты настройки поверх паузы, пусть они сами обрабатывают ESC
+		if _pause_layer and _pause_layer.has_node("SettingsMenu"):
+			return
 		_toggle_pause(not get_tree().paused)
 		get_viewport().set_input_as_handled()
 		return

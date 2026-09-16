@@ -300,14 +300,14 @@ dash={
 
 [physics]
 
-2d/run_on_separate_thread=true
+2d/run_on_separate_thread=false
 3d/physics_engine="Jolt Physics"
 2d/default_gravity=0.0
 common/physics_interpolation=true
 
 [rendering]
 
-rendering_device/driver.windows="d3d12"
+rendering_device/driver.windows="vulkan"
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true

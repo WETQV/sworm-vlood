@@ -1,7 +1,12 @@
 extends Control
 
-## ClassSelect — экран выбора класса
-## Стиль: Фэнтези/Подземелье
+## ClassSelect — экран выбора класса в органическом/ликвид стиле
+## Стиль: Sworm Vlood Liquid Forms
+
+const WARRIOR_WEAPON = preload("res://scenes/player/weapons/warrior_weapon.tscn")
+const RANGER_WEAPON = preload("res://scenes/player/weapons/ranger_weapon.tscn")
+const MAGE_WEAPON = preload("res://scenes/player/weapons/mage_weapon.tscn")
+const PALADIN_WEAPON = preload("res://scenes/player/weapons/paladin_weapon.tscn")
 
 @onready var cards_container: HBoxContainer = $CenterContainer/VBoxContainer/CardsContainer
 @onready var play_button: Button = $CenterContainer/VBoxContainer/ButtonsContainer/PlayButton
@@ -11,58 +16,48 @@ extends Control
 
 var _class_cards: Array[PanelContainer] = []
 var _selected_index: int = 0
-var _normal_style: StyleBoxFlat
-var _selected_styles: Array[StyleBoxFlat] = []
 
-# Цвета для классов
-const CLASS_COLORS: Array[Color] = [
-	Color(0.8, 0.2, 0.2),   # Warrior - красный
-	Color(0.2, 0.7, 0.3),   # Ranger - зелёный
-	Color(0.3, 0.5, 0.9),   # Mage - синий
-	Color(0.9, 0.8, 0.2)    # Paladin - жёлтый
+# Конфигурация оружия внутри сферических витрин
+const WEAPON_CONFIGS: Array[Dictionary] = [
+	{
+		"scene": WARRIOR_WEAPON,
+		"rot": -40.0,
+		"scale": 1.35,
+		"offset": Vector2(-3.0, 0.0),
+		"color": Color(0.88, 0.22, 0.25)
+	},
+	{
+		"scene": RANGER_WEAPON,
+		"rot": -15.0,
+		"scale": 1.15,
+		"offset": Vector2(-2.0, 0.0),
+		"color": Color(0.22, 0.82, 0.45)
+	},
+	{
+		"scene": MAGE_WEAPON,
+		"rot": -40.0,
+		"scale": 1.35,
+		"offset": Vector2(-3.0, 0.0),
+		"color": Color(0.35, 0.55, 0.95)
+	},
+	{
+		"scene": PALADIN_WEAPON,
+		"rot": 0.0,
+		"scale": 1.6,
+		"offset": Vector2(-3.0, 0.0),
+		"color": Color(0.95, 0.82, 0.25)
+	}
 ]
 
-# Overlay для переходов
 var _transition_overlay: ColorRect
 
 
 func _ready() -> void:
-	_create_styles()
 	_create_transition_overlay()
 	_find_class_cards()
 	_setup_ui()
 	_connect_signals()
 	_start_entrance_animation()
-
-
-func _create_styles() -> void:
-	# Базовый стиль карточки (темный обсидиан с состаренной бронзой)
-	_normal_style = StyleBoxFlat.new()
-	_normal_style.bg_color = Color(0.08, 0.06, 0.11, 0.95)
-	_normal_style.corner_radius_top_left = 2
-	_normal_style.corner_radius_top_right = 2
-	_normal_style.corner_radius_bottom_left = 2
-	_normal_style.corner_radius_bottom_right = 2
-	_normal_style.border_width_left = 2
-	_normal_style.border_width_top = 2
-	_normal_style.border_width_right = 2
-	_normal_style.border_width_bottom = 2
-	_normal_style.border_color = Color(0.35, 0.28, 0.18, 0.8)
-	_normal_style.shadow_color = Color(0, 0, 0, 0.6)
-	_normal_style.shadow_size = 8
-
-	# Стиль выделенной карточки (благородная золотая 2px окантовка)
-	for color in CLASS_COLORS:
-		var style = _normal_style.duplicate()
-		style.bg_color = Color(0.14, 0.11, 0.19, 0.98)
-		style.border_color = Color(0.95, 0.82, 0.45, 1.0)
-		style.border_width_left = 2
-		style.border_width_top = 2
-		style.border_width_right = 2
-		style.border_width_bottom = 2
-		style.shadow_color = Color(0.95, 0.82, 0.45, 0.2)
-		style.shadow_size = 8
-		_selected_styles.append(style)
 
 
 func _create_transition_overlay() -> void:
@@ -80,7 +75,10 @@ func _find_class_cards() -> void:
 	for child in cards_container.get_children():
 		if child is PanelContainer:
 			_class_cards.append(child)
-			child.gui_input.connect(_on_card_input.bind(child))
+			if child.has_signal("card_clicked"):
+				child.card_clicked.connect(_on_card_clicked)
+			else:
+				child.gui_input.connect(_on_card_input.bind(child))
 	
 	if not _class_cards.is_empty():
 		_select_card(0)
@@ -92,7 +90,6 @@ func _setup_ui() -> void:
 	play_button.text = "В БОЙ"
 	back_button.text = "НАЗАД"
 
-	# Динамически синхронизируем карточки с GameManager.CLASS_DATA
 	var class_keys = [
 		GameManager.PlayerClass.WARRIOR,
 		GameManager.PlayerClass.RANGER,
@@ -102,38 +99,65 @@ func _setup_ui() -> void:
 
 	for i in range(mini(_class_cards.size(), class_keys.size())):
 		var card: PanelContainer = _class_cards[i]
+		
+		# Оружие в сфере
+		if card.has_method("setup_weapon") and i < WEAPON_CONFIGS.size():
+			var cfg = WEAPON_CONFIGS[i]
+			card.setup_weapon(cfg["scene"], cfg["rot"], cfg["scale"], cfg["offset"], cfg["color"])
+		
 		var key = class_keys[i]
 		if not GameManager.CLASS_DATA.has(key):
 			continue
 		var data: Dictionary = GameManager.CLASS_DATA[key]
 		var stats: Dictionary = data["stats"]
 
-		var hp_bar = card.find_child("HPBar", true, false) as ProgressBar
+		var hp_val = float(stats["hp"])
+		var dmg_val = float(stats["damage"])
+		var spd_val = float(stats["speed"])
+
+		if card.has_method("update_stat_bar"):
+			card.update_stat_bar("HPBar", hp_val, 200.0)
+			card.update_stat_bar("DamageBar", dmg_val, 50.0)
+			card.update_stat_bar("SpeedBar", spd_val, 350.0)
+
 		var hp_lbl = card.find_child("HPLabel", true, false) as Label
-		var dmg_bar = card.find_child("DamageBar", true, false) as ProgressBar
 		var dmg_lbl = card.find_child("DamageLabel", true, false) as Label
-		var spd_bar = card.find_child("SpeedBar", true, false) as ProgressBar
 		var spd_lbl = card.find_child("SpeedLabel", true, false) as Label
 
-		if hp_bar and hp_lbl:
-			hp_bar.max_value = 200.0
-			hp_bar.value = float(stats["hp"])
+		if hp_lbl:
 			hp_lbl.text = "HP: %d" % stats["hp"]
-
-		if dmg_bar and dmg_lbl:
-			dmg_bar.max_value = 50.0
-			dmg_bar.value = float(stats["damage"])
+		if dmg_lbl:
 			dmg_lbl.text = "Урон: %d" % stats["damage"]
-
-		if spd_bar and spd_lbl:
-			spd_bar.max_value = 350.0
-			spd_bar.value = float(stats["speed"])
+		if spd_lbl:
 			spd_lbl.text = "Скорость: %d" % stats["speed"]
 
 
 func _connect_signals() -> void:
 	play_button.pressed.connect(_on_play_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+	_setup_button_hover(play_button)
+	_setup_button_hover(back_button)
+
+
+func _setup_button_hover(btn: Button) -> void:
+	btn.pivot_offset = Vector2(90.0, 24.0)
+	var on_focus = func():
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd and snd.has_method("play_ui_hover"):
+			snd.play_ui_hover()
+		var t = create_tween()
+		t.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		t.tween_property(btn, "scale", Vector2(1.05, 1.05), 0.16)
+	
+	var on_unfocus = func():
+		var t = create_tween()
+		t.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		t.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.16)
+
+	btn.mouse_entered.connect(on_focus)
+	btn.focus_entered.connect(on_focus)
+	btn.mouse_exited.connect(on_unfocus)
+	btn.focus_exited.connect(on_unfocus)
 
 
 func _start_entrance_animation() -> void:
@@ -149,20 +173,23 @@ func _select_card(index: int) -> void:
 	
 	for i in range(_class_cards.size()):
 		var card = _class_cards[i]
-		if i == _selected_index:
-			card.add_theme_stylebox_override("panel", _selected_styles[i])
-		else:
-			card.add_theme_stylebox_override("panel", _normal_style)
+		var is_sel = (i == _selected_index)
+		if card.has_method("set_selected"):
+			card.set_selected(is_sel)
+
+
+func _on_card_clicked(card: PanelContainer) -> void:
+	var index = _class_cards.find(card)
+	if index != -1 and index != _selected_index:
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd:
+			snd.play_ui_click()
+		_select_card(index)
 
 
 func _on_card_input(event: InputEvent, card: PanelContainer) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var index = _class_cards.find(card)
-		if index != -1:
-			var snd = get_node_or_null("/root/SoundManager")
-			if snd:
-				snd.play_ui_click()
-			_select_card(index)
+		_on_card_clicked(card)
 
 
 func _on_play_pressed() -> void:
@@ -190,3 +217,44 @@ func _transition_to_menu() -> void:
 	var tween = create_tween()
 	tween.tween_property(_transition_overlay, "modulate:a", 1.0, 0.25)
 	tween.tween_callback(func(): GameManager.go_to_menu())
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_left"):
+		var count = _class_cards.size()
+		if count > 0:
+			var next = (_selected_index - 1 + count) % count
+			var snd = get_node_or_null("/root/SoundManager")
+			if snd: snd.play_ui_click()
+			_select_card(next)
+			var focused = get_viewport().gui_get_focus_owner()
+			if focused:
+				focused.release_focus()
+			get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_right"):
+		var count = _class_cards.size()
+		if count > 0:
+			var next = (_selected_index + 1) % count
+			var snd = get_node_or_null("/root/SoundManager")
+			if snd: snd.play_ui_click()
+			_select_card(next)
+			var focused = get_viewport().gui_get_focus_owner()
+			if focused:
+				focused.release_focus()
+			get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_down"):
+		if not play_button.has_focus() and not back_button.has_focus():
+			play_button.grab_focus()
+			get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_up"):
+		if play_button.has_focus() or back_button.has_focus():
+			play_button.release_focus()
+			back_button.release_focus()
+			get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_accept"):
+		if not play_button.has_focus() and not back_button.has_focus():
+			_on_play_pressed()
+			get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_cancel"):
+		_on_back_pressed()
+		get_viewport().set_input_as_handled()

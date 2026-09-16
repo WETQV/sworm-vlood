@@ -111,3 +111,6 @@ func play_room_cleared() -> void:
 
 func play_ui_click() -> void:
 	play_sound(sfx_ui_click, -6.0, 0.03)
+
+func play_ui_hover() -> void:
+	play_sound(sfx_ui_click, -14.0, 0.04)

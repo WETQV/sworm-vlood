@@ -52,40 +52,46 @@ var _tab_style_active: StyleBoxFlat
 var _tab_style_inactive: StyleBoxFlat
 
 
+var _is_closing: bool = false
+
+
 func _ready() -> void:
 	_create_tab_styles()
 	_setup_ui()
 	_load_ui_from_settings()
 	_connect_signals()
 	_start_animation()
+	tab_sound.grab_focus()
 
 
 func _create_tab_styles() -> void:
-	# Активная вкладка в готическом стиле
+	# Активная вкладка в органическом стиле
 	_tab_style_active = StyleBoxFlat.new()
-	_tab_style_active.bg_color = Color(0.18, 0.14, 0.22, 1)
+	_tab_style_active.bg_color = Color(0.20, 0.15, 0.25, 0.98)
 	_tab_style_active.border_width_left = 2
 	_tab_style_active.border_width_top = 2
 	_tab_style_active.border_width_right = 2
 	_tab_style_active.border_width_bottom = 2
-	_tab_style_active.border_color = Color(0.85, 0.68, 0.35, 1)
-	_tab_style_active.corner_radius_top_left = 2
-	_tab_style_active.corner_radius_top_right = 2
-	_tab_style_active.corner_radius_bottom_left = 2
-	_tab_style_active.corner_radius_bottom_right = 2
+	_tab_style_active.border_color = Color(0.96, 0.85, 0.48, 1)
+	_tab_style_active.corner_radius_top_left = 10
+	_tab_style_active.corner_radius_top_right = 10
+	_tab_style_active.corner_radius_bottom_left = 10
+	_tab_style_active.corner_radius_bottom_right = 10
+	_tab_style_active.shadow_color = Color(0.96, 0.85, 0.48, 0.2)
+	_tab_style_active.shadow_size = 6
 	
-	# Неактивная вкладка в готическом стиле
+	# Неактивная вкладка в органическом стиле
 	_tab_style_inactive = StyleBoxFlat.new()
-	_tab_style_inactive.bg_color = Color(0.08, 0.07, 0.11, 0.8)
+	_tab_style_inactive.bg_color = Color(0.09, 0.07, 0.12, 0.8)
 	_tab_style_inactive.border_width_left = 1
 	_tab_style_inactive.border_width_top = 1
 	_tab_style_inactive.border_width_right = 1
 	_tab_style_inactive.border_width_bottom = 1
-	_tab_style_inactive.border_color = Color(0.35, 0.28, 0.18, 0.6)
-	_tab_style_inactive.corner_radius_top_left = 2
-	_tab_style_inactive.corner_radius_top_right = 2
-	_tab_style_inactive.corner_radius_bottom_left = 2
-	_tab_style_inactive.corner_radius_bottom_right = 2
+	_tab_style_inactive.border_color = Color(0.38, 0.30, 0.20, 0.6)
+	_tab_style_inactive.corner_radius_top_left = 10
+	_tab_style_inactive.corner_radius_top_right = 10
+	_tab_style_inactive.corner_radius_bottom_left = 10
+	_tab_style_inactive.corner_radius_bottom_right = 10
 
 
 func _setup_ui() -> void:
@@ -97,6 +103,11 @@ func _setup_ui() -> void:
 	# Pivot для кнопок
 	apply_button.pivot_offset = Vector2(70, 21)
 	back_button.pivot_offset = Vector2(70, 21)
+	
+	var tabs = [tab_sound, tab_video, tab_controls, tab_network]
+	for tab in tabs:
+		tab.pivot_offset = Vector2(50, 18)
+		_setup_button_hover(tab)
 	
 	# Применяем стили к вкладкам
 	_update_tab_styles()
@@ -194,18 +205,25 @@ func _connect_signals() -> void:
 
 
 func _setup_button_hover(btn: Button) -> void:
-	btn.mouse_entered.connect(func():
+	var on_focus = func():
+		var snd = get_node_or_null("/root/SoundManager")
+		if snd and snd.has_method("play_ui_hover"):
+			snd.play_ui_hover()
 		var tween = create_tween()
 		tween.set_parallel(true)
 		tween.tween_property(btn, "scale", Vector2(1.05, 1.05), 0.15)
-		tween.tween_property(btn, "modulate", Color(1.1, 1.05, 0.95, 1.0), 0.15)
-	)
-	btn.mouse_exited.connect(func():
+	
+	var on_unfocus = func():
 		var tween = create_tween()
 		tween.set_parallel(true)
 		tween.tween_property(btn, "scale", Vector2.ONE, 0.15)
 		tween.tween_property(btn, "modulate", Color.WHITE, 0.15)
-	)
+
+	btn.mouse_entered.connect(on_focus)
+	btn.focus_entered.connect(on_focus)
+	btn.mouse_exited.connect(on_unfocus)
+	btn.focus_exited.connect(on_unfocus)
+
 	btn.button_down.connect(func():
 		var snd = get_node_or_null("/root/SoundManager")
 		if snd:
@@ -232,6 +250,9 @@ func _start_animation() -> void:
 
 
 func _close_animation() -> void:
+	if _is_closing:
+		return
+	_is_closing = true
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(panel, "modulate:a", 0.0, 0.2)
@@ -293,10 +314,21 @@ func _on_apply_pressed() -> void:
 	SettingsManager.apply_settings()
 	SettingsManager.save_settings()
 	
-	# Визуальный фидбек
-	var tween = create_tween()
-	tween.tween_property(panel, "modulate", Color(0.5, 0.45, 0.35, 1.0), 0.1)
-	tween.tween_property(panel, "modulate", Color.WHITE, 0.15)
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd:
+		snd.play_ui_click()
+	
+	# Изящный фидбек на самой кнопке без затемнения/мерцания экрана
+	var old_text: String = apply_button.text
+	apply_button.text = "ПРИМЕНЕНО!"
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(apply_button, "modulate", Color(1.2, 1.1, 0.6, 1.0), 0.12)
+	tween.tween_property(apply_button, "scale", Vector2(1.08, 1.08), 0.12)
+	tween.chain().tween_interval(0.4)
+	tween.chain().tween_property(apply_button, "modulate", Color.WHITE, 0.15)
+	tween.parallel().tween_property(apply_button, "scale", Vector2.ONE, 0.15)
+	tween.chain().tween_callback(func(): apply_button.text = old_text)
 
 
 func _on_back_pressed() -> void:
@@ -305,7 +337,13 @@ func _on_back_pressed() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
 		SettingsManager.save_settings()
 		_close_animation()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_page_up") or (event is InputEventKey and event.pressed and (event.keycode == KEY_Q or event.keycode == KEY_BRACKETLEFT)):
+		_switch_tab((_current_tab - 1 + 4) % 4)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_page_down") or (event is InputEventKey and event.pressed and (event.keycode == KEY_E or event.keycode == KEY_BRACKETRIGHT)):
+		_switch_tab((_current_tab + 1) % 4)
 		get_viewport().set_input_as_handled()

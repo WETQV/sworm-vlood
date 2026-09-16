@@ -1,11 +1,53 @@
-[gd_scene load_steps=4 format=3 uid="uid://credits_01"]
+[gd_scene load_steps=10 format=3 uid="uid://credits_01"]
 
 [ext_resource type="Script" path="res://scripts/ui/credits.gd" id="1_credits"]
 [ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
 [ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
+[ext_resource type="Shader" path="res://resources/shaders/liquid_card.gdshader" id="4_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_credits"]
+shader = ExtResource("4_shader")
+shader_parameter/bg_color = Color(0.07, 0.05, 0.1, 0.96)
+shader_parameter/border_color = Color(0.38, 0.3, 0.18, 0.85)
+shader_parameter/hover_border_color = Color(0.86, 0.68, 0.32, 1)
+shader_parameter/select_border_color = Color(1, 0.88, 0.46, 1)
+shader_parameter/accent_color = Color(0.45, 0.35, 0.22, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/select_amount = 0.3
+shader_parameter/card_size = Vector2(620, 520)
+shader_parameter/corner_radius_px = 18.0
+shader_parameter/border_width_px = 2.5
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.12, 0.09, 0.16, 0.95)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.44, 0.35, 0.22, 0.85)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.22, 0.16, 0.28, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.85, 0.48, 1)
+shadow_color = Color(0.96, 0.85, 0.48, 0.25)
+shadow_size = 8
 
 [node name="Credits" type="CanvasLayer"]
-layer = 25
+layer = 100
 script = ExtResource("1_credits")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -29,7 +71,13 @@ grow_vertical = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
 custom_minimum_size = Vector2(620, 520)
+
+[node name="ShaderBackground" type="ColorRect" parent="CenterContainer/PanelContainer"]
+material = SubResource("ShaderMaterial_credits")
+layout_mode = 2
+mouse_filter = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer"]
 layout_mode = 2
@@ -175,7 +223,13 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
-custom_minimum_size = Vector2(200, 45)
+custom_minimum_size = Vector2(200, 46)
+theme_override_colors/font_color = Color(0.78, 0.72, 0.68, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.8, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_hover")
 text = "НАЗАД"
 
 [node name="HintLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
