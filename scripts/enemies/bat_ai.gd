@@ -42,15 +42,7 @@ func _process_chase(delta: float) -> void:
 		_change_state(State.ENCIRCLE)
 		return
 
-	var move_dir: Vector2 = (target_player.global_position - _body.global_position).normalized()
-	if _nav_agent:
-		_nav_agent.target_position = target_player.global_position
-		if not _nav_agent.is_navigation_finished():
-			var nav_dir: Vector2 = (_nav_agent.get_next_path_position() - _body.global_position).normalized()
-			if nav_dir != Vector2.ZERO:
-				move_dir = nav_dir
-
-	move_dir = _avoid_obstacles(_wobble(move_dir))
+	var move_dir: Vector2 = _avoid_obstacles(_wobble(_get_chase_direction(delta)))
 	_body.velocity = _body.velocity.move_toward(move_dir * base_speed, 700.0 * delta)
 	_body.move_and_slide()
 
