@@ -7,6 +7,7 @@ var damage: int = 35
 var speed: float = 340.0
 var lifetime: float = 2.5
 var knockback_force: float = 120.0
+var attacker: Node2D = null
 
 var _elapsed_time: float = 0.0
 
@@ -30,9 +31,9 @@ func _process(delta: float) -> void:
 
 
 func _on_area_entered(area: Area2D) -> void:
-	# Наносим урон только врагам
-	if area.has_method("receive_damage") and area.get_parent().is_in_group("enemy"):
-		area.receive_damage(damage, knockback_force, global_position, null)
+	var target: Node = area.get_parent()
+	if area.has_method("receive_damage") and (target.is_in_group("enemy") or (NetworkManager.friendly_fire and target.is_in_group("player") and target != attacker)):
+		area.receive_damage(damage, knockback_force, global_position, attacker)
 		var vfx = get_node_or_null("/root/VFXManager")
 		if vfx and vfx.has_method("spawn_fire_explosion"):
 			vfx.spawn_fire_explosion(global_position)

@@ -42,8 +42,6 @@ const CLASS_DATA: Dictionary = {
 ## Текущее состояние
 var selected_class: PlayerClass = PlayerClass.WARRIOR
 var is_multiplayer: bool = false
-## С какой кнопки главного меню открыто лобби: "host" или "join"
-var lobby_intent: String = "host"
 var current_floor: int = 1
 var difficulty_multiplier: float = 1.0
 ## Seed генерации подземелья. 0 = случайный. В сети хост раздаёт его всем,

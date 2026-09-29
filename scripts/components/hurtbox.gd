@@ -67,6 +67,9 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 	var entity: Node2D = get_parent() as Node2D
 	if not entity:
 		return
+	if attacker and entity.is_in_group("player") and attacker.is_in_group("player"):
+		if attacker == entity or not NetworkManager.friendly_fire:
+			return
 
 	# Наносим урон через HealthComponent с учетом снижения урона
 	var final_amount: int = amount

@@ -31,7 +31,7 @@ func _process(_delta: float) -> void:
 		var remaining = ceil(timer.time_left)
 		status_label.text = "Переход через: %d сек\n(Игроков: %d/%d)" % [
 			remaining, 
-			_players_inside.size(), 
+			_get_living_inside_count(),
 			_get_total_players_count()
 		]
 
@@ -39,7 +39,7 @@ func _process(_delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if not NetworkManager.is_authority():
 		return # кто в портале и когда переходить — решает хост
-	if body.is_in_group("player") and not _players_inside.has(body):
+	if body is Player and body.health_component.is_alive() and not _players_inside.has(body):
 		_players_inside.append(body)
 		
 		# Если это первый игрок — запускаем таймер
@@ -64,7 +64,7 @@ func _check_all_players_present() -> void:
 	if _transitioning: return
 	
 	var total = _get_total_players_count()
-	if _players_inside.size() >= total and total > 0:
+	if _get_living_inside_count() >= total and total > 0:
 		_trigger_transition()
 
 
@@ -73,7 +73,7 @@ func _on_timer_timeout() -> void:
 
 
 func _trigger_transition() -> void:
-	if _transitioning: return
+	if _transitioning or not NetworkManager.is_authority(): return
 	if NetworkManager.is_online():
 		_net_play_transition.rpc()
 	else:
@@ -98,9 +98,10 @@ func _play_transition() -> void:
 	if vfx and vfx.has_method("spawn_spark"):
 		vfx.spawn_spark(global_position, Color(0.85, 0.45, 1.0, 1.0))
 
-	# Затягивание игроков в центр портала
-	for p in _players_inside:
-		if is_instance_valid(p):
+	# Каждый участник видит, как портал затягивает всех живых игроков.
+	for node in get_tree().get_nodes_in_group("player"):
+		var p := node as Player
+		if p and p.health_component.is_alive():
 			p.set_physics_process(false)
 			var p_tween := create_tween()
 			p_tween.set_parallel(true)
@@ -129,4 +130,18 @@ func _play_transition() -> void:
 
 
 func _get_total_players_count() -> int:
-	return get_tree().get_nodes_in_group("player").size()
+	var count: int = 0
+	for node in get_tree().get_nodes_in_group("player"):
+		var player := node as Player
+		if player and player.health_component.is_alive():
+			count += 1
+	return count
+
+
+func _get_living_inside_count() -> int:
+	var count: int = 0
+	for node in _players_inside:
+		var player := node as Player
+		if is_instance_valid(player) and player.health_component.is_alive():
+			count += 1
+	return count

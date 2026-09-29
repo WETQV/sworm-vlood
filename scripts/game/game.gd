@@ -8,9 +8,12 @@ const DUNGEON_SCENE := preload("res://scenes/levels/dungeon_generator.tscn")
 @onready var player_container: Node2D = $PlayerContainer
 @onready var enemy_container: Node2D  = $EnemyContainer
 @onready var death_screen: CanvasLayer = $DeathScreen
+@onready var spectator_layer: CanvasLayer = $SpectatorLayer
+@onready var spectator_label: Label = $SpectatorLayer/StatusLabel
 
 var _dungeon: DungeonGenerator  # DungeonGenerator instance
 var _player: CharacterBody2D
+var _spectating: bool = false
 
 # Overlay для transition на отдельном CanvasLayer
 var _transition_layer: CanvasLayer
@@ -156,6 +159,12 @@ func _on_player_node_ready(player: CharacterBody2D) -> void:
 
 ## Обработка смерти игрока
 func _on_player_died(_killed_by: Node2D, player: CharacterBody2D) -> void:
+	if NetworkManager.is_online() and player == _player and not death_screen.visible:
+		_spectating = true
+		_refresh_spectator_target()
+	elif _spectating:
+		_refresh_spectator_target()
+
 	# В кооперативе забег проигран, только когда погибли все
 	if NetworkManager.is_online():
 		if not multiplayer.is_server():
@@ -177,10 +186,27 @@ func _net_show_death() -> void:
 
 
 func _show_death() -> void:
+	_spectating = false
+	spectator_layer.visible = false
 	if death_screen and death_screen.has_method("show_death"):
 		death_screen.show_death()
 	elif death_screen:
 		death_screen.show()
+
+
+func _refresh_spectator_target() -> void:
+	if not _spectating or not is_instance_valid(_player):
+		return
+	for node in player_container.get_children():
+		var teammate := node as Player
+		if teammate and teammate != _player and teammate.health_component.is_alive():
+			var cam := _player.get_node_or_null("Camera2D") as Camera2D
+			if cam:
+				cam.call("follow_target", teammate)
+			spectator_label.text = "ВЫ ПОГИБЛИ — НАБЛЮДЕНИЕ ЗА %s\nВозрождение на следующем этаже" % NetworkManager.players.get(teammate.peer_id, {}).get("name", "союзником")
+			spectator_layer.visible = true
+			return
+	spectator_layer.visible = false
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -226,9 +252,17 @@ func remove_network_player(peer_id: int) -> void:
 	var p := player_container.get_node_or_null("Player_%d" % peer_id)
 	if p:
 		p.queue_free()
+		call_deferred("_refresh_spectator_target")
 
 
 ## Хост: перед сменой этажа убрать сетевые объекты (их удаление разошлётся клиентам)
+func stop_local_synchronization() -> void:
+	for player in player_container.get_children():
+		var sync := player.get_node_or_null("NetSync") as MultiplayerSynchronizer
+		if sync and sync.is_multiplayer_authority():
+			sync.queue_free()
+
+
 func clear_network_entities() -> void:
 	for container in [player_container, enemy_container]:
 		for child in container.get_children():

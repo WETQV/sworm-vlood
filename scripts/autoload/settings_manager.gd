@@ -14,8 +14,11 @@ var fullscreen: bool = false
 var vsync: bool = true
 
 # ── Управление ────────────────────────────────────────────────────────────────
+enum DashDirection { CURSOR, MOVEMENT }
+
 var mouse_sensitivity: float = 1.0
 var camera_zoom: float = 1.0  # 0.5 = далеко, 1.0 = нормально, 2.0 = близко
+var dash_direction: DashDirection = DashDirection.CURSOR
 
 # ── Сеть (заготовка) ─────────────────────────────────────────────────────────
 var player_name: String = "Player"
@@ -52,6 +55,7 @@ func save_settings() -> void:
 	config.set_value("video", "vsync", vsync)
 	config.set_value("controls", "mouse_sensitivity", mouse_sensitivity)
 	config.set_value("controls", "camera_zoom", camera_zoom)
+	config.set_value("controls", "dash_direction", int(dash_direction))
 	config.set_value("network", "player_name", player_name)
 	config.set_value("network", "port", port)
 	config.save(SAVE_PATH)
@@ -68,5 +72,6 @@ func load_settings() -> void:
 	vsync = config.get_value("video", "vsync", vsync)
 	mouse_sensitivity = config.get_value("controls", "mouse_sensitivity", mouse_sensitivity)
 	camera_zoom = config.get_value("controls", "camera_zoom", camera_zoom)
+	dash_direction = clampi(int(config.get_value("controls", "dash_direction", int(dash_direction))), 0, 1) as DashDirection
 	player_name = config.get_value("network", "player_name", player_name)
 	port = config.get_value("network", "port", port)

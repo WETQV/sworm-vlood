@@ -32,6 +32,7 @@ extends CanvasLayer
 # Управление
 @onready var mouse_slider: HSlider = %MouseSlider
 @onready var camera_zoom_slider: HSlider = %CameraZoomSlider
+@onready var dash_direction_option: OptionButton = %DashDirectionOption
 
 # Сеть
 @onready var name_edit: LineEdit = %NameEdit
@@ -169,6 +170,10 @@ func _load_ui_from_settings() -> void:
 	vsync_check.button_pressed = SettingsManager.vsync
 	
 	mouse_slider.value = SettingsManager.mouse_sensitivity
+	camera_zoom_slider.value = SettingsManager.camera_zoom
+	dash_direction_option.add_item("К курсору")
+	dash_direction_option.add_item("По движению")
+	dash_direction_option.select(int(SettingsManager.dash_direction))
 	
 	name_edit.text = SettingsManager.player_name
 	port_spinbox.value = float(SettingsManager.port)
@@ -192,6 +197,7 @@ func _connect_signals() -> void:
 	
 	mouse_slider.value_changed.connect(_on_mouse_changed)
 	camera_zoom_slider.value_changed.connect(_on_camera_zoom_changed)
+	dash_direction_option.item_selected.connect(_on_dash_direction_selected)
 	
 	name_edit.text_changed.connect(_on_name_changed)
 	port_spinbox.value_changed.connect(_on_port_changed)
@@ -298,8 +304,12 @@ func _on_mouse_changed(value: float) -> void:
 	SettingsManager.mouse_sensitivity = value
 
 
-func _on_camera_zoom_changed(_value: float) -> void:
-	pass
+func _on_camera_zoom_changed(value: float) -> void:
+	SettingsManager.camera_zoom = value
+
+
+func _on_dash_direction_selected(index: int) -> void:
+	SettingsManager.dash_direction = index as SettingsManager.DashDirection
 
 
 func _on_name_changed(new_text: String) -> void:

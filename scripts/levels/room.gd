@@ -253,7 +253,25 @@ func _on_player_entered(body: Node2D) -> void:
 	if not body.is_in_group("player"):
 		return
 	_activation_area.set_deferred("monitoring", false)
-	call_deferred("set_room_state", RoomState.FIGHT)
+	call_deferred("_begin_fight", body)
+
+
+func _begin_fight(entering_player: Node2D) -> void:
+	if current_state != RoomState.SLEEP or not is_instance_valid(entering_player):
+		return
+	var interior := Rect2(global_position + Vector2.ONE * TILE_SIZE,
+		Vector2(room_size - Vector2i(2, 2)) * TILE_SIZE)
+	var center := global_position + Vector2(room_size) * TILE_SIZE / 2.0
+	var offsets: Array[Vector2] = [Vector2(-48, 0), Vector2(48, 0), Vector2(0, -48), Vector2(0, 48)]
+	var moved: int = 0
+	for node in get_tree().get_nodes_in_group("player"):
+		var teammate := node as Player
+		if teammate == null or teammate == entering_player or interior.has_point(teammate.global_position):
+			continue
+		if teammate.health_component.is_alive():
+			teammate.teleport_to_position(center + offsets[moved % offsets.size()])
+			moved += 1
+	set_room_state(RoomState.FIGHT)
 
 
 # ── Состояния ────────────────────────────────────────────────────────────────

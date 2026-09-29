@@ -21,6 +21,7 @@ const CLASS_ORDER := [
 @onready var address_label: Label = %AddressLabel
 @onready var players_list: VBoxContainer = %PlayersList
 @onready var class_buttons: HBoxContainer = %ClassButtons
+@onready var friendly_fire_button: CheckButton = %FriendlyFireButton
 @onready var start_button: Button = %StartButton
 @onready var leave_button: Button = %LeaveButton
 @onready var hint_label: Label = %HintLabel
@@ -38,6 +39,7 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	start_button.pressed.connect(_on_start_pressed)
 	leave_button.pressed.connect(_on_leave_pressed)
+	friendly_fire_button.toggled.connect(_on_friendly_fire_toggled)
 
 	for i in CLASS_ORDER.size():
 		var btn := Button.new()
@@ -51,6 +53,7 @@ func _ready() -> void:
 		class_buttons.add_child(btn)
 
 	NetworkManager.players_changed.connect(_refresh_players)
+	NetworkManager.lobby_settings_changed.connect(_refresh_lobby_settings)
 	NetworkManager.connection_succeeded.connect(_on_connected)
 	NetworkManager.connection_failed.connect(_on_connection_failed)
 
@@ -60,10 +63,7 @@ func _ready() -> void:
 	else:
 		_show_connect()
 
-	if GameManager.lobby_intent == "join":
-		ip_edit.grab_focus()
-	else:
-		name_edit.grab_focus()
+	name_edit.grab_focus()
 
 
 func _get_player_name() -> String:
@@ -137,6 +137,7 @@ func _show_lobby() -> void:
 
 	var is_host := multiplayer.is_server()
 	start_button.visible = is_host
+	_refresh_lobby_settings()
 	if is_host:
 		var ips := NetworkManager.get_local_ips()
 		var ip_text := ", ".join(ips) if not ips.is_empty() else "127.0.0.1"
@@ -194,6 +195,18 @@ func _on_class_pressed(player_class: int) -> void:
 	NetworkManager.set_my_class(player_class)
 
 
+func _refresh_lobby_settings() -> void:
+	if not is_inside_tree():
+		return
+	friendly_fire_button.set_pressed_no_signal(NetworkManager.friendly_fire)
+	friendly_fire_button.disabled = not NetworkManager.is_online() or not multiplayer.is_server()
+
+
+func _on_friendly_fire_toggled(enabled: bool) -> void:
+	_click()
+	NetworkManager.set_friendly_fire(enabled)
+
+
 func _on_start_pressed() -> void:
 	_click()
 	start_button.disabled = true
@@ -204,6 +217,7 @@ func _on_leave_pressed() -> void:
 	_click()
 	NetworkManager.leave_game()
 	_show_connect()
+	_refresh_lobby_settings()
 	status_label.text = ""
 
 

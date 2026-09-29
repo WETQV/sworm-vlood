@@ -40,6 +40,8 @@ func _spawn_projectile(aim_dir: Vector2, _target_pos: Vector2) -> void:
 		projectile.damage = damage
 	if "knockback_force" in projectile:
 		projectile.knockback_force = knockback_force
+	if "attacker" in projectile:
+		projectile.attacker = wielder
 
 	# Безопасное добавление снаряда в корень сцены/уровня
 	var world_root: Node = get_tree().current_scene

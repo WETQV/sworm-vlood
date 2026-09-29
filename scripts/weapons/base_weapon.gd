@@ -11,6 +11,7 @@ signal cooldown_finished
 @export var attack_cooldown: float = 0.4
 
 var is_attacking: bool = false
+var wielder: Node2D = null
 var _cooldown_timer: Timer
 
 

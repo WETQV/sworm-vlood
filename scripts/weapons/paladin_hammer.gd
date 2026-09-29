@@ -76,17 +76,17 @@ func _trigger_holy_shockwave(aim_direction: Vector2) -> void:
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = shape
 	query.transform = Transform2D(0.0, impact_pos)
-	query.collision_mask = 64
+	query.collision_mask = 64 | (32 if NetworkManager.friendly_fire else 0)
 	query.collide_with_areas = true
 	query.collide_with_bodies = false
 
 	var hits: Array[Dictionary] = space_state.intersect_shape(query, 32)
 	for hit in hits:
 		var collider: Object = hit.get("collider")
-		if collider:
+		if collider and collider.get_parent() != wielder:
 			# Если враг УЖЕ получил прямой удар щитом, не наносим повторный урон волной
 			if _hit_targets.has(collider):
 				continue
 			_hit_targets[collider] = true
 			if collider.has_method("receive_damage"):
-				collider.receive_damage(shockwave_damage, shockwave_knockback, impact_pos, self, false)
+				collider.receive_damage(shockwave_damage, shockwave_knockback, impact_pos, wielder, false)

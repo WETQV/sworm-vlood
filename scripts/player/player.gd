@@ -95,6 +95,36 @@ func prepare_network(owner_peer_id: int) -> void:
 	set_multiplayer_authority(peer_id) # рекурсивно, вместе с NetSync
 
 
+## Хост переносит персонажа на каждой машине, включая его владельца.
+func teleport_to_position(target: Vector2) -> void:
+	if not NetworkManager.is_authority():
+		return
+	if NetworkManager.is_online():
+		_net_teleport.rpc(target)
+	else:
+		_apply_teleport(target)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _net_teleport(target: Vector2) -> void:
+	var sender: int = multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != 1:
+		return
+	_apply_teleport(target)
+
+
+func _apply_teleport(target: Vector2) -> void:
+	global_position = target
+	velocity = Vector2.ZERO
+	_knockback_velocity = Vector2.ZERO
+	reset_physics_interpolation()
+	if is_local():
+		var cam := get_node_or_null("Camera2D") as Camera2D
+		if cam:
+			cam.global_position = target
+			cam.reset_physics_interpolation()
+
+
 ## Сетевая настройка: камера только у своего персонажа, имя над головой
 func _setup_network() -> void:
 	var cam := get_node_or_null("Camera2D") as Camera2D
@@ -229,6 +259,9 @@ func _setup_weapon() -> void:
 			current_weapon = weapon
 			_add_weapon_visual(weapon, "res://scenes/player/weapons/mage_weapon.tscn")
 
+	if current_weapon:
+		current_weapon.wielder = self
+
 
 func _add_weapon_visual(weapon_node: Node2D, scene_path: String) -> void:
 	if ResourceLoader.exists(scene_path):
@@ -239,7 +272,7 @@ func _add_weapon_visual(weapon_node: Node2D, scene_path: String) -> void:
 func _attach_melee_hitbox(weapon: MeleeWeapon, target_mask: int) -> void:
 	var hitbox := HitboxComponent.new()
 	hitbox.name = "HitboxComponent"
-	hitbox.collision_mask = target_mask
+	hitbox.collision_mask = target_mask | (32 if NetworkManager.friendly_fire else 0)
 	hitbox.attacker = self
 
 	var col := CollisionShape2D.new()
@@ -415,7 +448,9 @@ func _process_remote_dash(delta: float) -> void:
 
 
 func _get_dash_direction(input_dir: Vector2, aim_vector: Vector2) -> Vector2:
-	# Дэш всегда направлен в сторону курсора мыши
+	if SettingsManager.dash_direction == SettingsManager.DashDirection.MOVEMENT and input_dir.length_squared() > 0.01:
+		return input_dir.normalized()
+	# Если в режиме движения игрок стоит, используем курсор.
 	if aim_vector.length_squared() > 0.01:
 		return aim_vector.normalized()
 	elif input_dir.length_squared() > 0.01:
@@ -462,14 +497,14 @@ func _process_paladin_shield_charge() -> void:
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = shape
 	query.transform = Transform2D(0.0, global_position + _dash_direction * 16.0)
-	query.collision_mask = 64
+	query.collision_mask = 64 | (32 if NetworkManager.friendly_fire else 0)
 	query.collide_with_areas = true
 	query.collide_with_bodies = false
 
 	var hits: Array[Dictionary] = space_state.intersect_shape(query, 16)
 	for hit in hits:
 		var collider: Object = hit.get("collider")
-		if collider and collider is Hurtbox and not _dashed_hit_targets.has(collider):
+		if collider and collider is Hurtbox and collider.get_parent() != self and not _dashed_hit_targets.has(collider):
 			_dashed_hit_targets.append(collider)
 			var target_hurtbox := collider as Hurtbox
 			target_hurtbox.receive_damage(35, 340.0, global_position, self, true)
@@ -495,4 +530,6 @@ func _on_died(_killed_by: Node2D) -> void:
 	set_physics_process(false)
 	collision_layer = 0
 	collision_mask = 0
+	hurtbox.set_deferred("collision_layer", 0)
+	hurtbox.set_deferred("monitorable", false)
 	hp_bar.visible = false

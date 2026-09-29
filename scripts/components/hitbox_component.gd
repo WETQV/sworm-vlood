@@ -47,11 +47,15 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 
 	if area.has_method("receive_damage"):
+		var source_attacker: Node2D = attacker if attacker else (get_parent() as Node2D)
+		if area.get_parent() == source_attacker:
+			return
+		if source_attacker and area.get_parent().is_in_group("player") and source_attacker.is_in_group("player") and not NetworkManager.friendly_fire:
+			return
 		if hit_once_per_activation:
 			if _hit_targets.has(area):
 				return
 			_hit_targets.append(area)
-		var source_attacker: Node2D = attacker if attacker else (get_parent() as Node2D)
 		area.receive_damage(damage, knockback_force, global_position, source_attacker)
 		if area is Hurtbox:
 			hit_dealt.emit(area as Hurtbox, damage)

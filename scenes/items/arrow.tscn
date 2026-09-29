@@ -21,7 +21,7 @@ size = Vector2(20, 6)
 [node name="Arrow" type="Area2D"]
 script = ExtResource("1_arrow")
 collision_layer = 0
-collision_mask = 65
+collision_mask = 97
 
 [node name="Shape" type="CollisionShape2D" parent="."]
 shape = SubResource("shape_arrow")

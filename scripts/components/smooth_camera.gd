@@ -16,6 +16,13 @@ func _ready() -> void:
 		global_position = _target.global_position
 
 
+func follow_target(target: Node2D) -> void:
+	_target = target
+	if _target:
+		global_position = _target.global_position
+		reset_physics_interpolation()
+
+
 func _physics_process(delta: float) -> void:
 	if _target and is_instance_valid(_target):
 		# Плавное следование за целью в физическом кадре

@@ -14,8 +14,7 @@ extends Control
 @onready var buttons_container: PanelContainer = %ButtonsContainer
 
 @onready var play_button: Button = %PlayButton
-@onready var host_button: Button = %HostButton
-@onready var join_button: Button = %JoinButton
+@onready var together_button: Button = %TogetherButton
 @onready var settings_button: Button = %SettingsButton
 @onready var credits_button: Button = %CreditsButton
 @onready var quit_button: Button = %QuitButton
@@ -52,8 +51,7 @@ func _create_transition_overlay() -> void:
 func _setup_ui() -> void:
 	# Текст кнопок в готическом стиле без эмодзи
 	play_button.text = "В БОЙ"
-	host_button.text = "СОЗДАТЬ СЕРВЕР"
-	join_button.text = "ПОДКЛЮЧИТЬСЯ"
+	together_button.text = "ВМЕСТЕ"
 	settings_button.text = "НАСТРОЙКИ"
 	credits_button.text = "ОБ ИГРЕ"
 	quit_button.text = "ВЫХОД"
@@ -63,7 +61,7 @@ func _setup_ui() -> void:
 	version_label.text = "v0.1.0 Alpha"
 	
 	# Собираем кнопки для анимации
-	_all_buttons = [play_button, host_button, join_button, settings_button, credits_button, quit_button]
+	_all_buttons = [play_button, together_button, settings_button, credits_button, quit_button]
 	
 	# Кнопки ВИДНЫ СРАЗУ (убираем modulate.a = 0)
 	# Анимация только через scale
@@ -84,8 +82,7 @@ func _setup_ui() -> void:
 
 func _connect_signals() -> void:
 	play_button.pressed.connect(_on_play_pressed)
-	host_button.pressed.connect(_on_host_pressed)
-	join_button.pressed.connect(_on_join_pressed)
+	together_button.pressed.connect(_on_together_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	credits_button.pressed.connect(_on_credits_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
@@ -173,13 +170,7 @@ func _on_play_pressed() -> void:
 	_transition_to("res://scenes/ui/class_select.tscn")
 
 
-func _on_host_pressed() -> void:
-	GameManager.lobby_intent = "host"
-	_transition_to("res://scenes/ui/lobby.tscn")
-
-
-func _on_join_pressed() -> void:
-	GameManager.lobby_intent = "join"
+func _on_together_pressed() -> void:
 	_transition_to("res://scenes/ui/lobby.tscn")
 
 

@@ -9,6 +9,7 @@ signal players_changed
 signal connection_succeeded
 signal connection_failed
 signal server_disconnected
+signal lobby_settings_changed
 ## Все игроки загрузили игровую сцену (только на хосте)
 signal all_players_in_game
 
@@ -17,8 +18,11 @@ const MAX_PLAYERS := 4
 
 ## peer_id -> { "name": String, "class": int }
 var players: Dictionary = {}
+var friendly_fire: bool = false
 
 var _players_in_game: Array[int] = []
+var _floor_change_pending: bool = false
+var _floor_prepare_acks: Array[int] = []
 
 
 func _ready() -> void:
@@ -101,6 +105,9 @@ func leave_game() -> void:
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	players.clear()
 	_players_in_game.clear()
+	_floor_prepare_acks.clear()
+	_floor_change_pending = false
+	friendly_fire = false
 	GameManager.is_multiplayer = false
 
 
@@ -142,7 +149,23 @@ func _register_player(player_name: String, player_class: int) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	players[id] = {"name": player_name.left(16), "class": clampi(player_class, 0, 3)}
 	_sync_players.rpc(players)
+	_sync_friendly_fire.rpc_id(id, friendly_fire)
 	players_changed.emit()
+
+
+## Менять правила забега может только хост.
+func set_friendly_fire(enabled: bool) -> void:
+	if not is_online() or not multiplayer.is_server():
+		return
+	friendly_fire = enabled
+	_sync_friendly_fire.rpc(enabled)
+	lobby_settings_changed.emit()
+
+
+@rpc("authority", "reliable")
+func _sync_friendly_fire(enabled: bool) -> void:
+	friendly_fire = enabled
+	lobby_settings_changed.emit()
 
 
 @rpc("authority", "reliable")
@@ -163,10 +186,43 @@ func start_game() -> void:
 
 ## Хост запускает следующий этаж (из портала)
 func start_next_floor() -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or _floor_change_pending:
+		return
+	_floor_change_pending = true
+	_floor_prepare_acks.clear()
+	_prepare_next_floor.rpc()
+	var deadline := Time.get_ticks_msec() + 10000
+	while not _all_clients_prepared() and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	if not multiplayer.is_server() or not _floor_change_pending:
 		return
 	_clear_current_game()
 	_start_floor.rpc(GameManager.current_floor + 1, randi_range(1, 2147483647))
+	_floor_change_pending = false
+
+
+@rpc("authority", "reliable")
+func _prepare_next_floor() -> void:
+	var game := get_tree().current_scene
+	if game and game.has_method("stop_local_synchronization"):
+		game.stop_local_synchronization()
+	await get_tree().process_frame
+	_next_floor_prepared.rpc_id(1)
+
+
+@rpc("any_peer", "reliable")
+func _next_floor_prepared() -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if multiplayer.is_server() and _floor_change_pending and players.has(sender) \
+			and not _floor_prepare_acks.has(sender):
+		_floor_prepare_acks.append(sender)
+
+
+func _all_clients_prepared() -> bool:
+	for id in players:
+		if id != 1 and not _floor_prepare_acks.has(id):
+			return false
+	return true
 
 
 ## Хост убирает сетевых персонажей/врагов ДО команды на смену сцены —
