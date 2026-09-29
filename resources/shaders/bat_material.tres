@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/entity_stylized.gdshader" id="1_entity"]
+
+[resource]
+shader = ExtResource("1_entity")
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/base_color = Color(0.32, 0.2, 0.42, 1)
+shader_parameter/aura_color = Color(0.8, 0.45, 0.9, 1)
+shader_parameter/corner_radius = 0.5
+shader_parameter/breath_speed = 4.0
+shader_parameter/breath_amount = 0.02
+shader_parameter/class_type = -1

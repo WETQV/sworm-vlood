@@ -37,6 +37,8 @@ func _process(_delta: float) -> void:
 
 
 func _on_body_entered(body: Node2D) -> void:
+	if not NetworkManager.is_authority():
+		return # кто в портале и когда переходить — решает хост
 	if body.is_in_group("player") and not _players_inside.has(body):
 		_players_inside.append(body)
 		
@@ -72,6 +74,20 @@ func _on_timer_timeout() -> void:
 
 func _trigger_transition() -> void:
 	if _transitioning: return
+	if NetworkManager.is_online():
+		_net_play_transition.rpc()
+	else:
+		_play_transition()
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_play_transition() -> void:
+	_play_transition()
+
+
+## Анимация перехода — у всех игроков; сам переход на этаж запускает хост
+func _play_transition() -> void:
+	if _transitioning: return
 	_transitioning = true
 
 	timer.stop()
@@ -105,6 +121,8 @@ func _trigger_transition() -> void:
 	# Пауза для комфортного чтения надписи этажа
 	await get_tree().create_timer(1.8).timeout
 
+	if not NetworkManager.is_authority():
+		return
 	var gm = get_node_or_null("/root/GameManager")
 	if gm and gm.has_method("next_floor"):
 		gm.next_floor()

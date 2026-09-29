@@ -27,11 +27,15 @@ var _nav_update_timer: float = 0.0
 var _encircle_timer: float = 0.0
 var _circumnavigate_side: int = 1  # 1 = clockwise, -1 = counter-clockwise
 
+const NAV_REPATH_INTERVAL := 0.25  # Как часто пересчитывать путь до цели (сек)
+var _repath_timer: float = 0.0
+
 
 func _ready() -> void:
 	_body = get_parent() as CharacterBody2D
 	_nav_agent = _body.get_node_or_null("NavigationAgent2D") as NavigationAgent2D
 	_circumnavigate_side = 1 if (_body.get_instance_id() % 2 == 0) else -1
+	_repath_timer = randf() * NAV_REPATH_INTERVAL  # разносим пересчёты путей разных врагов по кадрам
 
 	_hitbox = _body.get_node_or_null("AttackArea") as HitboxComponent
 	if not _hitbox:
@@ -66,6 +70,10 @@ func _physics_process(delta: float) -> void:
 		_nav_update_timer = 0.0
 		_update_target()
 
+	if NetworkManager.is_online() and not multiplayer.is_server():
+		_process_puppet()
+		return
+
 	match current_state:
 		State.IDLE:
 			_process_idle()
@@ -81,7 +89,24 @@ func _physics_process(delta: float) -> void:
 			_process_recover(delta)
 
 
+## Клиент: состояние приходит от хоста — при смене проигрываем анимацию/звук/выстрел.
+## Направление атаки (_lunge_dir) тоже синхронизируется, поэтому выстрелы летят туда же, что у хоста.
+var _puppet_state: int = -1
+
+func _process_puppet() -> void:
+	if current_state != _puppet_state:
+		_puppet_state = current_state
+		var synced_dir: Vector2 = _lunge_dir
+		_change_state(current_state)
+		_lunge_dir = synced_dir
+
+
 func _update_target() -> void:
+	# Погибший игрок больше не цель (в кооперативе остальные ещё сражаются)
+	if is_instance_valid(target_player):
+		var hc := target_player.get_node_or_null("HealthComponent") as HealthComponent
+		if hc and not hc.is_alive():
+			target_player = null
 	if not is_instance_valid(target_player):
 		if _swarm:
 			target_player = _swarm.get_best_target_for(_body)
@@ -108,20 +133,31 @@ func _process_chase(delta: float) -> void:
 		_change_state(State.ENCIRCLE)
 		return
 
-	var move_dir: Vector2 = (target_player.global_position - _body.global_position).normalized()
-	if _nav_agent:
-		_nav_agent.target_position = target_player.global_position
-		if not _nav_agent.is_navigation_finished():
-			var next_path_pos: Vector2 = _nav_agent.get_next_path_position()
-			var nav_dir: Vector2 = (next_path_pos - _body.global_position).normalized()
-			if nav_dir != Vector2.ZERO:
-				move_dir = nav_dir
-
 	# Обход стен и углов (усики и тангенциальное скольжение)
-	move_dir = _avoid_obstacles(move_dir)
+	var move_dir: Vector2 = _avoid_obstacles(_get_chase_direction(delta))
 
 	_body.velocity = _body.velocity.move_toward(move_dir * base_speed, 450.0 * delta)
 	_body.move_and_slide()
+
+
+## Направление погони по NavMesh.
+## Путь пересчитывается не чаще NAV_REPATH_INTERVAL: запрос пути — дорогая операция,
+## и пересчёт каждый кадр у нескольких врагов давал фризы.
+func _get_chase_direction(delta: float) -> Vector2:
+	var move_dir: Vector2 = (target_player.global_position - _body.global_position).normalized()
+	if not _nav_agent:
+		return move_dir
+
+	_repath_timer -= delta
+	if _repath_timer <= 0.0:
+		_repath_timer = NAV_REPATH_INTERVAL
+		_nav_agent.target_position = target_player.global_position
+
+	if not _nav_agent.is_navigation_finished():
+		var nav_dir: Vector2 = (_nav_agent.get_next_path_position() - _body.global_position).normalized()
+		if nav_dir != Vector2.ZERO:
+			move_dir = nav_dir
+	return move_dir
 
 
 func _process_encircle(delta: float) -> void:

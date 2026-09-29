@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://slime_boss_scene"]
+[gd_scene load_steps=7 format=3 uid="uid://slime_boss_scene"]
 
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_boss.gd" id="3_boss"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_ai.gd" id="4_slimeai"]
 [ext_resource type="Material" path="res://resources/shaders/slime_boss_material.tres" id="4_mat"]
+[ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="5_hitbox"]
 
 [sub_resource type="CircleShape2D" id="shape_body"]
 radius = 30.0
@@ -21,6 +22,7 @@ collision_mask = 7
 script = ExtResource("3_boss")
 contact_damage = 30
 speed = 40.0
+knockback_resistance = 4.0
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("1_health")
@@ -40,8 +42,11 @@ offset_bottom = 30.0
 color = Color(0.8, 0.2, 0.2, 1)
 
 [node name="AttackArea" type="Area2D" parent="."]
-monitoring = true
+script = ExtResource("5_hitbox")
 collision_mask = 32
+damage = 30
+knockback_force = 320.0
+hit_once_per_activation = true
 
 [node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
 shape = SubResource("shape_attack")
@@ -72,7 +77,11 @@ collision_mask = 1
 
 [node name="SlimeAI" type="Node" parent="."]
 script = ExtResource("4_slimeai")
-base_speed = 40.0
-dash_speed = 80.0
-attack_range = 45.0
-weight_separation = 3.0
+base_speed = 55.0
+lunge_speed = 330.0
+attack_range = 150.0
+encircle_distance = 130.0
+windup_time = 0.55
+lunge_duration = 0.38
+recover_time = 0.9
+max_encircle_time = 1.2

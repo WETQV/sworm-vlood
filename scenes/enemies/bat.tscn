@@ -1,0 +1,124 @@
+[gd_scene load_steps=10 format=3 uid="uid://bat_enemy_scene"]
+
+[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
+[ext_resource type="Script" path="res://scripts/enemies/bat.gd" id="3_bat"]
+[ext_resource type="Script" path="res://scripts/enemies/bat_ai.gd" id="4_batai"]
+[ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="5_hitbox"]
+[ext_resource type="Material" path="res://resources/shaders/bat_material.tres" id="6_mat"]
+
+[sub_resource type="CircleShape2D" id="shape_body"]
+radius = 8.0
+
+[sub_resource type="CircleShape2D" id="shape_hurtbox"]
+radius = 10.0
+
+[sub_resource type="CircleShape2D" id="shape_attack"]
+radius = 11.0
+
+[node name="Bat" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("3_bat")
+speed = 140.0
+contact_damage = 8
+knockback_resistance = 0.6
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("1_health")
+max_health = 22
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("shape_body")
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="WingLeft" type="Node2D" parent="Visuals"]
+position = Vector2(-6, -1)
+
+[node name="Membrane" type="Polygon2D" parent="Visuals/WingLeft"]
+color = Color(0.2, 0.12, 0.28, 1)
+polygon = PackedVector2Array(0, -3, -8, -9, -16, -6, -13, -1, -17, 3, -9, 2, -4, 5, 0, 3)
+
+[node name="WingRight" type="Node2D" parent="Visuals"]
+position = Vector2(6, -1)
+
+[node name="Membrane" type="Polygon2D" parent="Visuals/WingRight"]
+color = Color(0.2, 0.12, 0.28, 1)
+polygon = PackedVector2Array(0, -3, 8, -9, 16, -6, 13, -1, 17, 3, 9, 2, 4, 5, 0, 3)
+
+[node name="Body" type="ColorRect" parent="Visuals"]
+material = ExtResource("6_mat")
+offset_left = -7.0
+offset_top = -7.0
+offset_right = 7.0
+offset_bottom = 7.0
+mouse_filter = 2
+color = Color(0.32, 0.2, 0.42, 1)
+
+[node name="EarLeft" type="Polygon2D" parent="Visuals"]
+color = Color(0.25, 0.15, 0.33, 1)
+polygon = PackedVector2Array(-5, -5, -4, -11, -1, -6)
+
+[node name="EarRight" type="Polygon2D" parent="Visuals"]
+color = Color(0.25, 0.15, 0.33, 1)
+polygon = PackedVector2Array(5, -5, 4, -11, 1, -6)
+
+[node name="EyeLeft" type="ColorRect" parent="Visuals"]
+offset_left = -4.0
+offset_top = -3.0
+offset_right = -2.0
+offset_bottom = -1.0
+mouse_filter = 2
+color = Color(1, 0.85, 0.2, 1)
+
+[node name="EyeRight" type="ColorRect" parent="Visuals"]
+offset_left = 2.0
+offset_top = -3.0
+offset_right = 4.0
+offset_bottom = -1.0
+mouse_filter = 2
+color = Color(1, 0.85, 0.2, 1)
+
+[node name="AttackArea" type="Area2D" parent="."]
+collision_mask = 32
+script = ExtResource("5_hitbox")
+damage = 8
+knockback_force = 120.0
+hit_once_per_activation = true
+
+[node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
+shape = SubResource("shape_attack")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 64
+monitoring = false
+script = ExtResource("2_hurtbox")
+
+[node name="HurtboxShape" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("shape_hurtbox")
+
+[node name="HPBar" type="ProgressBar" parent="."]
+offset_left = -10.0
+offset_top = -18.0
+offset_right = 10.0
+offset_bottom = -15.0
+mouse_filter = 2
+value = 22.0
+show_percentage = false
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 15.0
+target_desired_distance = 25.0
+
+[node name="BatAI" type="Node" parent="."]
+script = ExtResource("4_batai")
+base_speed = 140.0
+lunge_speed = 360.0
+attack_range = 110.0
+encircle_distance = 100.0
+windup_time = 0.22
+lunge_duration = 0.26
+recover_time = 0.55
+max_encircle_time = 1.2

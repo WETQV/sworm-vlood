@@ -58,15 +58,12 @@ func _setup_ui() -> void:
 	credits_button.text = "ОБ ИГРЕ"
 	quit_button.text = "ВЫХОД"
 	
-	# Мультиплеер пока не готов
-	host_button.visible = false
-	join_button.visible = false
 	
 	# Версия
 	version_label.text = "v0.1.0 Alpha"
 	
 	# Собираем кнопки для анимации
-	_all_buttons = [play_button, settings_button, credits_button, quit_button]
+	_all_buttons = [play_button, host_button, join_button, settings_button, credits_button, quit_button]
 	
 	# Кнопки ВИДНЫ СРАЗУ (убираем modulate.a = 0)
 	# Анимация только через scale
@@ -177,14 +174,13 @@ func _on_play_pressed() -> void:
 
 
 func _on_host_pressed() -> void:
-	GameManager.is_multiplayer = true
-	_transition_to("res://scenes/ui/class_select.tscn")
+	GameManager.lobby_intent = "host"
+	_transition_to("res://scenes/ui/lobby.tscn")
 
 
 func _on_join_pressed() -> void:
-	GameManager.is_multiplayer = true
-	# TODO: показать окно ввода IP
-	pass
+	GameManager.lobby_intent = "join"
+	_transition_to("res://scenes/ui/lobby.tscn")
 
 
 func _on_settings_pressed() -> void:

@@ -1,0 +1,132 @@
+[gd_scene load_steps=10 format=3 uid="uid://skeleton_scene"]
+
+[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
+[ext_resource type="Script" path="res://scripts/enemies/skeleton.gd" id="3_skeleton"]
+[ext_resource type="Script" path="res://scripts/enemies/skeleton_ai.gd" id="4_skeletonai"]
+[ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="5_hitbox"]
+[ext_resource type="Material" path="res://resources/shaders/skeleton_material.tres" id="6_mat"]
+
+[sub_resource type="CircleShape2D" id="shape_body"]
+radius = 11.0
+
+[sub_resource type="CircleShape2D" id="shape_hurtbox"]
+radius = 12.0
+
+[sub_resource type="CircleShape2D" id="shape_attack"]
+radius = 20.0
+
+[node name="Skeleton" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("3_skeleton")
+speed = 75.0
+contact_damage = 15
+knockback_resistance = 1.6
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("1_health")
+max_health = 70
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("shape_body")
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="SwordPivot" type="Node2D" parent="Visuals"]
+
+[node name="Blade" type="Polygon2D" parent="Visuals/SwordPivot"]
+color = Color(0.55, 0.52, 0.48, 1)
+polygon = PackedVector2Array(14, -2.5, 32, -2, 37, 0, 32, 2, 14, 2.5)
+
+[node name="BladeEdge" type="Polygon2D" parent="Visuals/SwordPivot"]
+color = Color(0.78, 0.74, 0.68, 1)
+polygon = PackedVector2Array(14, -2.5, 32, -2, 37, 0, 14, 0)
+
+[node name="Rust" type="Polygon2D" parent="Visuals/SwordPivot"]
+color = Color(0.5, 0.26, 0.14, 0.8)
+polygon = PackedVector2Array(20, 0.5, 26, 0, 27, 2, 21, 2.3)
+
+[node name="Guard" type="Polygon2D" parent="Visuals/SwordPivot"]
+color = Color(0.32, 0.26, 0.2, 1)
+polygon = PackedVector2Array(12, -6, 14, -6, 14, 6, 12, 6)
+
+[node name="Hilt" type="Line2D" parent="Visuals/SwordPivot"]
+points = PackedVector2Array(6, 0, 12, 0)
+width = 3.0
+default_color = Color(0.28, 0.18, 0.12, 1)
+
+[node name="Body" type="ColorRect" parent="Visuals"]
+material = ExtResource("6_mat")
+offset_left = -11.0
+offset_top = -12.0
+offset_right = 11.0
+offset_bottom = 12.0
+mouse_filter = 2
+color = Color(0.86, 0.83, 0.74, 1)
+
+[node name="EyeLeft" type="ColorRect" parent="Visuals"]
+offset_left = -6.0
+offset_top = -6.0
+offset_right = -2.0
+offset_bottom = -2.0
+mouse_filter = 2
+color = Color(0.85, 0.12, 0.1, 1)
+
+[node name="EyeRight" type="ColorRect" parent="Visuals"]
+offset_left = 2.0
+offset_top = -6.0
+offset_right = 6.0
+offset_bottom = -2.0
+mouse_filter = 2
+color = Color(0.85, 0.12, 0.1, 1)
+
+[node name="Jaw" type="ColorRect" parent="Visuals"]
+offset_left = -4.0
+offset_top = 3.0
+offset_right = 4.0
+offset_bottom = 5.0
+mouse_filter = 2
+color = Color(0.2, 0.17, 0.14, 1)
+
+[node name="AttackArea" type="Area2D" parent="."]
+script = ExtResource("5_hitbox")
+collision_mask = 32
+damage = 15
+knockback_force = 220.0
+hit_once_per_activation = true
+
+[node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
+shape = SubResource("shape_attack")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+script = ExtResource("2_hurtbox")
+collision_layer = 64
+monitoring = false
+
+[node name="HurtboxShape" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("shape_hurtbox")
+
+[node name="HPBar" type="ProgressBar" parent="."]
+offset_left = -14.0
+offset_top = -24.0
+offset_right = 14.0
+offset_bottom = -20.0
+mouse_filter = 2
+value = 70.0
+show_percentage = false
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 15.0
+target_desired_distance = 25.0
+
+[node name="SkeletonAI" type="Node" parent="."]
+script = ExtResource("4_skeletonai")
+base_speed = 75.0
+lunge_speed = 120.0
+attack_range = 62.0
+encircle_distance = 55.0
+windup_time = 0.42
+lunge_duration = 0.2
+recover_time = 0.6
+max_encircle_time = 1.4

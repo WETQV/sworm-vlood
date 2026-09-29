@@ -29,6 +29,12 @@ signal dash_cooldown_updated(current: float, max_time: float)
 		if current_weapon:
 			current_weapon.damage = val
 
+# --- Сеть ---
+## peer_id игрока-владельца (1 в одиночной игре). Задаётся до добавления в дерево.
+var peer_id: int = 1
+## Класс этого персонажа (у каждого игрока свой). -1 = взять из GameManager.
+var player_class: int = -1
+
 # --- Оружие ---
 var current_weapon: BaseWeapon = null
 var _weapon_offset: float = 46.0
@@ -50,10 +56,13 @@ var _ground_shadow: Polygon2D = null
 
 func _ready() -> void:
 	add_to_group("player")
+	if player_class < 0:
+		player_class = GameManager.selected_class
 
 	_create_ground_shadow()
 	_apply_class_stats()
 	_setup_weapon()
+	_setup_network()
 
 	health_component.died.connect(_on_died)
 	health_component.health_changed.connect(_on_health_changed)
@@ -61,6 +70,54 @@ func _ready() -> void:
 
 	hp_bar.max_value = health_component.max_health
 	hp_bar.value = health_component.current_health
+
+
+## Этим персонажем управляет игрок за этим компьютером
+func is_local() -> bool:
+	return not NetworkManager.is_online() or peer_id == multiplayer.get_unique_id()
+
+
+## Сеть (вызывает спавнер ДО добавления в дерево): синхронизатор позиции и authority владельца.
+## Если менять authority в _ready, Godot не успевает зарегистрировать синхронизатор.
+func prepare_network(owner_peer_id: int) -> void:
+	peer_id = owner_peer_id
+	var config := SceneReplicationConfig.new()
+	for prop in [":position", ":velocity", "WeaponPivot:rotation", "WeaponPivot:scale",
+			"Visuals:rotation", "Visuals:scale", "Visuals:modulate"]:
+		var path := NodePath(prop)
+		config.add_property(path)
+		config.property_set_replication_mode(path, SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	var sync := MultiplayerSynchronizer.new()
+	sync.name = "NetSync"
+	sync.root_path = NodePath("..")
+	sync.replication_config = config
+	add_child(sync)
+	set_multiplayer_authority(peer_id) # рекурсивно, вместе с NetSync
+
+
+## Сетевая настройка: камера только у своего персонажа, имя над головой
+func _setup_network() -> void:
+	var cam := get_node_or_null("Camera2D") as Camera2D
+	if cam:
+		cam.enabled = is_local()
+
+	if not NetworkManager.is_online():
+		return
+
+	# Имя игрока над головой
+	var info: Dictionary = NetworkManager.players.get(peer_id, {})
+	var label := Label.new()
+	label.name = "NameLabel"
+	label.text = info.get("name", "Игрок")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.75) if is_local() else Color(0.8, 0.85, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.06))
+	label.add_theme_constant_override("outline_size", 4)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.size = Vector2(120, 16)
+	label.position = Vector2(-60, -44)
+	add_child(label)
 
 
 func _create_ground_shadow() -> void:
@@ -83,10 +140,10 @@ func _create_ground_shadow() -> void:
 
 ## Применить статы выбранного класса
 func _apply_class_stats() -> void:
-	if not GameManager.CLASS_DATA.has(GameManager.selected_class):
+	if not GameManager.CLASS_DATA.has(player_class):
 		return
 
-	var data: Dictionary = GameManager.CLASS_DATA[GameManager.selected_class]
+	var data: Dictionary = GameManager.CLASS_DATA[player_class]
 	var stats: Dictionary = data["stats"]
 
 	speed = float(stats["speed"])
@@ -94,20 +151,22 @@ func _apply_class_stats() -> void:
 	health_component.current_health = stats["hp"]
 	body_sprite.color = data["color"]
 	if body_sprite.material and body_sprite.material is ShaderMaterial:
+		# Своя копия материала: иначе все персонажи в кооперативе получат цвет последнего
+		body_sprite.material = body_sprite.material.duplicate()
 		var sm := body_sprite.material as ShaderMaterial
 		sm.set_shader_parameter("base_color", data["color"])
-		var aura_col: Color = Color(0.96, 0.85, 0.3) if GameManager.selected_class == GameManager.PlayerClass.PALADIN else Color(data["color"]).lightened(0.4)
+		var aura_col: Color = Color(0.96, 0.85, 0.3) if player_class == GameManager.PlayerClass.PALADIN else Color(data["color"]).lightened(0.4)
 		sm.set_shader_parameter("aura_color", aura_col)
 
 		var class_idx: int = -1
-		match GameManager.selected_class:
+		match player_class:
 			GameManager.PlayerClass.WARRIOR: class_idx = 0
 			GameManager.PlayerClass.RANGER:  class_idx = 1
 			GameManager.PlayerClass.MAGE:    class_idx = 2
 			GameManager.PlayerClass.PALADIN: class_idx = 3
 		sm.set_shader_parameter("class_type", class_idx)
 
-	match GameManager.selected_class:
+	match player_class:
 		GameManager.PlayerClass.WARRIOR:
 			player_info.player_class = PlayerInfo.PlayerClass.WARRIOR
 		GameManager.PlayerClass.RANGER:
@@ -117,7 +176,7 @@ func _apply_class_stats() -> void:
 		GameManager.PlayerClass.PALADIN:
 			player_info.player_class = PlayerInfo.PlayerClass.PALADIN
 
-	if GameManager.selected_class == GameManager.PlayerClass.PALADIN:
+	if player_class == GameManager.PlayerClass.PALADIN:
 		hurtbox.damage_reduction = 0.25
 	else:
 		hurtbox.damage_reduction = 0.0
@@ -128,7 +187,7 @@ func _setup_weapon() -> void:
 	for child in weapon_holder.get_children():
 		child.queue_free()
 
-	match GameManager.selected_class:
+	match player_class:
 		GameManager.PlayerClass.WARRIOR:
 			var weapon := MeleeWeapon.new()
 			weapon.name = "WarriorSword"
@@ -198,6 +257,11 @@ func _physics_process(delta: float) -> void:
 	if not health_component.is_alive():
 		return
 
+	# Чужой персонаж: позиция и поворот приходят по сети, здесь только таймер рывка
+	if not is_local():
+		_process_remote_dash(delta)
+		return
+
 	# --- 0. Кулдаун рывка ---
 	if _dash_cooldown_timer > 0.0:
 		_dash_cooldown_timer = max(0.0, _dash_cooldown_timer - delta)
@@ -210,7 +274,11 @@ func _physics_process(delta: float) -> void:
 	# --- 1. Активация рывка / уклонения ---
 	var wants_dash: bool = Input.is_action_just_pressed("dash") or Input.is_action_just_pressed("ability")
 	if wants_dash and not _is_dashing and _dash_cooldown_timer <= 0.0:
-		_start_dash(input_dir, aim_vector)
+		var dash_dir: Vector2 = _get_dash_direction(input_dir, aim_vector)
+		if NetworkManager.is_online():
+			_net_dash.rpc(dash_dir)
+		else:
+			_start_dash(dash_dir)
 
 	_anim_time += delta
 
@@ -240,7 +308,7 @@ func _physics_process(delta: float) -> void:
 		visuals.rotation = lerp_angle(visuals.rotation, dash_tilt, 18.0 * delta)
 
 		# Таран священным щитом для Паладина
-		if GameManager.selected_class == GameManager.PlayerClass.PALADIN:
+		if player_class == GameManager.PlayerClass.PALADIN:
 			_process_paladin_shield_charge()
 
 		if _dash_timer <= 0.0:
@@ -312,23 +380,56 @@ func _physics_process(delta: float) -> void:
 	# --- 4. Атака ---
 	if Input.is_action_just_pressed("attack") and current_weapon and current_weapon.can_attack() and not _is_dashing:
 		var aim_dir: Vector2 = aim_vector.normalized()
-		current_weapon.attack(aim_dir, mouse_pos)
+		if NetworkManager.is_online():
+			_net_attack.rpc(aim_dir, mouse_pos)
+		else:
+			current_weapon.attack(aim_dir, mouse_pos)
 
 
-func _start_dash(input_dir: Vector2, aim_vector: Vector2) -> void:
+## Атака, разосланная всем: у всех проигрывается анимация/снаряд, урон засчитывает хост
+@rpc("authority", "call_local", "reliable")
+func _net_attack(aim_dir: Vector2, target_pos: Vector2) -> void:
+	if not current_weapon:
+		return
+	if not is_local():
+		current_weapon.force_ready() # кулдауны у копий могут чуть расходиться из-за пинга
+	current_weapon.attack(aim_dir, target_pos)
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_dash(dir: Vector2) -> void:
+	_start_dash(dir)
+
+
+## Рывок чужого персонажа: хосту нужно знать о нём для неуязвимости и тарана паладина
+func _process_remote_dash(delta: float) -> void:
+	if not _is_dashing:
+		return
+	_dash_timer -= delta
+	if player_class == GameManager.PlayerClass.PALADIN and NetworkManager.is_authority():
+		_process_paladin_shield_charge()
+	if _dash_timer <= 0.0:
+		_is_dashing = false
+		hurtbox.is_invincible = false
+		_dashed_hit_targets.clear()
+
+
+func _get_dash_direction(input_dir: Vector2, aim_vector: Vector2) -> Vector2:
+	# Дэш всегда направлен в сторону курсора мыши
+	if aim_vector.length_squared() > 0.01:
+		return aim_vector.normalized()
+	elif input_dir.length_squared() > 0.01:
+		return input_dir.normalized()
+	return Vector2.RIGHT
+
+
+func _start_dash(dash_dir: Vector2) -> void:
 	_is_dashing = true
 	_dash_timer = dash_duration
 	_dash_cooldown_timer = dash_cooldown
 	_dashed_hit_targets.clear()
 	_dash_ghost_timer = 0.0
-
-	# Дэш всегда направлен в сторону курсора мыши
-	if aim_vector.length_squared() > 0.01:
-		_dash_direction = aim_vector.normalized()
-	elif input_dir.length_squared() > 0.01:
-		_dash_direction = input_dir.normalized()
-	else:
-		_dash_direction = Vector2.RIGHT
+	_dash_direction = dash_dir
 
 	hurtbox.set_invincible_for(dash_duration + 0.05)
 

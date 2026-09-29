@@ -1,0 +1,112 @@
+[gd_scene load_steps=8 format=3 uid="uid://archer_enemy_scene"]
+
+[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
+[ext_resource type="Script" path="res://scripts/enemies/archer.gd" id="3_archer"]
+[ext_resource type="Script" path="res://scripts/enemies/archer_ai.gd" id="4_archerai"]
+[ext_resource type="Material" path="res://resources/shaders/archer_material.tres" id="5_mat"]
+
+[sub_resource type="CircleShape2D" id="shape_body"]
+radius = 10.0
+
+[sub_resource type="CircleShape2D" id="shape_hurtbox"]
+radius = 11.0
+
+[node name="Archer" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("3_archer")
+speed = 85.0
+contact_damage = 12
+knockback_resistance = 0.8
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("1_health")
+max_health = 35
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("shape_body")
+
+[node name="AimLine" type="Line2D" parent="."]
+visible = false
+z_index = -1
+points = PackedVector2Array(0, 0, 100, 0)
+width = 1.5
+default_color = Color(1, 0.25, 0.2, 0.3)
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="Body" type="ColorRect" parent="Visuals"]
+material = ExtResource("5_mat")
+offset_left = -10.0
+offset_top = -11.0
+offset_right = 10.0
+offset_bottom = 11.0
+mouse_filter = 2
+color = Color(0.36, 0.45, 0.26, 1)
+
+[node name="Hood" type="Polygon2D" parent="Visuals"]
+color = Color(0.22, 0.28, 0.16, 1)
+polygon = PackedVector2Array(-9, -3, -6, -10, 0, -14, 6, -10, 9, -3, 5, -6, -5, -6)
+
+[node name="EyeLeft" type="ColorRect" parent="Visuals"]
+offset_left = -5.0
+offset_top = -5.0
+offset_right = -2.0
+offset_bottom = -3.0
+mouse_filter = 2
+color = Color(1, 0.8, 0.3, 1)
+
+[node name="EyeRight" type="ColorRect" parent="Visuals"]
+offset_left = 2.0
+offset_top = -5.0
+offset_right = 5.0
+offset_bottom = -3.0
+mouse_filter = 2
+color = Color(1, 0.8, 0.3, 1)
+
+[node name="BowPivot" type="Node2D" parent="Visuals"]
+
+[node name="Bow" type="Node2D" parent="Visuals/BowPivot"]
+position = Vector2(14, 0)
+
+[node name="Limb" type="Line2D" parent="Visuals/BowPivot/Bow"]
+points = PackedVector2Array(-3, -11, 1, -7, 3, 0, 1, 7, -3, 11)
+width = 2.5
+default_color = Color(0.45, 0.28, 0.14, 1)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="String" type="Line2D" parent="Visuals/BowPivot/Bow"]
+points = PackedVector2Array(-3, -11, -3, 11)
+width = 0.8
+default_color = Color(0.9, 0.88, 0.8, 0.9)
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 64
+monitoring = false
+script = ExtResource("2_hurtbox")
+
+[node name="HurtboxShape" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("shape_hurtbox")
+
+[node name="HPBar" type="ProgressBar" parent="."]
+offset_left = -12.0
+offset_top = -24.0
+offset_right = 12.0
+offset_bottom = -20.0
+mouse_filter = 2
+value = 35.0
+show_percentage = false
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 15.0
+target_desired_distance = 25.0
+
+[node name="ArcherAI" type="Node" parent="."]
+script = ExtResource("4_archerai")
+base_speed = 85.0
+windup_time = 0.65
+lunge_duration = 0.12
+recover_time = 0.45

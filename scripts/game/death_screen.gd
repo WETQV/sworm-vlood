@@ -40,9 +40,15 @@ func show_death() -> void:
 		panel_tween.tween_property(panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		panel_tween.tween_property(panel, "modulate:a", 1.0, 0.2)
 
-	# Захват фокуса на первой кнопке (клавиатура / геймпад)
+	# В сети перезапуск доступен только хосту (он перезапускает всех)
 	if restart_button:
+		restart_button.visible = NetworkManager.is_authority()
+
+	# Захват фокуса на первой кнопке (клавиатура / геймпад)
+	if restart_button and restart_button.visible:
 		restart_button.grab_focus()
+	elif menu_button:
+		menu_button.grab_focus()
 
 
 func _on_restart_pressed() -> void:
