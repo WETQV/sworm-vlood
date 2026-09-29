@@ -32,13 +32,17 @@ layer = 15
 visible = false
 
 [node name="StatusLabel" type="Label" parent="SpectatorLayer"]
-offset_left = 24.0
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -260.0
 offset_top = 24.0
-offset_right = 624.0
-offset_bottom = 80.0
+offset_right = 260.0
+offset_bottom = 124.0
+grow_horizontal = 2
 theme = ExtResource("4_theme")
 theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
 theme_override_constants/outline_size = 4
+horizontal_alignment = 1
 text = "Наблюдение за союзником"
 
 [node name="SwarmManager" type="Node" parent="."]

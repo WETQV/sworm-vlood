@@ -261,17 +261,61 @@ func _begin_fight(entering_player: Node2D) -> void:
 		return
 	var interior := Rect2(global_position + Vector2.ONE * TILE_SIZE,
 		Vector2(room_size - Vector2i(2, 2)) * TILE_SIZE)
-	var center := global_position + Vector2(room_size) * TILE_SIZE / 2.0
-	var offsets: Array[Vector2] = [Vector2(-48, 0), Vector2(48, 0), Vector2(0, -48), Vector2(0, 48)]
-	var moved: int = 0
+	var occupied: Array[Vector2] = [entering_player.global_position]
 	for node in get_tree().get_nodes_in_group("player"):
 		var teammate := node as Player
 		if teammate == null or teammate == entering_player or interior.has_point(teammate.global_position):
 			continue
 		if teammate.health_component.is_alive():
-			teammate.teleport_to_position(center + offsets[moved % offsets.size()])
-			moved += 1
+			var target := _find_pull_position(entering_player.global_position, occupied, interior)
+			teammate.teleport_to_position(target)
+			occupied.append(target)
 	set_room_state(RoomState.FIGHT)
+
+
+func _find_pull_position(anchor: Vector2, occupied: Array[Vector2], interior: Rect2) -> Vector2:
+	var center := global_position + Vector2(room_size) * TILE_SIZE / 2.0
+	var inward := (center - anchor).normalized()
+	if inward.is_zero_approx():
+		inward = Vector2.DOWN
+	var side := inward.orthogonal()
+	var directions: Array[Vector2] = [side, -side, inward,
+		(side + inward).normalized(), (-side + inward).normalized(),
+		-side + inward * 0.5, side + inward * 0.5]
+	for radius in [48.0, 72.0, 96.0, 128.0, 160.0]:
+		for direction in directions:
+			var candidate: Vector2 = anchor + direction.normalized() * radius
+			if _is_safe_pull_position(candidate, occupied, interior):
+				return candidate
+	# Если вокруг входа тесно, берём ближайшую свободную клетку комнаты.
+	var nearest := anchor
+	var nearest_distance := INF
+	for x in range(1, room_size.x - 1):
+		for y in range(1, room_size.y - 1):
+			var candidate: Vector2 = floor_layer.to_global(floor_layer.map_to_local(Vector2i(x, y)))
+			var distance := anchor.distance_squared_to(candidate)
+			if distance < nearest_distance and _is_safe_pull_position(candidate, occupied, interior):
+				nearest = candidate
+				nearest_distance = distance
+	return nearest
+
+
+func _is_safe_pull_position(candidate: Vector2, occupied: Array[Vector2], interior: Rect2) -> bool:
+	# Учитываем радиус персонажа: точка у края пола или колонны не подходит.
+	for offset in [Vector2.ZERO, Vector2(18, 0), Vector2(-18, 0), Vector2(0, 18), Vector2(0, -18)]:
+		var sample: Vector2 = candidate + offset
+		if not interior.has_point(sample):
+			return false
+		var cell := floor_layer.local_to_map(floor_layer.to_local(sample))
+		if floor_layer.get_cell_source_id(cell) == -1:
+			return false
+	for occupied_position in occupied:
+		if candidate.distance_squared_to(occupied_position) < 40.0 * 40.0:
+			return false
+	for point in _enemy_points + _boss_points:
+		if candidate.distance_squared_to(point.global_position) < 80.0 * 80.0:
+			return false
+	return true
 
 
 # ── Состояния ────────────────────────────────────────────────────────────────

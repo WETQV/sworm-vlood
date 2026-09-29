@@ -203,7 +203,7 @@ func _refresh_spectator_target() -> void:
 			var cam := _player.get_node_or_null("Camera2D") as Camera2D
 			if cam:
 				cam.call("follow_target", teammate)
-			spectator_label.text = "ВЫ ПОГИБЛИ — НАБЛЮДЕНИЕ ЗА %s\nВозрождение на следующем этаже" % NetworkManager.players.get(teammate.peer_id, {}).get("name", "союзником")
+			spectator_label.text = "ВЫ ПОГИБЛИ\nНаблюдение за %s\nВозрождение на следующем этаже" % NetworkManager.players.get(teammate.peer_id, {}).get("name", "союзником")
 			spectator_layer.visible = true
 			return
 	spectator_layer.visible = false
