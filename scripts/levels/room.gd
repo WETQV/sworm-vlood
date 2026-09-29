@@ -18,6 +18,22 @@ const WALL_ATLAS     := Vector2i(1, 0)
 const DOOR_SCENE   := preload("res://scenes/levels/door.tscn")
 const PORTAL_SCENE := preload("res://scenes/levels/portal.tscn")
 
+const SLIME_SCENE      := preload("res://scenes/enemies/slime.tscn")
+const SKELETON_SCENE   := preload("res://scenes/enemies/skeleton.tscn")
+const ARCHER_SCENE     := preload("res://scenes/enemies/archer.tscn")
+const BAT_SCENE        := preload("res://scenes/enemies/bat.tscn")
+const SLIME_BOSS_SCENE := preload("res://scenes/enemies/slime_boss.tscn")
+
+# Таблица обычных врагов. Вес = weight + per_floor * (этаж - 1), но не меньше 0.1.
+# count — сколько штук появляется в одной точке (мыши летают парами).
+# Этаж 1: слайм ~65%, скелет/мышь/лучник по ~10–13%. К 7 этажу слаймов меньше всего.
+const ENEMY_TABLE := [
+	{"scene": SLIME_SCENE,    "weight": 1.0,  "per_floor": -0.1,  "count": 1},
+	{"scene": SKELETON_SCENE, "weight": 0.2,  "per_floor": 0.1,   "count": 1},
+	{"scene": BAT_SCENE,      "weight": 0.2,  "per_floor": 0.05,  "count": 2},
+	{"scene": ARCHER_SCENE,   "weight": 0.15, "per_floor": 0.08,  "count": 1},
+]
+
 var room_id:         int            = -1
 var grid_position:   Vector2i       = Vector2i.ZERO
 var current_state:   RoomState      = RoomState.SLEEP
@@ -330,29 +346,54 @@ func _get_door_rot(side: String) -> float:
 # ── Спавн врагов / лута ──────────────────────────────────────────────────────
 func _spawn_enemies() -> void:
 	_spawned_enemies_count = 0
-	
-	# Спавним обычных врагов
-	var slime_scene = load("res://scenes/enemies/slime.tscn")
-	for p in _enemy_points:
-		_spawn_enemy_at(slime_scene, p.position)
-	
-	# Спавним босса ТОЛЬКО на 7 этаже
+
 	var gm = get_node_or_null("/root/GameManager")
 	var floor_num: int = gm.current_floor if gm else 1
+
+	# Спавним обычных врагов (случайный тип по таблице ENEMY_TABLE)
+	for p in _enemy_points:
+		_spawn_enemy_group(_pick_enemy_entry(floor_num), p.position)
+
+	# Спавним босса ТОЛЬКО на 7 этаже
 	if floor_num == 7:
-		var boss_scene = load("res://scenes/enemies/slime_boss.tscn")
 		for p in _boss_points:
-			_spawn_enemy_at(boss_scene, p.position)
+			_spawn_enemy_at(SLIME_BOSS_SCENE, p.position)
 	else:
-		# На этажах 1-6 вместо босса спавним группу обычных слаймов в те же точки
-		slime_scene = load("res://scenes/enemies/slime.tscn")
+		# На этажах 1-6 вместо босса спавним группу обычных врагов в те же точки
 		for p in _boss_points:
-			_spawn_enemy_at(slime_scene, p.position)
-			_spawn_enemy_at(slime_scene, p.position + Vector2(40, 0))
+			_spawn_enemy_group(_pick_enemy_entry(floor_num), p.position)
+			_spawn_enemy_group(_pick_enemy_entry(floor_num), p.position + Vector2(40, 0))
 	
 	# Если врагов нет, сразу завершаем бой
 	if _spawned_enemies_count == 0:
 		set_room_state(RoomState.CLEARED)
+
+
+## Выбор типа обычного врага с учётом этажа (взвешенный случайный выбор)
+func _pick_enemy_entry(floor_num: int) -> Dictionary:
+	var weights: Array[float] = []
+	var total: float = 0.0
+	for entry in ENEMY_TABLE:
+		var w: float = maxf(0.1, entry["weight"] + entry["per_floor"] * (floor_num - 1))
+		weights.append(w)
+		total += w
+
+	var roll: float = randf() * total
+	for i in ENEMY_TABLE.size():
+		roll -= weights[i]
+		if roll <= 0.0:
+			return ENEMY_TABLE[i]
+	return ENEMY_TABLE[0]
+
+
+## Спавн врага (или стайки) из записи таблицы
+func _spawn_enemy_group(entry: Dictionary, local_pos: Vector2) -> void:
+	var count: int = entry["count"]
+	for i in count:
+		var offset := Vector2.ZERO
+		if count > 1:
+			offset = Vector2.RIGHT.rotated(TAU * i / count) * 18.0
+		_spawn_enemy_at(entry["scene"], local_pos + offset)
 
 
 func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:

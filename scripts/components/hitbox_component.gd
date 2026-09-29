@@ -8,8 +8,11 @@ signal hit_dealt(target: Hurtbox, damage_amount: int)
 @export var damage: int = 20
 @export var knockback_force: float = 140.0
 @export var attacker: Node2D
+## Бить каждую цель не больше одного раза за активацию (одну атаку)
+@export var hit_once_per_activation: bool = false
 
 var is_active: bool = true
+var _hit_targets: Array[Area2D] = []
 
 
 func _ready() -> void:
@@ -27,6 +30,7 @@ func set_active(active: bool) -> void:
 	set_deferred("monitoring", active)
 	set_deferred("monitorable", active)
 	if active:
+		_hit_targets.clear()
 		call_deferred("check_overlapping_now")
 
 
@@ -43,6 +47,10 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 
 	if area.has_method("receive_damage"):
+		if hit_once_per_activation:
+			if _hit_targets.has(area):
+				return
+			_hit_targets.append(area)
 		var source_attacker: Node2D = attacker if attacker else (get_parent() as Node2D)
 		area.receive_damage(damage, knockback_force, global_position, source_attacker)
 		if area is Hurtbox:

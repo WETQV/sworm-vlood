@@ -26,6 +26,12 @@ func _ready() -> void:
 	hp_bar.max_value = health_component.max_health
 	hp_bar.value = health_component.current_health
 
+	# Урон при атаке берётся из contact_damage (одна настройка на врага)
+	var attack_area := get_node_or_null("AttackArea") as HitboxComponent
+	if attack_area:
+		attack_area.damage = contact_damage
+		attack_area.attacker = self
+
 	# Эффект материализации слизи при появлении
 	_play_spawn_animation()
 
@@ -37,8 +43,7 @@ func _play_spawn_animation() -> void:
 
 	var vfx = get_node_or_null("/root/VFXManager")
 	if vfx and vfx.has_method("spawn_enemy_spawn_burst"):
-		var part_col: Color = Color("ee3333") if name.contains("Boss") else Color("44cc44")
-		vfx.spawn_enemy_spawn_burst(global_position, part_col)
+		vfx.spawn_enemy_spawn_burst(global_position, _get_particle_color())
 
 	var tween := create_tween()
 	tween.set_parallel(true)
@@ -46,6 +51,11 @@ func _play_spawn_animation() -> void:
 	tween.tween_property(hp_bar, "modulate:a", 1.0, 0.22)
 	tween.tween_property(visuals, "scale", Vector2(1.25, 0.75), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.chain().tween_property(visuals, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_SINE)
+
+
+## Цвет частиц появления/смерти (наследники переопределяют)
+func _get_particle_color() -> Color:
+	return Color("ee3333") if name.contains("Boss") else Color("44cc44")
 
 
 func _physics_process(delta: float) -> void:
@@ -97,11 +107,11 @@ func _on_died(killed_by: Node2D) -> void:
 		hurtbox.set_deferred("collision_layer", 0)
 		hurtbox.set_deferred("collision_mask", 0)
 
-	# 3. Мгновенно останавливаем контроллер ИИ
-	var ai := get_node_or_null("SlimeAI") as SlimeAI
-	if ai:
-		ai.set_physics_process(false)
-		ai.set_process(false)
+	# 3. Мгновенно останавливаем контроллер ИИ (SlimeAI и его наследники)
+	for child in get_children():
+		if child is SlimeAI:
+			child.set_physics_process(false)
+			child.set_process(false)
 
 	if is_instance_valid(killed_by) and killed_by.has_node("PlayerInfo"):
 		killed_by.get_node("PlayerInfo").register_kill()
@@ -109,8 +119,7 @@ func _on_died(killed_by: Node2D) -> void:
 	# Всплеск частиц смерти
 	var vfx = get_node_or_null("/root/VFXManager")
 	if vfx and vfx.has_method("spawn_death_burst"):
-		var part_col: Color = Color("ee3333") if name.contains("Boss") else Color("44cc44")
-		vfx.spawn_death_burst(global_position, part_col)
+		vfx.spawn_death_burst(global_position, _get_particle_color())
 
 	var snd = get_node_or_null("/root/SoundManager")
 	if snd and snd.has_method("play_enemy_death"):
