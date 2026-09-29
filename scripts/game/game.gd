@@ -59,8 +59,9 @@ func _create_transition_overlay() -> void:
 
 
 func _generate_dungeon() -> void:
-	# Создаём и добавляем генератор
+	# Создаём и добавляем генератор (seed от хоста — одинаковое подземелье у всех)
 	_dungeon = DUNGEON_SCENE.instantiate()
+	_dungeon.seed_value = GameManager.dungeon_seed
 	add_child(_dungeon)
 
 	# Ждём пока генератор завершит генерацию в _ready()
@@ -70,12 +71,21 @@ func _generate_dungeon() -> void:
 	if info_label:
 		info_label.text = "Класс: %s | WASD — движение | ЛКМ — атака | ESC — меню | Колесо — зум" % class_data["name"]
 
-	_spawn_player(class_data)
+	if NetworkManager.is_online():
+		_setup_network_spawners()
+		if multiplayer.is_server():
+			NetworkManager.all_players_in_game.connect(_spawn_all_network_players, CONNECT_ONE_SHOT)
+		NetworkManager.notify_game_scene_ready()
+	else:
+		_spawn_player_node(1, GameManager.selected_class, _get_player_spawn_pos(0))
 
 
-## Спавнит игрока в стартовой комнате через API генератора.
-## Если стартовой комнаты нет — фоллбэк на центр экрана.
-func _spawn_player(class_data: Dictionary) -> void:
+# ════════════════════════════════════════════════════════════════════════════
+#  Игроки
+# ════════════════════════════════════════════════════════════════════════════
+
+## Точка появления i-го игрока в стартовой комнате
+func _get_player_spawn_pos(index: int) -> Vector2:
 	var spawn_pos := Vector2(640, 360)  # Фоллбэк
 
 	# Используем публичный API генератора
@@ -93,11 +103,42 @@ func _spawn_player(class_data: Dictionary) -> void:
 				start_room.room_size.y * 32.0
 			)
 
-	var player_scene: PackedScene = load("res://scenes/player/player.tscn")
-	_player = player_scene.instantiate()
+	# Игроки встают полукругом, чтобы не спавниться друг в друге
+	var offsets: Array[Vector2] = [Vector2.ZERO, Vector2(56, 0), Vector2(-56, 0), Vector2(0, 56)]
+	return spawn_pos + offsets[index % offsets.size()]
 
-	_player.position = spawn_pos
-	player_container.add_child(_player)
+
+## Создание персонажа (одиночная игра или spawn_function сетевого спавнера — на всех машинах)
+func _spawn_player_node(peer_id: int, player_class: int, pos: Vector2) -> CharacterBody2D:
+	var player_scene: PackedScene = load("res://scenes/player/player.tscn")
+	var player: CharacterBody2D = player_scene.instantiate()
+	player.name = "Player_%d" % peer_id
+	player.position = pos
+	player.peer_id = peer_id
+	player.player_class = player_class
+	if NetworkManager.is_online():
+		player.prepare_network(peer_id)
+
+	player.ready.connect(_on_player_node_ready.bind(player), CONNECT_ONE_SHOT)
+	# В одиночной игре добавляем сами; в сети — MultiplayerSpawner
+	if not NetworkManager.is_online():
+		player_container.add_child(player)
+	return player
+
+
+func _on_player_node_ready(player: CharacterBody2D) -> void:
+	# Применяем статы класса (урон оружия — после создания оружия в _ready)
+	var class_data: Dictionary = GameManager.CLASS_DATA[player.player_class]
+	player.speed = class_data["stats"]["speed"]
+	player.attack_damage = class_data["stats"]["damage"]
+	player.get_node("Visuals/Body").color = class_data["color"]
+
+	var health: HealthComponent = player.get_node("HealthComponent")
+	health.died.connect(_on_player_died.bind(player))
+
+	if not player.is_local():
+		return
+	_player = player
 
 	# Настройка камеры для корректной работы с интерполяцией
 	var cam: Camera2D = _player.get_node_or_null("Camera2D")
@@ -105,16 +146,7 @@ func _spawn_player(class_data: Dictionary) -> void:
 		cam.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
 		# Применяем зум из настроек
 		cam.zoom = Vector2(SettingsManager.camera_zoom, SettingsManager.camera_zoom)
-
-	# Применяем статы класса
-	var health: HealthComponent = _player.get_node("HealthComponent")
-	health.max_health = class_data["stats"]["hp"]
-	health.died.connect(_on_player_died)
-	_player.speed = class_data["stats"]["speed"]
-	_player.attack_damage = class_data["stats"]["damage"]
-
-	# Цвет тела
-	_player.get_node("Visuals/Body").color = class_data["color"]
+		cam.make_current()
 
 	# Подключение внутриигрового HUD
 	var hud: GameHUD = get_node_or_null("HUD") as GameHUD
@@ -123,12 +155,91 @@ func _spawn_player(class_data: Dictionary) -> void:
 
 
 ## Обработка смерти игрока
-func _on_player_died(_killed_by: Node2D) -> void:
+func _on_player_died(_killed_by: Node2D, player: CharacterBody2D) -> void:
+	# В кооперативе забег проигран, только когда погибли все
+	if NetworkManager.is_online():
+		if not multiplayer.is_server():
+			return
+		for p in get_tree().get_nodes_in_group("player"):
+			var hc := p.get_node_or_null("HealthComponent") as HealthComponent
+			if hc and hc.is_alive():
+				return
+		_net_show_death.rpc()
+		return
+
+	if player == _player:
+		_show_death()
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_show_death() -> void:
+	_show_death()
+
+
+func _show_death() -> void:
 	if death_screen and death_screen.has_method("show_death"):
 		death_screen.show_death()
 	elif death_screen:
 		death_screen.show()
 
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Сеть: спавнеры игроков и врагов (хост создаёт, клиентам приходит автоматически)
+# ════════════════════════════════════════════════════════════════════════════
+
+var _player_spawner: MultiplayerSpawner
+var _enemy_spawner: MultiplayerSpawner
+var _enemy_counter: int = 0
+
+
+func _setup_network_spawners() -> void:
+	_player_spawner = MultiplayerSpawner.new()
+	_player_spawner.name = "PlayerSpawner"
+	add_child(_player_spawner)
+	_player_spawner.spawn_path = _player_spawner.get_path_to(player_container)
+	_player_spawner.spawn_function = func(data: Array) -> Node:
+		return _spawn_player_node(data[0], data[1], data[2])
+
+	_enemy_spawner = MultiplayerSpawner.new()
+	_enemy_spawner.name = "EnemySpawner"
+	add_child(_enemy_spawner)
+	_enemy_spawner.spawn_path = _enemy_spawner.get_path_to(enemy_container)
+	_enemy_spawner.spawn_function = func(data: Array) -> Node:
+		var enemy: Node2D = load(data[0]).instantiate()
+		enemy.name = data[1]
+		enemy.position = data[2]
+		enemy.prepare_network()
+		return enemy
+
+
+## Хост: все загрузились — создаём персонажей
+func _spawn_all_network_players() -> void:
+	var ids: Array = NetworkManager.players.keys()
+	ids.sort()
+	for i in ids.size():
+		var id: int = ids[i]
+		_player_spawner.spawn([id, NetworkManager.get_player_class(id), _get_player_spawn_pos(i)])
+
+
+## Хост: игрок отключился посреди забега
+func remove_network_player(peer_id: int) -> void:
+	var p := player_container.get_node_or_null("Player_%d" % peer_id)
+	if p:
+		p.queue_free()
+
+
+## Хост: перед сменой этажа убрать сетевые объекты (их удаление разошлётся клиентам)
+func clear_network_entities() -> void:
+	for container in [player_container, enemy_container]:
+		for child in container.get_children():
+			container.remove_child(child)
+			child.queue_free()
+
+
+## Хост: создать врага для всех игроков. Возвращает созданный узел.
+func spawn_network_enemy(scene: PackedScene, global_pos: Vector2) -> Node2D:
+	_enemy_counter += 1
+	return _enemy_spawner.spawn([scene.resource_path, "Enemy_%d" % _enemy_counter, global_pos]) as Node2D
 
 ## Публичный метод для плавного выхода / перехода между этажами
 func fade_out(duration: float = 0.6, next_floor: int = -1) -> Tween:
@@ -244,6 +355,7 @@ func _setup_pause_menu() -> void:
 
 	var btn_restart := Button.new()
 	btn_restart.text = "НАЧАТЬ ЗАНОВО"
+	btn_restart.visible = NetworkManager.is_authority() # в сети перезапуск — только у хоста
 	btn_restart.custom_minimum_size = Vector2(0, 44)
 	_style_pause_button(btn_restart, false)
 	btn_restart.pressed.connect(func():
@@ -338,7 +450,8 @@ func _open_settings() -> void:
 func _toggle_pause(do_pause: bool) -> void:
 	if _pause_overlay:
 		_pause_overlay.visible = do_pause
-	get_tree().paused = do_pause
+	# В сети игру на паузу не ставим — мир живёт у всех игроков
+	get_tree().paused = do_pause and not NetworkManager.is_online()
 	if do_pause and _btn_resume:
 		_btn_resume.grab_focus()
 

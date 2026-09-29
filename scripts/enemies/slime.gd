@@ -32,8 +32,33 @@ func _ready() -> void:
 		attack_area.damage = contact_damage
 		attack_area.attacker = self
 
+	if NetworkManager.is_online() and not multiplayer.is_server():
+		set_physics_process(false) # отбрасывание считает хост, позиция приходит по сети
+
 	# Эффект материализации слизи при появлении
 	_play_spawn_animation()
+
+
+## Сеть (вызывает спавнер ДО добавления в дерево): хост рассылает позицию,
+## состояние ИИ и направление атаки. У клиентов враг — «кукла»: сам не думает,
+## только проигрывает анимации состояний.
+func prepare_network() -> void:
+	var props: Array[String] = [":position"]
+	for child in get_children():
+		if child is SlimeAI:
+			props.append("%s:current_state" % child.name)
+			props.append("%s:_lunge_dir" % child.name)
+
+	var config := SceneReplicationConfig.new()
+	for prop in props:
+		var path := NodePath(prop)
+		config.add_property(path)
+		config.property_set_replication_mode(path, SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	var sync := MultiplayerSynchronizer.new()
+	sync.name = "NetSync"
+	sync.root_path = NodePath("..")
+	sync.replication_config = config
+	add_child(sync)
 
 
 func _play_spawn_animation() -> void:
@@ -135,4 +160,5 @@ func _on_died(killed_by: Node2D) -> void:
 		0.0, 1.0, 0.35
 	)
 	tween.parallel().tween_property(visuals, "scale", Vector2(1.3, 0.4), 0.35)
-	tween.tween_callback(queue_free)
+	# В сети узел удаляет хост (спавнер уберёт его у всех), клиент только прячет
+	tween.tween_callback(queue_free if NetworkManager.is_authority() else hide)

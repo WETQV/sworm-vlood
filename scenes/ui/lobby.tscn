@@ -1,0 +1,193 @@
+[gd_scene load_steps=5 format=3 uid="uid://lobby_scene"]
+
+[ext_resource type="Script" path="res://scripts/ui/lobby.gd" id="1_lobby"]
+[ext_resource type="Theme" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
+[ext_resource type="FontFile" path="res://resources/fonts/RuslanDisplay-Regular.ttf" id="3_font"]
+[ext_resource type="Material" path="res://resources/shaders/dungeon_ambient_material.tres" id="4_mat"]
+
+[node name="Lobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_lobby")
+
+[node name="Background" type="ColorRect" parent="."]
+material = ExtResource("4_mat")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.05, 0.04, 0.07, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 28
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="CenterContainer/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
+theme_override_colors/font_shadow_color = Color(0.7, 0.15, 0.15, 0.7)
+theme_override_constants/shadow_offset_y = 2
+theme_override_fonts/font = ExtResource("3_font")
+theme_override_font_sizes/font_size = 38
+text = "КООПЕРАТИВ"
+horizontal_alignment = 1
+
+[node name="ConnectPanel" type="VBoxContainer" parent="CenterContainer/Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="NameRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="NameCaption" type="Label" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel/NameRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Имя"
+
+[node name="NameEdit" type="LineEdit" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel/NameRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 16
+
+[node name="HostButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "СОЗДАТЬ СЕРВЕР"
+
+[node name="Separator" type="HSeparator" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+layout_mode = 2
+
+[node name="IPRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="IPCaption" type="Label" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel/IPRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "IP хоста"
+
+[node name="IPEdit" type="LineEdit" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel/IPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "192.168.1.5"
+
+[node name="JoinButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "ПОДКЛЮЧИТЬСЯ"
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.6, 0.45, 1)
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="BackButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/ConnectPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "НАЗАД"
+
+[node name="LobbyPanel" type="VBoxContainer" parent="CenterContainer/Panel/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="AddressLabel" type="Label" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="HintLabel" type="Label" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.72, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="PlayersCaption" type="Label" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+layout_mode = 2
+text = "Игроки"
+
+[node name="PlayersFrame" type="PanelContainer" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+
+[node name="PlayersMargin" type="MarginContainer" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel/PlayersFrame"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="PlayersList" type="VBoxContainer" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel/PlayersFrame/PlayersMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ClassCaption" type="Label" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+layout_mode = 2
+text = "Ваш класс"
+
+[node name="ClassButtons" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Buttons" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LeaveButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ВЫЙТИ"
+
+[node name="StartButton" type="Button" parent="CenterContainer/Panel/Margin/VBox/LobbyPanel/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "НАЧАТЬ"

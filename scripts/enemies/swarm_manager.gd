@@ -35,10 +35,8 @@ func _find_players() -> void:
 
 
 func _cleanup_and_refresh() -> void:
-	# Очистка невалидных игроков
-	players = players.filter(func(p: CharacterBody2D) -> bool: return is_instance_valid(p))
-	if players.is_empty():
-		_find_players()
+	# Список игроков обновляем всегда: в сети персонажи появляются не в один кадр
+	_find_players()
 
 	# Очистка невалидных врагов
 	enemies = enemies.filter(func(e: CharacterBody2D) -> bool: return is_instance_valid(e))
@@ -100,6 +98,9 @@ func get_best_target_for(enemy: CharacterBody2D) -> CharacterBody2D:
 
 	for p in players:
 		if not is_instance_valid(p):
+			continue
+		var hc := p.get_node_or_null("HealthComponent") as HealthComponent
+		if hc and not hc.is_alive():
 			continue
 		var dist_sq: float = enemy.global_position.distance_squared_to(p.global_position)
 		if dist_sq < min_dist_sq:

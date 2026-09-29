@@ -70,6 +70,10 @@ func _physics_process(delta: float) -> void:
 		_nav_update_timer = 0.0
 		_update_target()
 
+	if NetworkManager.is_online() and not multiplayer.is_server():
+		_process_puppet()
+		return
+
 	match current_state:
 		State.IDLE:
 			_process_idle()
@@ -85,7 +89,24 @@ func _physics_process(delta: float) -> void:
 			_process_recover(delta)
 
 
+## Клиент: состояние приходит от хоста — при смене проигрываем анимацию/звук/выстрел.
+## Направление атаки (_lunge_dir) тоже синхронизируется, поэтому выстрелы летят туда же, что у хоста.
+var _puppet_state: int = -1
+
+func _process_puppet() -> void:
+	if current_state != _puppet_state:
+		_puppet_state = current_state
+		var synced_dir: Vector2 = _lunge_dir
+		_change_state(current_state)
+		_lunge_dir = synced_dir
+
+
 func _update_target() -> void:
+	# Погибший игрок больше не цель (в кооперативе остальные ещё сражаются)
+	if is_instance_valid(target_player):
+		var hc := target_player.get_node_or_null("HealthComponent") as HealthComponent
+		if hc and not hc.is_alive():
+			target_player = null
 	if not is_instance_valid(target_player):
 		if _swarm:
 			target_player = _swarm.get_best_target_for(_body)

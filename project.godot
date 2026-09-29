@@ -21,6 +21,7 @@ GameManager="*res://scripts/autoload/game_manager.gd"
 SettingsManager="*res://scripts/autoload/settings_manager.gd"
 VFXManager="*res://scripts/autoload/vfx_manager.gd"
 SoundManager="*res://scripts/autoload/sound_manager.gd"
+NetworkManager="*res://scripts/autoload/network_manager.gd"
 
 [display]
 

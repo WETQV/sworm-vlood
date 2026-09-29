@@ -56,6 +56,9 @@ func _ready() -> void:
 
 ## Получить урон (вызывается хитбоксом или атакующей стороной)
 func receive_damage(amount: int, knockback_force: float, attacker_position: Vector2, attacker: Node2D = null, ignore_invincibility: bool = false) -> void:
+	# В сети попадания считает только хост; клиенты получают результат через _net_hit_fx
+	if not NetworkManager.is_authority():
+		return
 	if _is_invincible and not ignore_invincibility:
 		return
 	if health_component and not health_component.is_alive():
@@ -79,18 +82,32 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 		direction = Vector2.RIGHT
 
 	damage_received.emit(final_amount, direction * knockback_force)
-
-	# Запуск частиц попадания
-	var vfx = get_node_or_null("/root/VFXManager")
-	if vfx and vfx.has_method("spawn_hit_particles"):
-		var part_color: Color = Color("44cc44") if entity.is_in_group("enemy") else Color("cc2233")
-		vfx.spawn_hit_particles(global_position, part_color)
+	_play_hit_fx()
 
 	# Запуск i-frames
 	_start_invincibility()
 
-	# Визуальная вспышка получения урона (Hit Flash)
+	if NetworkManager.is_online():
+		_net_hit_fx.rpc(final_amount, direction * knockback_force)
+
+
+## Частицы попадания и вспышка (Hit Flash)
+func _play_hit_fx() -> void:
+	var entity: Node2D = get_parent() as Node2D
+	var vfx = get_node_or_null("/root/VFXManager")
+	if vfx and vfx.has_method("spawn_hit_particles") and entity:
+		var part_color: Color = Color("44cc44") if entity.is_in_group("enemy") else Color("cc2233")
+		vfx.spawn_hit_particles(global_position, part_color)
 	_trigger_hit_flash()
+
+
+## Хост сообщает клиентам о попадании: отбрасывание (для своего персонажа), звук и эффекты
+@rpc("any_peer", "reliable")
+func _net_hit_fx(amount: int, knockback: Vector2) -> void:
+	if multiplayer.get_remote_sender_id() != 1:
+		return
+	damage_received.emit(amount, knockback)
+	_play_hit_fx()
 
 
 func _start_invincibility() -> void:

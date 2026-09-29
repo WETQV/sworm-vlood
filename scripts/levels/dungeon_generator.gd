@@ -87,6 +87,16 @@ func _init_rng() -> void:
 		_rng.seed = seed_value
 
 
+## Перемешивание через _rng (seed подземелья). Array.shuffle() берёт глобальный random,
+## и тогда у игроков в сети получались разные подземелья при одинаковом seed.
+func _shuffle(arr: Array) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j: int = _rng.randi_range(0, i)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
+
+
 ## 1. Построение связанного сеточного графа (4x4 или 5x5)
 func _generate_grid_layout() -> void:
 	var start_coord := Vector2i(2, 2)
@@ -118,7 +128,7 @@ func _generate_grid_layout() -> void:
 		attempts += 1
 		var current_cell: Vector2i = queue[_rng.randi_range(0, queue.size() - 1)]
 		var dir_names: Array = directions.keys()
-		dir_names.shuffle()
+		_shuffle(dir_names)
 
 		for dir_name in dir_names:
 			var offset: Vector2i = directions[dir_name]
@@ -184,7 +194,7 @@ func _assign_room_types() -> void:
 		if _grid[coord]["connections"].size() == 1:
 			leaves.append(coord)
 
-	leaves.shuffle()
+	_shuffle(leaves)
 	if leaves.size() > 0 and room_chest_scene:
 		var chest_coord: Vector2i = leaves.pop_back()
 		_grid[chest_coord]["type"] = Room.RoomType.CHEST
@@ -240,6 +250,7 @@ func _instantiate_rooms() -> void:
 
 		var room: Room = scene.instantiate() as Room
 		room.room_id = id
+		room.name = "Room_%d" % id # одинаковые имена у всех игроков — нужны для сетевых RPC
 		id += 1
 
 		# Вычисляем мировую позицию комнаты

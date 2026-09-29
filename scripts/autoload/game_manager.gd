@@ -42,8 +42,15 @@ const CLASS_DATA: Dictionary = {
 ## Текущее состояние
 var selected_class: PlayerClass = PlayerClass.WARRIOR
 var is_multiplayer: bool = false
+## С какой кнопки главного меню открыто лобби: "host" или "join"
+var lobby_intent: String = "host"
 var current_floor: int = 1
 var difficulty_multiplier: float = 1.0
+## Seed генерации подземелья. 0 = случайный. В сети хост раздаёт его всем,
+## чтобы у всех игроков построилось одинаковое подземелье.
+var dungeon_seed: int = 0
+
+const LAST_FLOOR := 7
 
 ## Сменить сцену
 func change_scene(scene_path: String) -> void:
@@ -51,26 +58,37 @@ func change_scene(scene_path: String) -> void:
 
 ## Начать новую игру (с первого этажа)
 func start_new_game() -> void:
-	current_floor = 1
-	difficulty_multiplier = 1.0
-	change_scene("res://scenes/game/game.tscn")
+	# В сети новый забег запускает только хост — сразу у всех
+	if NetworkManager.is_online():
+		if multiplayer.is_server():
+			NetworkManager.start_game()
+		return
+	start_floor(1, 0)
 
 ## Переход на следующий этаж
 func next_floor() -> void:
-	if current_floor >= 7:
-		# ПОБЕДА! Вместо перехода на 8 этаж, выходим в меню или показываем экран
-		print("[GameManager] ПОБЕДА! 7 этажей зачищено.")
-		# В идеале тут вызвать show_victory_screen(), но для MVP вернемся в меню
+	if NetworkManager.is_online():
+		NetworkManager.start_next_floor()
+		return
+	start_floor(current_floor + 1, 0)
+
+## Запуск этажа (одиночная игра или по команде хоста)
+func start_floor(floor_num: int, seed_value: int) -> void:
+	if floor_num > LAST_FLOOR:
+		# ПОБЕДА! В идеале тут вызвать show_victory_screen(), но для MVP вернемся в меню
+		print("[GameManager] ПОБЕДА! %d этажей зачищено." % LAST_FLOOR)
 		go_to_menu()
 		return
-		
-	current_floor += 1
-	difficulty_multiplier = 1.0 + (current_floor - 1) * 0.25 # +25% статов за каждый этаж
-	print("[GameManager] Переход на этаж %d, Сложность: %.2f" % [current_floor, difficulty_multiplier])
-	get_tree().reload_current_scene()
 
-## Вернуться в меню
+	current_floor = floor_num
+	dungeon_seed = seed_value
+	difficulty_multiplier = 1.0 + (current_floor - 1) * 0.25 # +25% статов за каждый этаж
+	print("[GameManager] Этаж %d, Сложность: %.2f" % [current_floor, difficulty_multiplier])
+	change_scene("res://scenes/game/game.tscn")
+
+## Вернуться в меню (из сетевой игры — с отключением)
 func go_to_menu() -> void:
+	NetworkManager.leave_game()
 	change_scene("res://scenes/ui/main_menu.tscn")
 
 ## Получить данные выбранного класса

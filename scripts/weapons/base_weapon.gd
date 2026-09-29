@@ -30,6 +30,13 @@ func can_attack() -> bool:
 	return not is_attacking and _cooldown_timer.is_stopped()
 
 
+## Сбросить кулдаун (для сетевых копий персонажа, повторяющих атаку владельца)
+func force_ready() -> void:
+	is_attacking = false
+	if _cooldown_timer:
+		_cooldown_timer.stop()
+
+
 ## Виртуальный метод: должен быть переопределен в дочерних классах
 func attack(_aim_direction: Vector2, _target_position: Vector2) -> void:
 	if not can_attack():

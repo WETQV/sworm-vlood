@@ -248,6 +248,8 @@ func _setup_activation_area() -> void:
 func _on_player_entered(body: Node2D) -> void:
 	if current_state != RoomState.SLEEP:
 		return
+	if not NetworkManager.is_authority():
+		return # бой в комнате запускает хост
 	if not body.is_in_group("player"):
 		return
 	_activation_area.set_deferred("monitoring", false)
@@ -259,15 +261,24 @@ func set_room_state(new_state: RoomState) -> void:
 	if current_state == new_state:
 		return
 	current_state = new_state
+	if NetworkManager.is_online() and multiplayer.is_server():
+		_net_set_room_state.rpc(new_state)
 	match current_state:
 		RoomState.FIGHT:   _start_fight()
 		RoomState.CLEARED: _end_fight()
 
 
+## Хост сообщает клиентам о смене состояния комнаты (двери, портал)
+@rpc("authority", "reliable")
+func _net_set_room_state(new_state: RoomState) -> void:
+	set_room_state(new_state)
+
+
 func _start_fight() -> void:
 	print("[Room %d] FIGHT" % room_id)
 	_spawn_doors()
-	_spawn_enemies()
+	if NetworkManager.is_authority():
+		_spawn_enemies() # врагов создаёт только хост, клиентам они приходят через спавнер
 
 
 func _end_fight() -> void:
@@ -281,6 +292,7 @@ func _end_fight() -> void:
 	# Если это комната босса — спавним портал в центре
 	if room_type == RoomType.BOSS:
 		var portal = PORTAL_SCENE.instantiate()
+		portal.name = "Portal" # одинаковое имя у всех игроков — для сетевых RPC портала
 		# Позиция в центре комнаты (пиксельные координаты)
 		portal.position = Vector2(room_size) * TILE_SIZE / 2.0
 		add_child(portal)
@@ -410,11 +422,16 @@ func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
 		local_pos += dir_to_center * TILE_SIZE * 1.5
 		print("[Room %d] Спавн в препятствии! Сдвинуто к центру: %s" % [room_id, local_pos])
 
-	var enemy = scene.instantiate()
-	enemy.position = local_pos
-
-	# Враги — дети spawn_root (так удобнее по координатам)
-	spawn_root.add_child(enemy)
+	var enemy: Node2D
+	var game := get_tree().current_scene
+	if NetworkManager.is_online() and game and game.has_method("spawn_network_enemy"):
+		# В сети враг создаётся через спавнер игры — и сразу появляется у всех игроков
+		enemy = game.spawn_network_enemy(scene, spawn_root.to_global(local_pos))
+	else:
+		enemy = scene.instantiate()
+		enemy.position = local_pos
+		# Враги — дети spawn_root (так удобнее по координатам)
+		spawn_root.add_child(enemy)
 	_spawned_enemies_count += 1
 
 	# Следим за смертью врага через HealthComponent
