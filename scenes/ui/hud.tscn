@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3 uid="uid://game_hud_scene"]
 
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_hud"]
-[ext_resource type="Theme" uid="uid://gothic_theme_01" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
+[ext_resource type="Theme" uid="uid://lmg61b708rjh" path="res://resources/themes/gothic_theme.tres" id="2_theme"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
 bg_color = Color(0.06, 0.05, 0.08, 0.9)

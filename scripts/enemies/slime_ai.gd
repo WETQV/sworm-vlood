@@ -29,12 +29,23 @@ var _circumnavigate_side: int = 1  # 1 = clockwise, -1 = counter-clockwise
 
 const NAV_REPATH_INTERVAL := 0.25  # Как часто пересчитывать путь до цели (сек)
 var _repath_timer: float = 0.0
+## Направление погони взято из пути NavMesh: путь уже обходит колонны,
+## и обход по касательной (без навигации) его перебивать не должен
+var _following_nav: bool = false
+var _body_radius: float = 12.0
 
 
 func _ready() -> void:
 	_body = get_parent() as CharacterBody2D
 	_nav_agent = _body.get_node_or_null("NavigationAgent2D") as NavigationAgent2D
 	_circumnavigate_side = 1 if (_body.get_instance_id() % 2 == 0) else -1
+	var body_shape := _body.get_node_or_null("BodyCollision") as CollisionShape2D
+	if body_shape and body_shape.shape is CircleShape2D:
+		_body_radius = (body_shape.shape as CircleShape2D).radius * body_shape.global_scale.x
+	# Пол — сетка квадратов 64 px; путь «по углам» (corridor funnel) огибал колонну вплотную,
+	# и тело цеплялось за угол. Точки в серединах рёбер клеток держат путь в 32 px от углов.
+	if _nav_agent:
+		_nav_agent.path_postprocessing = NavigationPathQueryParameters2D.PATH_POSTPROCESSING_EDGECENTERED
 	_repath_timer = randf() * NAV_REPATH_INTERVAL  # разносим пересчёты путей разных врагов по кадрам
 
 	_hitbox = _body.get_node_or_null("AttackArea") as HitboxComponent
@@ -184,6 +195,7 @@ func _process_chase(delta: float) -> void:
 ## и пересчёт каждый кадр у нескольких врагов давал фризы.
 func _get_chase_direction(delta: float) -> Vector2:
 	var move_dir: Vector2 = (target_player.global_position - _body.global_position).normalized()
+	_following_nav = false
 	if not _nav_agent:
 		return move_dir
 
@@ -196,6 +208,7 @@ func _get_chase_direction(delta: float) -> Vector2:
 		var nav_dir: Vector2 = (_nav_agent.get_next_path_position() - _body.global_position).normalized()
 		if nav_dir != Vector2.ZERO:
 			move_dir = nav_dir
+			_following_nav = true
 	return move_dir
 
 
@@ -305,6 +318,11 @@ func _avoid_obstacles(desired_direction: Vector2) -> Vector2:
 
 	var origin: Vector2 = _body.global_position
 
+	# Погоня по пути NavMesh: колонна между врагом и игроком — не повод сворачивать
+	# по касательной (враг метался у колонны и застревал в углу); только не тереться о стены
+	if _following_nav and current_state == State.CHASE:
+		return _steer_clear_of_nearby_walls(desired_direction, space_state, origin)
+
 	# 1. Если есть игрок, проверяем прямую видимость (Слой 1 — стены)
 	if is_instance_valid(target_player):
 		var target_pos: Vector2 = target_player.global_position
@@ -347,6 +365,19 @@ func _avoid_obstacles(desired_direction: Vector2) -> Vector2:
 func _steer_clear_of_nearby_walls(desired_dir: Vector2, space_state: PhysicsDirectSpaceState2D, origin: Vector2) -> Vector2:
 	var fwd_query := PhysicsRayQueryParameters2D.create(origin, origin + desired_dir * 36.0, 1)
 	var hit: Dictionary = space_state.intersect_ray(fwd_query)
+
+	# Усы по краям тела: путь NavMesh проходит вплотную к углу колонны, и центральный луч
+	# угол не видит, а край тела за него цепляется. Отворачиваем от задетой стороны.
+	if not hit:
+		var side := Vector2(-desired_dir.y, desired_dir.x)
+		var push := Vector2.ZERO
+		for s in [1.0, -1.0]:
+			var from: Vector2 = origin + side * _body_radius * s
+			var edge_query := PhysicsRayQueryParameters2D.create(from, from + desired_dir * (_body_radius + 14.0), 1)
+			if not space_state.intersect_ray(edge_query).is_empty():
+				push -= side * s
+		if push != Vector2.ZERO:
+			return (desired_dir + push * 0.7).normalized()
 
 	if not hit:
 		if _body.get_slide_collision_count() > 0:
