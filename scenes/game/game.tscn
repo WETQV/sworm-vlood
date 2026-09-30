@@ -1,19 +1,19 @@
-[gd_scene load_steps=7 format=3 uid="uid://game_scene"]
+[gd_scene format=3 uid="uid://cdxyv7qmgbr4i"]
 
-[ext_resource type="Script" path="res://scripts/game/game.gd" id="1_game"]
-[ext_resource type="Script" path="res://scripts/enemies/swarm_manager.gd" id="2_swarm"]
-[ext_resource type="Script" path="res://scripts/game/death_screen.gd" id="3_death"]
-[ext_resource type="Theme" uid="uid://gothic_theme_01" path="res://resources/themes/gothic_theme.tres" id="4_theme"]
+[ext_resource type="Script" uid="uid://bq6tgsvytcncp" path="res://scripts/game/game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://dm8emiv6pfamc" path="res://scripts/enemies/swarm_manager.gd" id="2_swarm"]
+[ext_resource type="Script" uid="uid://cpptq5ssplbbr" path="res://scripts/game/death_screen.gd" id="3_death"]
+[ext_resource type="Theme" uid="uid://lmg61b708rjh" path="res://resources/themes/gothic_theme.tres" id="4_theme"]
 [ext_resource type="Material" path="res://resources/shaders/dungeon_ambient_material.tres" id="5_ambient"]
-[ext_resource type="PackedScene" uid="uid://game_hud_scene" path="res://scenes/ui/hud.tscn" id="6_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="6_hud"]
 
-[node name="Game" type="Node2D"]
+[node name="Game" type="Node2D" unique_id=1601762243]
 script = ExtResource("1_game")
 
-[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+[node name="BackgroundLayer" type="CanvasLayer" parent="." unique_id=1489900252]
 layer = -100
 
-[node name="DungeonBackground" type="ColorRect" parent="BackgroundLayer"]
+[node name="DungeonBackground" type="ColorRect" parent="BackgroundLayer" unique_id=1315384346]
 material = ExtResource("5_ambient")
 anchors_preset = 15
 anchor_right = 1.0
@@ -21,17 +21,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="PlayerContainer" type="Node2D" parent="."]
+[node name="PlayerContainer" type="Node2D" parent="." unique_id=1840879566]
 
-[node name="EnemyContainer" type="Node2D" parent="."]
+[node name="EnemyContainer" type="Node2D" parent="." unique_id=1554205582]
 
-[node name="HUD" parent="." instance=ExtResource("6_hud")]
+[node name="HUD" parent="." unique_id=208285695 instance=ExtResource("6_hud")]
 
-[node name="SpectatorLayer" type="CanvasLayer" parent="."]
+[node name="SpectatorLayer" type="CanvasLayer" parent="." unique_id=1139064806]
 layer = 15
 visible = false
 
-[node name="StatusLabel" type="Label" parent="SpectatorLayer"]
+[node name="StatusLabel" type="Label" parent="SpectatorLayer" unique_id=1658838930]
+anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -260.0
@@ -42,18 +43,18 @@ grow_horizontal = 2
 theme = ExtResource("4_theme")
 theme_override_colors/font_color = Color(0.96, 0.85, 0.52, 1)
 theme_override_constants/outline_size = 4
-horizontal_alignment = 1
 text = "Наблюдение за союзником"
+horizontal_alignment = 1
 
-[node name="SwarmManager" type="Node" parent="."]
+[node name="SwarmManager" type="Node" parent="." unique_id=588357780]
 script = ExtResource("2_swarm")
 
-[node name="DeathScreen" type="CanvasLayer" parent="."]
+[node name="DeathScreen" type="CanvasLayer" parent="." unique_id=1991598256]
 layer = 20
 visible = false
 script = ExtResource("3_death")
 
-[node name="Background" type="ColorRect" parent="DeathScreen"]
+[node name="Background" type="ColorRect" parent="DeathScreen" unique_id=847169779]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -61,7 +62,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.04, 0.03, 0.05, 0.85)
 
-[node name="PanelContainer" type="PanelContainer" parent="DeathScreen"]
+[node name="PanelContainer" type="PanelContainer" parent="DeathScreen" unique_id=860433196]
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -75,48 +76,48 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("4_theme")
 
-[node name="MarginContainer" type="MarginContainer" parent="DeathScreen/PanelContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="DeathScreen/PanelContainer" unique_id=1909138387]
 layout_mode = 2
 theme_override_constants/margin_left = 32
 theme_override_constants/margin_top = 30
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 30
 
-[node name="VBoxContainer" type="VBoxContainer" parent="DeathScreen/PanelContainer/MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="DeathScreen/PanelContainer/MarginContainer" unique_id=1383701632]
 layout_mode = 2
 theme_override_constants/separation = 14
 alignment = 1
 
-[node name="TitleLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer" unique_id=1609728880]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.2, 0.2, 1)
 theme_override_font_sizes/font_size = 30
 text = "ВЫ ПАЛИ В БОЮ"
 horizontal_alignment = 1
 
-[node name="FloorLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="FloorLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer" unique_id=315454786]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.65, 0.45, 1)
 theme_override_font_sizes/font_size = 14
 text = "ЭТАЖ 1"
 horizontal_alignment = 1
 
-[node name="SubtitleLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="SubtitleLabel" type="Label" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer" unique_id=340519068]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.5, 0.6, 1)
 theme_override_font_sizes/font_size = 13
 text = "Рой поглотил ваше тело..."
 horizontal_alignment = 1
 
-[node name="HSeparator" type="HSeparator" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="HSeparator" type="HSeparator" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer" unique_id=1111555049]
 layout_mode = 2
 
-[node name="RestartButton" type="Button" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="RestartButton" type="Button" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer" unique_id=828546225]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "[ Начать заново ]"
 
-[node name="MenuButton" type="Button" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="MenuButton" type="Button" parent="DeathScreen/PanelContainer/MarginContainer/VBoxContainer" unique_id=299597100]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "[ В главное меню ]"

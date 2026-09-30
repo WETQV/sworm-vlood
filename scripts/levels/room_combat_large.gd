@@ -1,12 +1,16 @@
 # ============================================================================
 #  room_combat_large.gd
-#  Большая боевая комната 22×18 с колоннами 2×2
+#  Большая боевая комната 22×16: колонны или вытянутые укрытия
 # ============================================================================
 extends Room
 
 func _build_room() -> void:
 	super._build_room()
-	_add_columns()
+	if posmod(encounter_seed, 2) == 0:
+		_add_columns()
+	else:
+		# Два вертикальных укрытия: центральная линия и обходы с обоих краёв.
+		_add_obstacles([Vector2i(6, 5), Vector2i(14, 8)], Vector2i(2, 3))
 
 
 func _add_columns() -> void:
@@ -18,11 +22,4 @@ func _add_columns() -> void:
 		Vector2i(16, 12),    # низ-право
 	]
 
-	for pos in column_positions:
-		for dx in range(2):
-			for dy in range(2):
-				var tile := pos + Vector2i(dx, dy)
-				wall_layer.set_cell(tile, 0, WALL_ATLAS)
-				floor_layer.erase_cell(tile)
-
-	update_autotiles()
+	_add_obstacles(column_positions, Vector2i(2, 2))

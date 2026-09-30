@@ -62,6 +62,7 @@ func generate() -> void:
 	_assign_room_types()
 	_instantiate_rooms()
 	_connect_doors_and_corridors()
+	_remove_overlapping_corridor_tiles()
 	_update_global_autotiles()
 
 	print("═══ Сеточная генерация завершена: комнат %d, связей %d ═══" % [_rooms.size(), _grid_edges.size()])
@@ -195,6 +196,16 @@ func _assign_room_types() -> void:
 			leaves.append(coord)
 
 	_shuffle(leaves)
+	# Если тупиков мало, используем обычную комнату. Источники будущей прокачки
+	# должны присутствовать на каждом стандартном этаже, а не зависеть от топологии.
+	if leaves.size() < 2:
+		var fallback: Array[Vector2i] = []
+		for coord in _grid.keys():
+			if coord != start_coord and coord != boss_coord and not leaves.has(coord):
+				fallback.append(coord)
+		_shuffle(fallback)
+		while leaves.size() < 2 and not fallback.is_empty():
+			leaves.push_front(fallback.pop_back())
 	if leaves.size() > 0 and room_chest_scene:
 		var chest_coord: Vector2i = leaves.pop_back()
 		_grid[chest_coord]["type"] = Room.RoomType.CHEST
@@ -250,6 +261,7 @@ func _instantiate_rooms() -> void:
 
 		var room: Room = scene.instantiate() as Room
 		room.room_id = id
+		room.encounter_seed = seed_value ^ (id * 104729)
 		room.name = "Room_%d" % id # одинаковые имена у всех игроков — нужны для сетевых RPC
 		id += 1
 
@@ -344,6 +356,18 @@ func _carve_short_passage(room_a: Room, room_b: Room, tile_a: Vector2i, tile_b: 
 func _place_wall_if_empty(pos: Vector2i) -> void:
 	if global_floor.get_cell_source_id(pos) == -1:
 		global_wall.set_cell(pos, 0, WALL_ATLAS)
+
+
+## На границе комната уже владеет тайлом: не рисуем и не навигируем его дважды.
+func _remove_overlapping_corridor_tiles() -> void:
+	for room in _rooms:
+		var rect := room.get_grid_rect()
+		for cell in global_floor.get_used_cells():
+			if rect.has_point(cell):
+				global_floor.erase_cell(cell)
+		for cell in global_wall.get_used_cells():
+			if rect.has_point(cell):
+				global_wall.erase_cell(cell)
 
 
 func _update_global_autotiles() -> void:

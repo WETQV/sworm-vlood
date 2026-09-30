@@ -24,17 +24,17 @@ const ARCHER_SCENE     := preload("res://scenes/enemies/archer.tscn")
 const BAT_SCENE        := preload("res://scenes/enemies/bat.tscn")
 const SLIME_BOSS_SCENE := preload("res://scenes/enemies/slime_boss.tscn")
 
-# Таблица обычных врагов. Вес = weight + per_floor * (этаж - 1), но не меньше 0.1.
-# count — сколько штук появляется в одной точке (мыши летают парами).
-# Этаж 1: слайм ~65%, скелет/мышь/лучник по ~10–13%. К 7 этажу слаймов меньше всего.
-const ENEMY_TABLE := [
-	{"scene": SLIME_SCENE,    "weight": 1.0,  "per_floor": -0.1,  "count": 1},
-	{"scene": SKELETON_SCENE, "weight": 0.2,  "per_floor": 0.1,   "count": 1},
-	{"scene": BAT_SCENE,      "weight": 0.2,  "per_floor": 0.05,  "count": 2},
-	{"scene": ARCHER_SCENE,   "weight": 0.15, "per_floor": 0.08,  "count": 1},
-]
+const ENCOUNTER_PLANNER := preload("res://scripts/levels/encounter_planner.gd")
+const ENEMY_SCENES := {
+	"slime": SLIME_SCENE, "skeleton": SKELETON_SCENE,
+	"archer": ARCHER_SCENE, "bat": BAT_SCENE,
+}
+const SPAWN_PLAYER_DISTANCE := 192.0
+const SPAWN_ENEMY_DISTANCE := 64.0
 
 var room_id:         int            = -1
+var encounter_seed: int = 0
+var encounter_plan: Dictionary = {}
 var grid_position:   Vector2i       = Vector2i.ZERO
 var current_state:   RoomState      = RoomState.SLEEP
 
@@ -47,6 +47,7 @@ var _enemy_points: Array[Marker2D] = []
 var _loot_points:  Array[Marker2D] = []
 var _boss_points:  Array[Marker2D] = []
 var _spawned_enemies_count: int = 0
+var _living_enemies: Dictionary = {}
 
 # ── Слои создаём программно, чтобы не было конфликта с @onready ─────────────
 var floor_layer: TileMapLayer = null
@@ -202,6 +203,17 @@ func _build_room() -> void:
 		"east":  Vector2i(w - 1, int(h / 2.0)),
 	}
 
+
+func _add_obstacles(positions: Array[Vector2i], size: Vector2i) -> void:
+	for pos in positions:
+		for dx in size.x:
+			for dy in size.y:
+				var tile := pos + Vector2i(dx, dy)
+				wall_layer.set_cell(tile, 0, WALL_ATLAS)
+				floor_layer.erase_cell(tile)
+	update_autotiles()
+
+
 func _collect_spawn_points() -> void:
 	_enemy_points.clear()
 	_loot_points.clear()
@@ -252,15 +264,25 @@ func _on_player_entered(body: Node2D) -> void:
 		return # бой в комнате запускает хост
 	if not body.is_in_group("player"):
 		return
-	_activation_area.set_deferred("monitoring", false)
 	call_deferred("_begin_fight", body)
 
 
 func _begin_fight(entering_player: Node2D) -> void:
-	if current_state != RoomState.SLEEP or not is_instance_valid(entering_player):
+	if not NetworkManager.is_authority() or current_state != RoomState.SLEEP or not is_instance_valid(entering_player):
+		return
+	var player := entering_player as Player
+	if player == null or not player.health_component.is_alive():
 		return
 	var interior := Rect2(global_position + Vector2.ONE * TILE_SIZE,
 		Vector2(room_size - Vector2i(2, 2)) * TILE_SIZE)
+	# Отложенный вход мог устареть: другая комната уже собрала команду.
+	if not interior.has_point(player.global_position):
+		return
+	for sibling in get_parent().get_children():
+		if sibling is Room and sibling != self and sibling.current_state == RoomState.FIGHT:
+			return
+	if _activation_area:
+		_activation_area.set_deferred("monitoring", false)
 	var occupied: Array[Vector2] = [entering_player.global_position]
 	for node in get_tree().get_nodes_in_group("player"):
 		var teammate := node as Player
@@ -320,7 +342,9 @@ func _is_safe_pull_position(candidate: Vector2, occupied: Array[Vector2], interi
 
 # ── Состояния ────────────────────────────────────────────────────────────────
 func set_room_state(new_state: RoomState) -> void:
-	if current_state == new_state:
+	if current_state == new_state or current_state == RoomState.CLEARED or new_state == RoomState.SLEEP:
+		return
+	if new_state == RoomState.CLEARED and NetworkManager.is_authority() and not _living_enemies.is_empty():
 		return
 	current_state = new_state
 	if NetworkManager.is_online() and multiplayer.is_server():
@@ -420,54 +444,79 @@ func _get_door_rot(side: String) -> float:
 # ── Спавн врагов / лута ──────────────────────────────────────────────────────
 func _spawn_enemies() -> void:
 	_spawned_enemies_count = 0
+	_living_enemies.clear()
+	var floor_num: int = GameManager.current_floor
+	var alive_players: Array[Vector2] = []
+	for node in get_tree().get_nodes_in_group("player"):
+		var player := node as Player
+		if player and player.health_component.is_alive():
+			alive_players.append(spawn_root.to_local(player.global_position))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = encounter_seed
+	var positions := _encounter_positions(alive_players, rng)
+	var final_boss := room_type == RoomType.BOSS and floor_num == GameManager.LAST_FLOOR
+	# Резервируем безопасную позицию босса до размещения свиты.
+	if final_boss and not positions.is_empty():
+		var boss_pos: Vector2 = positions[0]
+		var center := Vector2(room_size) * TILE_SIZE / 2.0
+		for candidate in positions:
+			if candidate.distance_squared_to(center) < boss_pos.distance_squared_to(center):
+				boss_pos = candidate
+		_spawn_enemy_at(SLIME_BOSS_SCENE, boss_pos)
+		positions = positions.filter(func(p: Vector2) -> bool: return p.distance_to(boss_pos) >= 128.0)
+	encounter_plan = ENCOUNTER_PLANNER.build(encounter_seed, floor_num, alive_players.size(),
+		room_size.x >= 20, room_type == RoomType.BOSS, positions.size(), final_boss)
+	var roster: Array = encounter_plan["enemies"]
+	for i in roster.size():
+		_spawn_enemy_at(ENEMY_SCENES[roster[i]], positions[i])
+	print("[Room %d] Встреча %s: %d врагов, угроза %d/%d" % [room_id,
+		encounter_plan["scenario"], _spawned_enemies_count, encounter_plan["spent"], encounter_plan["budget"]])
 
-	var gm = get_node_or_null("/root/GameManager")
-	var floor_num: int = gm.current_floor if gm else 1
-
-	# Спавним обычных врагов (случайный тип по таблице ENEMY_TABLE)
-	for p in _enemy_points:
-		_spawn_enemy_group(_pick_enemy_entry(floor_num), p.position)
-
-	# Спавним босса ТОЛЬКО на 7 этаже
-	if floor_num == 7:
-		for p in _boss_points:
-			_spawn_enemy_at(SLIME_BOSS_SCENE, p.position)
-	else:
-		# На этажах 1-6 вместо босса спавним группу обычных врагов в те же точки
-		for p in _boss_points:
-			_spawn_enemy_group(_pick_enemy_entry(floor_num), p.position)
-			_spawn_enemy_group(_pick_enemy_entry(floor_num), p.position + Vector2(40, 0))
-	
 	# Если врагов нет, сразу завершаем бой
 	if _spawned_enemies_count == 0:
 		set_room_state(RoomState.CLEARED)
 
 
-## Выбор типа обычного врага с учётом этажа (взвешенный случайный выбор)
-func _pick_enemy_entry(floor_num: int) -> Dictionary:
-	var weights: Array[float] = []
-	var total: float = 0.0
-	for entry in ENEMY_TABLE:
-		var w: float = maxf(0.1, entry["weight"] + entry["per_floor"] * (floor_num - 1))
-		weights.append(w)
-		total += w
+## Маркеры имеют приоритет; дополнительные места берём только из свободного пола.
+func _encounter_positions(players: Array[Vector2], rng: RandomNumberGenerator) -> Array[Vector2]:
+	var candidates: Array[Vector2] = []
+	for point in _enemy_points:
+		candidates.append(point.position)
+	for point in _boss_points:
+		candidates.append(point.position)
+	var fallback: Array[Vector2] = []
+	for x in range(2, room_size.x - 2):
+		for y in range(2, room_size.y - 2):
+			fallback.append(floor_layer.map_to_local(Vector2i(x, y)))
+	for i in range(fallback.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var temp := fallback[i]
+		fallback[i] = fallback[j]
+		fallback[j] = temp
+	candidates.append_array(fallback)
+	var positions: Array[Vector2] = []
+	for candidate in candidates:
+		if not _is_safe_enemy_position(candidate, players, positions):
+			continue
+		positions.append(candidate)
+	return positions
 
-	var roll: float = randf() * total
-	for i in ENEMY_TABLE.size():
-		roll -= weights[i]
-		if roll <= 0.0:
-			return ENEMY_TABLE[i]
-	return ENEMY_TABLE[0]
 
-
-## Спавн врага (или стайки) из записи таблицы
-func _spawn_enemy_group(entry: Dictionary, local_pos: Vector2) -> void:
-	var count: int = entry["count"]
-	for i in count:
-		var offset := Vector2.ZERO
-		if count > 1:
-			offset = Vector2.RIGHT.rotated(TAU * i / count) * 18.0
-		_spawn_enemy_at(entry["scene"], local_pos + offset)
+func _is_safe_enemy_position(pos: Vector2, players: Array[Vector2], occupied: Array[Vector2]) -> bool:
+	var tile := floor_layer.local_to_map(pos)
+	# Запас по радиусу тела, включая увеличенного босса и границы колонн.
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var neighbor := tile + Vector2i(dx, dy)
+			if floor_layer.get_cell_source_id(neighbor) == -1 or wall_layer.get_cell_source_id(neighbor) != -1:
+				return false
+	for player_pos in players:
+		if pos.distance_to(player_pos) < SPAWN_PLAYER_DISTANCE:
+			return false
+	for other in occupied:
+		if pos.distance_to(other) < SPAWN_ENEMY_DISTANCE:
+			return false
+	return true
 
 
 func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
@@ -494,17 +543,22 @@ func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
 		enemy.position = local_pos
 		# Враги — дети spawn_root (так удобнее по координатам)
 		spawn_root.add_child(enemy)
-	_spawned_enemies_count += 1
+	var enemy_id := enemy.get_instance_id()
+	_living_enemies[enemy_id] = true
+	_spawned_enemies_count = _living_enemies.size()
 
 	# Следим за смертью врага через HealthComponent
 	var health = enemy.get_node_or_null("HealthComponent")
 	if health:
-		health.died.connect(_on_enemy_died)
+		health.died.connect(_on_enemy_died.bind(enemy_id))
 
 
-func _on_enemy_died(_killer) -> void:
-	_spawned_enemies_count -= 1
-	if _spawned_enemies_count <= 0:
+func _on_enemy_died(_killer, enemy_id: int) -> void:
+	if current_state != RoomState.FIGHT or not _living_enemies.has(enemy_id):
+		return
+	_living_enemies.erase(enemy_id)
+	_spawned_enemies_count = _living_enemies.size()
+	if _spawned_enemies_count == 0:
 		call_deferred("set_room_state", RoomState.CLEARED)
 
 
