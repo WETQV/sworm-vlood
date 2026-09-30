@@ -2,8 +2,8 @@
 # Пример: powershell -File tests/net/matrix.ps1 -Report docs/net_reports/baseline.txt
 param(
 	[string]$Report = "",
-	[int[]]$PlayerCounts = @(2, 4),
-	[string[]]$Scenarios = @("walk", "pull", "combat")
+	[int[]]$PlayerCounts = @(2, 3, 4),
+	[string[]]$Scenarios = @("walk", "pull", "combat", "integrity")
 )
 $profiles = @(
 	@{ Name = "localhost"; Latency = 0; Jitter = 0; Loss = 0 },

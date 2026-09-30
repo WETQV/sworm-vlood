@@ -34,6 +34,22 @@ func _ready() -> void:
 	_connect_signals()
 	_start_entrance_animation()
 	play_button.grab_focus()
+	_show_session_message()
+
+
+## Сетевая сессия закончилась (хост вышел, связь потеряна, не успели загрузиться) — объясняем почему
+func _show_session_message() -> void:
+	if NetworkManager.session_end_message.is_empty():
+		return
+	var dialog := AcceptDialog.new()
+	dialog.name = "SessionEndedDialog"
+	dialog.title = "Сетевая игра завершена"
+	dialog.dialog_text = NetworkManager.session_end_message
+	dialog.ok_button_text = "ПОНЯТНО"
+	dialog.theme = load("res://resources/themes/gothic_theme.tres")
+	NetworkManager.session_end_message = ""
+	add_child(dialog)
+	dialog.popup_centered()
 
 
 func _create_transition_overlay() -> void:

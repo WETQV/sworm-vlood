@@ -32,6 +32,27 @@ def load_rows(path):
         return list(csv.DictReader(f))
 
 
+def clock_offsets(folder):
+    """Сдвиг часов каждого процесса к часам хоста (CLOCK_OFFSET из стенда; на одной машине ~0)."""
+    off = {}
+    for path in glob.glob(os.path.join(folder, "*_events.csv")):
+        tag = os.path.basename(path)[:-11]
+        for row in load_rows(path):
+            if row["event"].startswith("CLOCK_OFFSET "):
+                off[tag] = int(row["event"].split(" ")[1])
+    return off
+
+
+def load_shifted(path, tag, offsets):
+    """Строки лога с временем, переведённым на часы хоста."""
+    rows = load_rows(path)
+    d = offsets.get(tag, 0)
+    if d:
+        for r in rows:
+            r["t_ms"] = str(int(r["t_ms"]) + d)
+    return rows
+
+
 def scenario_start(events_path):
     for row in load_rows(events_path):
         if row["event"].startswith("scenario=") and row["event"].endswith("start"):
@@ -60,7 +81,7 @@ def collect(folder):
         base = os.path.basename(path)
         if base.endswith("_stats.csv") or base.endswith("_events.csv"):
             continue
-        procs[base[:-4]] = {"rows": load_rows(path)}
+        procs[base[:-4]] = {"rows": load_shifted(path, base[:-4], clock_offsets(folder))}
     start = scenario_start(os.path.join(folder, "host_events.csv"))
 
     truth = {}
@@ -133,6 +154,107 @@ def collect(folder):
     return result
 
 
+def collect_events(folder):
+    """События стенда: (время, процесс, слова события)."""
+    events = []
+    offsets = clock_offsets(folder)
+    for path in glob.glob(os.path.join(folder, "*_events.csv")):
+        tag = os.path.basename(path)[:-11]
+        for row in load_shifted(path, tag, offsets):
+            events.append((int(row["t_ms"]), tag, row["event"].split(" ")))
+    return sorted(events, key=lambda e: e[0])
+
+
+def actions_report(folder):
+    """Сетевые действия игроков и ИИ: задержки доставки и согласованность времени показа."""
+    ev = collect_events(folder)
+    sent = {}          # (kind, peer, seq) -> t
+    host_lat, obs_lat, relay_lat, offsets, ai_offsets = [], [], [], [], []
+    host_played = {}   # (kind, peer, seq) -> момент, когда хост принял/выполнил
+    for t, tag, w in ev:
+        if w[0] == "SENT":
+            sent[(w[1], w[2], w[3])] = t
+        elif w[0] == "PLAYED" and tag == "host":
+            host_played[(w[1], w[2], w[3])] = t
+    for (kind, peer, seq), t in sent.items():
+        if peer == "1":  # действия самого хоста: "принял" = отправил
+            host_played.setdefault((kind, peer, seq), t)
+    for t, tag, w in ev:
+        if w[0] == "PLAYED":
+            key = (w[1], w[2], w[3])
+            if key not in sent:
+                continue
+            if tag == "host":
+                host_lat.append(t - sent[key])
+            else:
+                recv = t - float(w[5])  # момент приёма = показ − задержка выравнивания
+                obs_lat.append(recv - sent[key])
+                if key in host_played:
+                    relay_lat.append(recv - host_played[key])
+                if w[1] == "attack":
+                    offsets.append(float(w[4]))
+        elif w[0] == "AIEV" and tag != "host":
+            if w[1] in ("3", "4"):  # SlimeAI.State: 3 = WINDUP (замах), 4 = LUNGE (удар)
+                ai_offsets.append(float(w[2]))
+    # Согласованность по телу: где было тело владельца в момент атаки (его лог) и где тело
+    # показано у наблюдателя в момент проигрывания атаки (лог наблюдателя). Не зависит от анимации оружия.
+    body_offsets = []
+    tracks = {}  # (процесс, peer) -> [(t, x, y)]
+    for path in glob.glob(os.path.join(folder, "*.csv")):
+        base = os.path.basename(path)
+        if base.endswith("_stats.csv") or base.endswith("_events.csv"):
+            continue
+        for r in load_shifted(path, base[:-4], clock_offsets(folder)):
+            tracks.setdefault((base[:-4], r["peer"]), []).append((int(r["t_ms"]), float(r["x"]), float(r["y"])))
+    owner_of = {}
+    for (proc, peer), tr in tracks.items():
+        tr.sort()
+    for path in glob.glob(os.path.join(folder, "*.csv")):
+        base = os.path.basename(path)
+        if base.endswith("_stats.csv") or base.endswith("_events.csv"):
+            continue
+        for r in load_rows(path)[:200]:
+            if r["local"] == "1":
+                owner_of[r["peer"]] = base[:-4]
+                break
+    for t, tag, w in ev:
+        if w[0] == "PLAYED" and w[1] == "attack" and tag != "host":
+            key = (w[1], w[2], w[3])
+            owner_proc = owner_of.get(w[2])
+            if key in sent and owner_proc and (owner_proc, w[2]) in tracks and (tag, w[2]) in tracks:
+                ox, oy = interp(tracks[(owner_proc, w[2])], sent[key])
+                vx, vy = interp(tracks[(tag, w[2])], t)
+                body_offsets.append(math.dist((ox, oy), (vx, vy)))
+    return {"host_lat": host_lat, "obs_lat": obs_lat, "relay_lat": relay_lat, "offsets": offsets,
+            "ai_offsets": ai_offsets, "body_offsets": body_offsets}
+
+
+def integrity_report(folder):
+    """Сценарий integrity: отправлено / принято хостом / попаданий / смертей."""
+    ev = collect_events(folder)
+    rep = {}
+    host_peer = None
+    for t, tag, w in ev:
+        if w[0] == "INTEGRITY_SENT":
+            rep.setdefault(w[1], {})["sent"] = int(w[3])
+            rep[w[1]]["class"] = int(w[2])
+            if tag == "host":
+                host_peer = w[1]
+        elif w[0] == "PLAYED" and tag == "host" and w[1] == "attack":
+            rep.setdefault(w[2], {}).setdefault("accepted", 0)
+            rep[w[2]]["accepted"] += 1
+        elif w[0] == "HIT":
+            rep.setdefault(w[1], {}).setdefault("hits", 0)
+            rep[w[1]]["hits"] += 1
+            rep[w[1]]["dmg"] = rep[w[1]].get("dmg", 0) + int(w[2])
+        elif w[0] == "SPAM_SENT":
+            rep.setdefault(w[1], {})["spam"] = 21
+    deaths = {tag: int(w[1]) for t, tag, w in ev if w[0] == "DIED_COUNT"}
+    if host_peer and host_peer in rep:  # свои атаки хост не валидирует — принято = отправлено
+        rep[host_peer]["accepted"] = rep[host_peer].get("sent", 0)
+    return rep, deaths
+
+
 def main(folder):
     res = collect(folder)
     print(f"== {folder}")
@@ -155,6 +277,37 @@ def main(folder):
               f"{s['pkts_out']:9.0f} {s['frame_p99']:9.1f} {s['frame_max']:9.1f}")
     for tag, ns in res["netstats"].items():
         print(f"  NETSTATS {tag}: {ns}")
+
+    act = actions_report(folder)
+    if act["host_lat"] or act["ai_offsets"]:
+        print("\n-- Сетевые действия (мс / px)")
+        f = lambda v: f"p50={pct(v,.5):.0f} p95={pct(v,.95):.0f} max={max(v or [float('nan')]):.0f} n={len(v)}"
+        print(f"  владелец → хост (приём запроса):          {f(act['host_lat'])}")
+        print(f"  хост → наблюдатель (подтверждение):       {f(act['relay_lat'])}")
+        print(f"  владелец → наблюдатель (всего):             {f(act['obs_lat'])}")
+        print(f"  атака игрока: оружие ↔ точка удара у наблюдателя, px: {f(act['offsets'])}")
+        print(f"  атака игрока: тело у наблюдателя ↔ тело владельца в момент удара, px: {f(act['body_offsets'])}")
+        print(f"  атака врага: тело ↔ точка события у клиента, px:  {f(act['ai_offsets'])}")
+
+    rep, deaths = integrity_report(folder)
+    if any("sent" in r for r in rep.values()):
+        print("\n-- Целостность (манекен): каждое принятое хостом действие = ровно одно попадание")
+        print(f"  {'игрок':12s} {'класс':>5s} {'отправлено':>10s} {'спам+повтор':>11s} {'принято':>8s} {'попаданий':>9s} {'урон':>6s}")
+        for peer, r in rep.items():
+            if "sent" not in r and "hits" not in r:
+                continue
+            print(f"  {peer:12s} {r.get('class', -1):5d} {r.get('sent', 0):10d} {r.get('spam', 0):11d} "
+                  f"{r.get('accepted', 0):8d} {r.get('hits', 0):9d} {r.get('dmg', 0):6d}")
+        print(f"  смертей манекена по процессам: {deaths}")
+
+    ev = collect_events(folder)
+    life = [(t, tag, " ".join(w)) for t, tag, w in ev
+            if w[0] in ("LEAVING", "SESSION_END", "FLOOR", "FLOOR_STUCK", "TIMEOUT", "RESTART", "HOST_LEAVING")]
+    if life:
+        t0 = life[0][0]
+        print("\n-- Жизненный цикл")
+        for t, tag, text in life:
+            print(f"  {(t - t0)/1000:6.1f}с {tag:6s} {text}")
 
 
 if __name__ == "__main__":

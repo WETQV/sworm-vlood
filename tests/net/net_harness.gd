@@ -59,6 +59,11 @@ func _ready() -> void:
 		return
 
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	# Сравнительные замеры: align=0 — чужие действия без выравнивания по задержке показа тела
+	NetworkManager.align_remote_actions = args.get("align", "1") != "0"
+	# Медленная загрузка: этот клиент сообщает о готовности сцены с задержкой
+	NetworkManager.debug_scene_ready_delay = float(args.get("ready_delay", "0"))
+	NetworkManager.server_disconnected.connect(_on_session_ended)
 	# Аварийный выход, если сценарий завис (не мешает нормальному завершению)
 	get_tree().create_timer(float(args.get("timeout", "100"))).timeout.connect(func() -> void:
 		log_event("TIMEOUT")
@@ -150,6 +155,9 @@ func _run_client() -> void:
 	await NetworkManager.connection_succeeded
 	log_event("connected id=%d" % multiplayer.get_unique_id())
 	NetworkManager.set_my_class(GameManager.selected_class)
+	_clock_sync_loop()
+	if args.has("leave_on"):
+		_watch_leave()
 	await _wait_for_players(int(args.get("players", "2")))
 	await _run_scenario()
 	await _finish()
@@ -159,7 +167,9 @@ func _wait_for_players(need: int) -> void:
 	var deadline := Time.get_ticks_msec() + 30000
 	while Time.get_ticks_msec() < deadline:
 		await wait(0.2)
-		if get_tree().get_nodes_in_group("player").size() >= need and _my_player():
+		# если кто-то вышел во время ожидания — ждём оставшихся
+		var n: int = mini(need, NetworkManager.players.size()) if NetworkManager.is_online() else need
+		if get_tree().get_nodes_in_group("player").size() >= n and _my_player():
 			break
 	await wait(1.0)
 	log_event("in_game floor=%d players=%d seed=%d" % [GameManager.current_floor,
@@ -169,8 +179,10 @@ func _wait_for_players(need: int) -> void:
 func _finish() -> void:
 	_running = false
 	_release_all()
+	if role == "client":
+		log_event("CLOCK_OFFSET %d rtt %d" % [_clock_offset, _clock_rtt])
 	if "net_stats" in NetworkManager:
-		log_event("NETSTATS %s" % JSON.stringify(NetworkManager.net_stats))
+		log_event("NETSTATS %s" % JSON.stringify(NetworkManager.net_stats).replace(",", ";"))
 	_write_files()
 	log_event("DONE")
 	await wait(0.5)
@@ -193,6 +205,10 @@ func _run_scenario() -> void:
 			await _scenario_combat()
 		"floors":
 			await _scenario_floors()
+		"integrity":
+			await _scenario_integrity()
+		"hostleave":
+			await _scenario_host_leave()
 		_:
 			await wait(duration)
 	log_event("scenario=%s end" % scenario)
@@ -228,6 +244,7 @@ func _scenario_floors() -> void:
 	for n in transitions:
 		var floor_before: int = GameManager.current_floor
 		var transition_before: int = NetworkManager._transition_id
+		var scene_before: Node = get_tree().current_scene
 		await wait(2.0)
 		log_event("FLOOR %d transition=%d nodes=%d orphans=%d players=%d" % [floor_before, transition_before,
 			Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
@@ -250,9 +267,206 @@ func _scenario_floors() -> void:
 		if NetworkManager._transition_id == transition_before:
 			log_event("FLOOR_STUCK %d" % floor_before)
 			return
-		await _wait_for_players(int(args.get("players", "2")))
+		# ждём именно новую сцену: номер перехода меняется ещё на старом этаже (подготовка)
+		while get_tree().current_scene == scene_before and Time.get_ticks_msec() < deadline:
+			await wait(0.1)
+		# после ухода игрока ждём столько, сколько осталось в сессии
+		await _wait_for_players(NetworkManager.players.size() if NetworkManager.is_online() else 1)
 	log_event("FLOOR %d transitions_done=%d nodes=%d orphans=%d" % [GameManager.current_floor, transitions,
 		Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)])
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Целостность боя: двойное/пропущенное применение, спам и повтор запросов, одна смерть
+# ════════════════════════════════════════════════════════════════════════════
+
+var _dummy: Node2D = null
+var _died_count: int = 0
+
+func _scenario_integrity() -> void:
+	var attacks: int = int(args.get("attacks", "15"))
+	var game := get_tree().current_scene
+	_running = false # боты стоят там, куда их поставит хост
+	_release_all()
+	if role == "host":
+		var start_room: Room = game._dungeon.get_start_room()
+		var center: Vector2 = start_room.global_position + Vector2(start_room.room_size) * 32.0 + Vector2(0, -96)
+		var dummy: Node2D = game.spawn_network_enemy(load("res://scenes/enemies/slime.tscn"), center)
+		await wait(0.3)
+		dummy.get_node("SlimeAI").set_physics_process(false) # манекен стоит и не атакует
+		dummy.knockback_resistance = 100000.0
+		dummy.health_component.max_health = 1000000
+		dummy.health_component.set_health(1000000)
+		# i-frames манекена выключены: иначе удары разных игроков в пределах 0.25 с
+		# «теряются» по правилам игры, и отличить это от сетевой потери нельзя
+		dummy.get_node("Hurtbox").invincibility_time = 0.0
+		dummy.health_component.damage_taken.connect(func(amount: int, source: Node2D) -> void:
+			log_event("HIT %d %d" % [_owner_peer(source), amount]))
+		var players := get_tree().get_nodes_in_group("player")
+		players.sort_custom(func(a, b): return a.peer_id < b.peer_id)
+		for i in players.size():
+			var p: Player = players[i]
+			var melee: bool = p.player_class in [GameManager.PlayerClass.WARRIOR, GameManager.PlayerClass.PALADIN]
+			var dir := Vector2.RIGHT.rotated(TAU * i / players.size())
+			p.teleport_to_position(center + dir * (34.0 if melee else 160.0))
+		log_event("DUMMY ready players=%d" % players.size())
+	await wait(2.5)
+	_dummy = null
+	for e in get_tree().get_nodes_in_group("enemy"):
+		_dummy = e
+	if _dummy == null:
+		log_event("NO_DUMMY")
+		return
+	_dummy.health_component.died.connect(func(_k) -> void: _died_count += 1)
+	var me := _my_player()
+	me.aim_override = _dummy.global_position # оружие смотрит на манекен, как при наведении мышью
+	await wait(0.3)
+	var sent := 0
+	for k in attacks:
+		await wait(me.current_weapon.attack_cooldown + 0.08)
+		var aim: Vector2 = (_dummy.global_position - me.global_position).normalized()
+		if me.try_attack(aim, _dummy.global_position):
+			sent += 1
+	log_event("INTEGRITY_SENT %d %d %d dist=%.0f" % [me.peer_id, me.player_class, sent, me.global_position.distance_to(_dummy.global_position)])
+	var legit_seq: int = me._action_seq
+	if role != "host":
+		await wait(0.3) # оружие вернулось из анимации удара — точка атаки как у честного игрока
+		# Спам в обход локального кулдауна + повтор последнего номера
+		var aim: Vector2 = (_dummy.global_position - me.global_position).normalized()
+		for k in 20:
+			me._action_seq += 1
+			me._net_request_attack.rpc_id(1, me._action_seq, aim, _dummy.global_position, me.current_weapon.global_position)
+			await get_tree().physics_frame
+		# Повтор уже принятого номера (после паузы, чтобы кулдаун не маскировал отказ)
+		await wait(1.0)
+		me._net_request_attack.rpc_id(1, legit_seq, aim, _dummy.global_position, me.current_weapon.global_position)
+		log_event("SPAM_SENT %d 20 replay 1" % me.peer_id)
+	await wait(8.0 if role == "host" else 3.0) # хост ждёт, пока все закончат серии
+	if role == "host":
+		_dummy.get_node("Hurtbox").receive_damage(2000000, 0.0, _dummy.global_position, null, true)
+	# ждём смерти манекена (приходит от хоста), потом ещё немного — вдруг придёт повторная
+	var deadline := Time.get_ticks_msec() + 15000
+	while _died_count == 0 and Time.get_ticks_msec() < deadline:
+		await wait(0.2)
+	await wait(1.5)
+	log_event("DIED_COUNT %d" % _died_count)
+
+
+## Игрок-владелец источника урона (оружие/снаряд → персонаж)
+func _owner_peer(source: Node) -> int:
+	var n: Node = source
+	while n:
+		if n is Player:
+			return (n as Player).peer_id
+		n = n.get_parent()
+	return -1
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Разрывы: выход клиента во время перехода, выход хоста, медленная загрузка
+# ════════════════════════════════════════════════════════════════════════════
+
+## Клиент уходит на N-м переходе: leave_on=prepare — сразу после команды подготовки,
+## leave_on=loading — когда начал грузить новый этаж (сцена ещё не готова)
+func _watch_leave() -> void:
+	var at: int = int(args.get("leave_at", "2"))
+	var seen := 0
+	var last_id: int = NetworkManager._transition_id
+	var last_floor: int = GameManager.current_floor
+	while true:
+		await get_tree().process_frame
+		var changed := false
+		if args["leave_on"] == "prepare" and NetworkManager._transition_id != last_id:
+			last_id = NetworkManager._transition_id
+			changed = true
+		elif args["leave_on"] == "loading" and GameManager.current_floor != last_floor:
+			last_floor = GameManager.current_floor
+			changed = true
+		if changed:
+			seen += 1
+			if seen >= at + (1 if args["leave_on"] == "prepare" else 0):
+				log_event("LEAVING on=%s transition=%d floor=%d" % [args["leave_on"], NetworkManager._transition_id, GameManager.current_floor])
+				_running = false
+				_write_files()
+				NetworkManager.leave_game()
+				await wait(1.0) # даём уйти уведомлению о выходе (NetworkManager закрывает через 0.3 с)
+				get_tree().quit()
+				return
+
+
+## Хост выходит в меню посреди игры (как «В ГЛАВНОЕ МЕНЮ»): клиенты должны получить причину
+func _scenario_host_leave() -> void:
+	await wait(duration)
+	if role == "host":
+		log_event("HOST_LEAVING")
+		GameManager.go_to_menu()
+		await wait(1.5)
+	else:
+		await wait(5.0) # клиенту должен прийти разрыв — см. _on_session_ended
+
+
+func _on_session_ended() -> void:
+	log_event("SESSION_END message=%s" % NetworkManager.session_end_message.replace(",", ";"))
+	await wait(1.5)
+	var scene := get_tree().current_scene
+	log_event("SESSION_END scene=%s" % (scene.name if scene else "null"))
+	_running = false
+	_write_files()
+	get_tree().quit()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Синхронизация часов (для игры на разных компьютерах): сдвиг часов клиента к часам хоста
+#  по пингу с минимальным RTT. Анализатор прибавляет сдвиг ко всем временам клиента.
+# ════════════════════════════════════════════════════════════════════════════
+
+var _clock_offset: int = 0
+var _clock_rtt: int = 1000000
+
+func _clock_sync_loop() -> void:
+	while NetworkManager.is_online():
+		_clock_ping.rpc_id(1, now_ms())
+		await wait(1.0)
+
+
+@rpc("any_peer", "unreliable")
+func _clock_ping(client_t: int) -> void:
+	if multiplayer.is_server():
+		_clock_pong.rpc_id(multiplayer.get_remote_sender_id(), client_t, now_ms())
+
+
+@rpc("authority", "unreliable")
+func _clock_pong(client_t: int, host_t: int) -> void:
+	var t := now_ms()
+	var rtt := t - client_t
+	if rtt < _clock_rtt:
+		_clock_rtt = rtt
+		_clock_offset = host_t - (client_t + t) / 2
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Журнал сетевых действий: отправка, приём хостом, показ у наблюдателей
+# ════════════════════════════════════════════════════════════════════════════
+
+func _hook_net_signals() -> void:
+	for p in get_tree().get_nodes_in_group("player"):
+		if p.has_meta("harness_hooked"):
+			continue
+		p.set_meta("harness_hooked", true)
+		var pl := p as Player
+		pl.action_sent.connect(func(kind: String, seq: int) -> void:
+			log_event("SENT %s %d %d" % [kind, pl.peer_id, seq]))
+		pl.remote_action_played.connect(func(kind: String, seq: int, offset: float) -> void:
+			var delay: float = pl._interp.interp_delay_ms if (NetworkManager.align_remote_actions and not multiplayer.is_server()) else 0.0
+			log_event("PLAYED %s %d %d %.1f %.1f" % [kind, pl.peer_id, seq, offset, delay]))
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if e.has_meta("harness_hooked"):
+			continue
+		e.set_meta("harness_hooked", true)
+		for c in e.get_children():
+			if c is SlimeAI:
+				c.net_event_played.connect(func(state: int, offset: float) -> void:
+					log_event("AIEV %d %.1f" % [state, offset]))
+
 
 func _nearest_room(type: Room.RoomType) -> Room:
 	var game := get_tree().current_scene
@@ -331,6 +545,8 @@ func _process(delta: float) -> void:
 	if role == "proxy":
 		_proxy_step()
 		return
+	if NetworkManager.is_online():
+		_hook_net_signals()
 	var now_usec := Time.get_ticks_usec()
 	if _last_frame_usec > 0 and _running:
 		_frame_times.append((now_usec - _last_frame_usec) / 1000.0)

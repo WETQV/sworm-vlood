@@ -17,6 +17,8 @@ const DEFAULT_PORT := 7000
 const MAX_PLAYERS := 4
 ## Пауза между подтверждением остановки снимков и сменой этажа, сек (≥ джиттер сети)
 const FLOOR_CHANGE_GRACE := 0.25
+## Через сколько закрывать соединение после уведомления о выходе, сек
+const LEAVE_CLOSE_DELAY := 0.3
 
 ## peer_id -> { "name": String, "class": int }
 var players: Dictionary = {}
@@ -29,6 +31,13 @@ var _floor_prepare_acks: Array[int] = []
 var _transition_id: int = 0
 ## Счётчики сетевых событий (принятые/отклонённые запросы, отброшенные снимки) — для замеров
 var net_stats: Dictionary = {}
+## Почему закончилась сетевая сессия — показывается в главном меню (пусто — нечего показывать)
+var session_end_message: String = ""
+## Наблюдатели проигрывают чужие действия с задержкой показа тела (выравнивание времени).
+## false — сразу по приходу (только для сравнительных замеров в tests/net)
+var align_remote_actions: bool = true
+## Тестовый хук tests/net: искусственная задержка сообщения о готовности сцены, сек
+var debug_scene_ready_delay: float = 0.0
 
 
 func count_stat(key: String, amount: int = 1) -> void:
@@ -38,6 +47,24 @@ func count_stat(key: String, amount: int = 1) -> void:
 ## Идёт смена этажа — боевые запросы не принимаются
 func is_transitioning() -> bool:
 	return _floor_change_pending
+
+
+## Соединения, которые мы покидаем: обслуживаем до закрытия (см. leave_game)
+var _closing_peers: Array[Dictionary] = []
+
+
+func _process(_delta: float) -> void:
+	var now := Time.get_ticks_msec()
+	for i in range(_closing_peers.size() - 1, -1, -1):
+		var item: Dictionary = _closing_peers[i]
+		var p: ENetMultiplayerPeer = item["peer"]
+		if now >= item["close_at"]:
+			p.close()
+			_closing_peers.remove_at(i)
+		elif p.host:
+			# Обслуживаем только ENet-уровень (отправка/подтверждения), без сетевого API сцены
+			while p.host.service(0)[0] != ENetConnection.EVENT_NONE:
+				pass
 
 
 func _ready() -> void:
@@ -118,7 +145,24 @@ func join_game(address: String, player_name: String, port: int = DEFAULT_PORT) -
 
 func leave_game() -> void:
 	if multiplayer.has_multiplayer_peer() and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
-		multiplayer.multiplayer_peer.close()
+		var peer := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+		if is_online() and peer:
+			if multiplayer.is_server():
+				# Хост сообщает причину; клиенты, получив её, выходят сами (kick)
+				if players.size() > 1:
+					_net_session_message.rpc("Хост завершил игру.", true)
+			else:
+				# Клиент предупреждает хост о выходе — иначе хост узнает только по таймауту ENet (~30 с)
+				var server := peer.get_peer(1)
+				if server:
+					server.peer_disconnect()
+			_flush()
+			# Закрываем чуть позже и продолжаем обслуживать соединение до закрытия: сообщение
+			# и уведомление о выходе должны дойти раньше разрыва. Ссылку держим сами —
+			# иначе пир освободится сразу после подмены и разорвёт связь без уведомления.
+			_closing_peers.append({"peer": peer, "close_at": Time.get_ticks_msec() + int(LEAVE_CLOSE_DELAY * 1000.0)})
+		else:
+			multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	players.clear()
 	_players_in_game.clear()
@@ -244,6 +288,8 @@ func _prepare_next_floor(transition_id: int) -> void:
 	if game and game.has_method("stop_local_synchronization"):
 		game.stop_local_synchronization()
 	await get_tree().process_frame
+	if not is_online():
+		return # вышли из сессии, пока готовились
 	_next_floor_prepared.rpc_id(1, transition_id)
 
 
@@ -286,6 +332,10 @@ func _start_floor(floor_num: int, dungeon_seed: int, transition_id: int) -> void
 
 ## Вызывается игровой сценой, когда она загрузилась и подземелье построено
 func notify_game_scene_ready() -> void:
+	if debug_scene_ready_delay > 0.0:
+		await get_tree().create_timer(debug_scene_ready_delay).timeout
+		if not is_online():
+			return
 	if multiplayer.is_server():
 		_mark_in_game(1)
 	else:
@@ -314,7 +364,32 @@ func drop_players_not_in_game() -> void:
 	for id in players.keys():
 		if id != 1 and not _players_in_game.has(id):
 			count_stat("dropped_slow_loader")
-			(multiplayer.multiplayer_peer as ENetMultiplayerPeer).disconnect_peer(id)
+			# Клиент, получив причину, выходит сам; если не вышел за секунду — отключаем принудительно
+			_net_session_message.rpc_id(id, "Уровень не загрузился вовремя — вы отключены, группа продолжила без вас.", true)
+			_flush()
+			get_tree().create_timer(1.0).timeout.connect(_force_disconnect.bind(id))
+
+
+func _force_disconnect(id: int) -> void:
+	var peer := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if peer and is_online() and multiplayer.is_server() and multiplayer.get_peers().has(id):
+		peer.disconnect_peer(id)
+
+
+## Хост → клиент: причина конца сессии (показывается в главном меню).
+## kick — хост отключает этого клиента: клиент выходит сам, не дожидаясь обрыва связи.
+@rpc("authority", "reliable")
+func _net_session_message(text: String, kick: bool = false) -> void:
+	session_end_message = text
+	if kick:
+		_on_server_disconnected()
+
+
+## Отправить накопленные пакеты сразу (перед закрытием соединения)
+func _flush() -> void:
+	var peer := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if peer and peer.host:
+		peer.host.flush()
 
 
 func _mark_in_game(peer_id: int) -> void:
@@ -346,13 +421,15 @@ func _on_peer_disconnected(id: int) -> void:
 	_players_in_game.erase(id)
 	_sync_players.rpc(players)
 	players_changed.emit()
-	# Убираем персонажа ушедшего игрока из текущей игры
+	# Если ждали только его — продолжаем (до паузы: остальные не должны ждать)
+	if not _players_in_game.is_empty() and _all_in_game():
+		all_players_in_game.emit()
+	# Убираем персонажа ушедшего игрока — после паузы, чтобы его снимки, которые хост
+	# уже переслал другим, долетели раньше удаления (иначе у них ошибка «Node not found»)
+	await get_tree().create_timer(FLOOR_CHANGE_GRACE).timeout
 	var game := get_tree().current_scene
 	if game and game.has_method("remove_network_player"):
 		game.remove_network_player(id)
-	# Если ждали только его — продолжаем
-	if not _players_in_game.is_empty() and _all_in_game():
-		all_players_in_game.emit()
 
 
 func _on_connected_to_server() -> void:
@@ -366,6 +443,8 @@ func _on_connection_failed() -> void:
 
 
 func _on_server_disconnected() -> void:
+	if session_end_message.is_empty():
+		session_end_message = "Соединение с хостом потеряно."
 	leave_game()
 	server_disconnected.emit()
 	GameManager.go_to_menu()

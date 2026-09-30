@@ -9,6 +9,8 @@ param(
 	[double]$Loss = 0,      # потери, %
 	[string]$Out = "",
 	[int]$Floors = 3,
+	[string]$AllArgs = "",  # доп. аргументы всем процессам, напр. "align=0"
+	[string]$C1Args = "",   # доп. аргументы только первому клиенту, напр. "ready_delay=30" или "leave_on=prepare leave_at=2"
 	[string]$Godot = $env:GODOT_CONSOLE
 )
 $ErrorActionPreference = "Stop"
@@ -22,7 +24,8 @@ $procs = @()
 
 function Start-Role([string]$tag, [string[]]$userArgs, [int]$x) {
 	$log = Join-Path $Out "$tag.log"
-	$a = $common + @("--position", "$x,40", $scene, "--") + $userArgs + @("out=$Out", "tag=$tag", "players=$Players", "scenario=$Scenario", "duration=$Duration", "floors=$Floors", "timeout=$([int](60 + $Floors * 25))")
+	$all = @(); if ($AllArgs) { $all = $AllArgs -split ' ' }
+	$a = $common + @("--position", "$x,40", $scene, "--") + $userArgs + $all + @("out=$Out", "tag=$tag", "players=$Players", "scenario=$Scenario", "duration=$Duration", "floors=$Floors", "timeout=$([int](60 + $Floors * 25))")
 	return Start-Process $Godot -ArgumentList $a -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru -NoNewWindow
 }
 
@@ -34,7 +37,8 @@ if ($Latency -gt 0 -or $Jitter -gt 0 -or $Loss -gt 0) {
 }
 for ($i = 1; $i -lt $Players; $i++) {
 	$cls = @(2, 1, 3)[($i - 1) % 3]
-	$procs += Start-Role "c$i" @("role=client", "port=$clientPort", "class=$cls", "delay=$(0.8 + 0.4 * $i)") (650 * $i)
+	$extra = @(); if ($i -eq 1 -and $C1Args) { $extra = $C1Args -split ' ' }
+	$procs += Start-Role "c$i" (@("role=client", "port=$clientPort", "class=$cls", "delay=$(0.8 + 0.4 * $i)") + $extra) (650 * $i)
 }
 
 $game = $procs | Where-Object { $_ -ne $null } # прокси не ждём — закрываем после игры

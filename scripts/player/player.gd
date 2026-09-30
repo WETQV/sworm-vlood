@@ -16,6 +16,10 @@ const PALADIN_HAMMER_SCRIPT = preload("res://scripts/weapons/paladin_hammer.gd")
 
 # --- Сигналы ---
 signal dash_cooldown_updated(current: float, max_time: float)
+## Сеть (для замеров): владелец отправил действие / наблюдатель проиграл чужое действие.
+## origin_offset — расстояние от показанного тела до точки, где действие сделал владелец.
+signal action_sent(kind: String, seq: int)
+signal remote_action_played(kind: String, seq: int, origin_offset: float)
 
 # --- Настройки движения ---
 @export var speed: float = 280.0
@@ -48,6 +52,8 @@ var net_state: PackedFloat32Array = PackedFloat32Array():
 ## Номер «эпохи» позиции: растёт при каждом телепорте от хоста. Снимки старой эпохи
 ## (отправленные до телепорта) отбрасываются — персонаж не откатывается назад.
 var teleport_epoch: int = 0
+## Тестовый хук: если задано — прицел сюда вместо курсора мыши (боты в tests/net)
+var aim_override: Vector2 = Vector2.INF
 var _net_seq: int = 0
 var _interp := NetInterpolator.new()
 var _net_aim: float = 0.0
@@ -310,6 +316,14 @@ func _attach_melee_hitbox(weapon: MeleeWeapon, target_mask: int) -> void:
 	hitbox.name = "HitboxComponent"
 	hitbox.collision_mask = target_mask | (32 if NetworkManager.friendly_fire else 0)
 	hitbox.attacker = self
+	# Одна цель — одно попадание за удар: иначе за окно удара (0.12 с) срабатывали и вход в зону,
+	# и повторная проверка перекрытий, и урон удваивался (его маскировали только i-frames цели)
+	hitbox.hit_once_per_activation = true
+	# Хитбокс создаётся после _ready оружия, поэтому оружие не успевало его выключить:
+	# до первой атаки меч/щит наносили 20 урона всему, чего касались
+	hitbox.is_active = false
+	hitbox.monitoring = false
+	hitbox.monitorable = false
 
 	var col := CollisionShape2D.new()
 	var shape := CircleShape2D.new()
@@ -337,21 +351,14 @@ func _physics_process(delta: float) -> void:
 		dash_cooldown_updated.emit(dash_cooldown - _dash_cooldown_timer, dash_cooldown)
 
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var mouse_pos: Vector2 = get_global_mouse_position()
+	# aim_override — тестовый хук (tests/net): точка прицела вместо мыши
+	var mouse_pos: Vector2 = aim_override if aim_override.is_finite() else get_global_mouse_position()
 	var aim_vector: Vector2 = mouse_pos - global_position
 
 	# --- 1. Активация рывка / уклонения ---
 	var wants_dash: bool = Input.is_action_just_pressed("dash") or Input.is_action_just_pressed("ability")
-	if wants_dash and not _is_dashing and _dash_cooldown_timer <= 0.0:
-		var dash_dir: Vector2 = _get_dash_direction(input_dir, aim_vector)
-		_start_dash(dash_dir) # мгновенный отзыв у владельца
-		if NetworkManager.is_online():
-			_action_seq += 1
-			if multiplayer.is_server():
-				_last_dash_seq = _action_seq
-				_net_dash_confirmed.rpc(_action_seq, dash_dir)
-			else:
-				_net_request_dash.rpc_id(1, _action_seq, dash_dir)
+	if wants_dash:
+		try_dash(_get_dash_direction(input_dir, aim_vector))
 
 	_anim_time += delta
 
@@ -425,20 +432,46 @@ func _physics_process(delta: float) -> void:
 		weapon_holder.position.x = move_toward(weapon_holder.position.x, _weapon_offset, 400.0 * delta)
 
 	# --- 4. Атака ---
-	if Input.is_action_just_pressed("attack") and current_weapon and current_weapon.can_attack() and not _is_dashing:
-		var aim_dir: Vector2 = aim_vector.normalized()
-		var origin: Vector2 = current_weapon.global_position
-		current_weapon.attack(aim_dir, mouse_pos) # мгновенный отзыв; урон на клиенте не применяется
-		if NetworkManager.is_online():
-			_action_seq += 1
-			if multiplayer.is_server():
-				_last_attack_seq = _action_seq
-				_net_attack_confirmed.rpc(_action_seq, aim_dir, mouse_pos, origin)
-			else:
-				_net_request_attack.rpc_id(1, _action_seq, aim_dir, mouse_pos, origin)
+	if Input.is_action_just_pressed("attack"):
+		try_attack(aim_vector.normalized(), mouse_pos)
 
 	if NetworkManager.is_online():
 		_write_net_state(aim_vector)
+
+
+## Атака своего персонажа (ввод игрока или тестовый бот). Владелец видит её сразу,
+## в сети — запрос хосту; урон считает только хост. Возвращает false, если атаковать нельзя.
+func try_attack(aim_dir: Vector2, target_pos: Vector2) -> bool:
+	if not is_local() or not current_weapon or not current_weapon.can_attack() or _is_dashing \
+			or not health_component.is_alive():
+		return false
+	var origin: Vector2 = current_weapon.global_position
+	current_weapon.attack(aim_dir, target_pos) # мгновенный отзыв; урон на клиенте не применяется
+	if NetworkManager.is_online():
+		_action_seq += 1
+		action_sent.emit("attack", _action_seq)
+		if multiplayer.is_server():
+			_last_attack_seq = _action_seq
+			_net_attack_confirmed.rpc(_action_seq, aim_dir, target_pos, origin)
+		else:
+			_net_request_attack.rpc_id(1, _action_seq, aim_dir, target_pos, origin)
+	return true
+
+
+## Рывок своего персонажа (ввод игрока или тестовый бот)
+func try_dash(dash_dir: Vector2) -> bool:
+	if not is_local() or _is_dashing or _dash_cooldown_timer > 0.0 or not health_component.is_alive():
+		return false
+	_start_dash(dash_dir) # мгновенный отзыв у владельца
+	if NetworkManager.is_online():
+		_action_seq += 1
+		action_sent.emit("dash", _action_seq)
+		if multiplayer.is_server():
+			_last_dash_seq = _action_seq
+			_net_dash_confirmed.rpc(_action_seq, dash_dir)
+		else:
+			_net_request_dash.rpc_id(1, _action_seq, dash_dir)
+	return true
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -584,7 +617,7 @@ func _net_request_attack(seq: int, aim_dir: Vector2, target_pos: Vector2, origin
 	_last_attack_msec = Time.get_ticks_msec()
 	NetworkManager.count_stat("attack_accepted")
 	var dir := aim_dir.normalized()
-	_perform_remote_attack(dir, target_pos, origin)
+	_perform_remote_attack(dir, target_pos, origin, seq)
 	_net_attack_confirmed.rpc(seq, dir, target_pos, origin)
 
 
@@ -593,14 +626,18 @@ func _net_attack_confirmed(seq: int, aim_dir: Vector2, target_pos: Vector2, orig
 	if multiplayer.get_remote_sender_id() != 1 or is_local() or seq <= _last_attack_seq:
 		return
 	_last_attack_seq = seq
-	_perform_remote_attack(aim_dir, target_pos, origin)
+	# Тело чужого персонажа показано с задержкой интерполяции — атаку проигрываем с той же
+	# задержкой, чтобы удар начинался там, где сейчас видно тело (урон уже посчитан хостом)
+	_play_delayed(_perform_remote_attack.bind(_finite_dir(aim_dir), target_pos, origin, seq))
 
 
 ## Атака чужого персонажа из точки, где её сделал владелец
-func _perform_remote_attack(dir: Vector2, target_pos: Vector2, origin: Vector2) -> void:
+func _perform_remote_attack(dir: Vector2, target_pos: Vector2, origin: Vector2, seq: int = 0) -> void:
 	if not current_weapon or not health_component.is_alive():
 		return
 	weapon_pivot.rotation = dir.angle()
+	# Для замеров: насколько показанное оружие разошлось с точкой, где ударил владелец
+	remote_action_played.emit("attack", seq, current_weapon.global_position.distance_to(origin))
 	current_weapon.force_ready() # кулдаун уже проверен хостом в _validate_action
 	current_weapon.origin_override = origin
 	current_weapon.attack(dir, target_pos)
@@ -627,7 +664,28 @@ func _net_dash_confirmed(seq: int, dir: Vector2) -> void:
 	if multiplayer.get_remote_sender_id() != 1 or is_local() or seq <= _last_dash_seq:
 		return
 	_last_dash_seq = seq
+	_play_delayed(_perform_remote_dash.bind(dir, seq))
+
+
+func _perform_remote_dash(dir: Vector2, seq: int) -> void:
+	if not health_component.is_alive():
+		return
+	remote_action_played.emit("dash", seq, 0.0)
 	_start_dash(dir)
+
+
+## Наблюдатель: действие чужого персонажа — с задержкой показа его тела (см. NetInterpolator)
+func _play_delayed(action: Callable) -> void:
+	var delay: float = _interp.interp_delay_ms / 1000.0 if NetworkManager.align_remote_actions else 0.0
+	if delay <= 0.0:
+		action.call()
+	else:
+		# Связь с методом (а не лямбда): если персонаж исчезнет раньше, связь порвётся сама
+		get_tree().create_timer(delay).timeout.connect(action)
+
+
+func _finite_dir(v: Vector2) -> Vector2:
+	return v if v.is_finite() else Vector2.RIGHT
 
 
 func _get_dash_direction(input_dir: Vector2, aim_vector: Vector2) -> Vector2:

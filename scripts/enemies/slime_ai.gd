@@ -108,11 +108,31 @@ func _process_puppet(delta: float) -> void:
 			current_state = State.CHASE
 
 
+## Для замеров: клиент проиграл событие атаки; origin_offset — расстояние от показанного
+## тела до точки события у хоста (при согласованном времени должно быть близко к нулю)
+signal net_event_played(state: int, origin_offset: float)
+
+
+## Канал 0 (как спавн/удаление врагов): в отдельном канале событие обгоняло появление врага
+## или приходило после его удаления — порядок между каналами не гарантирован
 @rpc("authority", "reliable")
 func _net_ai_event(state: int, dir: Vector2, origin: Vector2) -> void:
+	# Тело врага показано с задержкой интерполяции — событие проигрываем с той же задержкой,
+	# чтобы замах/выстрел начинались там, где сейчас видно врага
+	var delay: float = 0.0
+	if "_interp" in _body and NetworkManager.align_remote_actions:
+		delay = _body._interp.interp_delay_ms / 1000.0
+	if delay > 0.0:
+		get_tree().create_timer(delay).timeout.connect(_apply_ai_event.bind(state, dir, origin))
+	else:
+		_apply_ai_event(state, dir, origin)
+
+
+func _apply_ai_event(state: int, dir: Vector2, origin: Vector2) -> void:
 	var hc := _body.get_node_or_null("HealthComponent") as HealthComponent
 	if hc and not hc.is_alive():
 		return
+	net_event_played.emit(state, _body.global_position.distance_to(origin))
 	event_origin = origin
 	_lunge_dir = dir
 	_change_state(state as State)

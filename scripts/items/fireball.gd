@@ -23,7 +23,9 @@ func _ready() -> void:
 		snd.play_fireball_cast()
 
 
-func _process(delta: float) -> void:
+## Движение в физическом кадре (фиксированный шаг ~7 px): в _process при просадке кадра
+## снаряд перепрыгивал маленькие хитбоксы и пролетал сквозь врагов
+func _physics_process(delta: float) -> void:
 	global_position += direction * speed * delta
 	_elapsed_time += delta
 	if _elapsed_time >= lifetime:
