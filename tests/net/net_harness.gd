@@ -99,7 +99,7 @@ func wait(s: float) -> void:
 func _run_host() -> void:
 	var need: int = int(args.get("players", "2"))
 	GameManager.selected_class = int(args.get("class", "0")) as GameManager.PlayerClass
-	var err := NetworkManager.host_game("Host", HOST_PORT)
+	var err := NetworkManager.host_game(args.get("name", "Host"), HOST_PORT)
 	log_event("host_game err=%d" % err)
 	var deadline := Time.get_ticks_msec() + 30000
 	while NetworkManager.players.size() < need and Time.get_ticks_msec() < deadline:
@@ -150,7 +150,7 @@ func _run_client() -> void:
 	await wait(float(args.get("delay", "1.0")))
 	GameManager.selected_class = int(args.get("class", "2")) as GameManager.PlayerClass
 	var port: int = int(args.get("port", str(HOST_PORT)))
-	var err := NetworkManager.join_game(args.get("ip", "127.0.0.1"), tag, port)
+	var err := NetworkManager.join_game(args.get("ip", "127.0.0.1"), args.get("name", tag), port)
 	log_event("join err=%d port=%d" % [err, port])
 	await NetworkManager.connection_succeeded
 	log_event("connected id=%d" % multiplayer.get_unique_id())
@@ -209,6 +209,8 @@ func _run_scenario() -> void:
 			await _scenario_integrity()
 		"hostleave":
 			await _scenario_host_leave()
+		"showcase":
+			await _scenario_showcase()
 		_:
 			await wait(duration)
 	log_event("scenario=%s end" % scenario)
@@ -393,6 +395,29 @@ func _watch_leave() -> void:
 				return
 
 
+## Витрина для скриншотов: хост входит в самую большую боевую комнату (остальных подтягивает),
+## все сражаются (бой в _physics_process), хост снимает кадры в shots=t1,t2,... секунд → shot_dir.
+func _scenario_showcase() -> void:
+	if role == "host":
+		var room: Room = null
+		for r in get_tree().current_scene._dungeon.get_rooms():
+			if r.room_type == Room.RoomType.FIGHT and (room == null or r.room_size.x * r.room_size.y > room.room_size.x * room.room_size.y):
+				room = r
+		var c: Vector2 = room.global_position + Vector2(room.room_size) * 32.0
+		_my_player().teleport_to_position(c + Vector2(0, room.room_size.y * 32.0 * 0.4))
+		var t0 := Time.get_ticks_msec()
+		var i := 0
+		for s in args.get("shots", "3").split(","):
+			while Time.get_ticks_msec() - t0 < float(s) * 1000.0:
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(args.get("shot_dir", out_dir).path_join("coop_%d.png" % i))
+			log_event("SHOT coop_%d" % i)
+			i += 1
+	else:
+		await wait(duration)
+
+
 ## Хост выходит в меню посреди игры (как «В ГЛАВНОЕ МЕНЮ»): клиенты должны получить причину
 func _scenario_host_leave() -> void:
 	await wait(duration)
@@ -504,6 +529,9 @@ func _physics_process(delta: float) -> void:
 			_bot_dir = to_anchor.normalized() # не уходим далеко от своей точки
 	_apply_dir(_bot_dir)
 
+	if scenario == "showcase":
+		_showcase_fight(me)
+		return
 	if scenario == "combat":
 		_attack_timer -= delta
 		if _attack_timer <= 0.0:
@@ -514,6 +542,29 @@ func _physics_process(delta: float) -> void:
 		else:
 			Input.action_release("attack")
 			Input.action_release("dash")
+
+
+## Бот витрины: ближайший враг, ближний бой — вплотную, дальний — держит дистанцию
+func _showcase_fight(me: Player) -> void:
+	if role == "host":
+		for p in get_tree().get_nodes_in_group("player"):
+			p.health_component.heal(1000) # все живы до конца съёмки
+	var target: Node2D = null
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if e.health_component.is_alive() and e.visible and (target == null or e.global_position.distance_to(me.global_position) < target.global_position.distance_to(me.global_position)):
+			target = e
+	if target == null:
+		_apply_dir(Vector2.ZERO)
+		return
+	var to_t: Vector2 = target.global_position - me.global_position
+	var melee: bool = me.player_class in [GameManager.PlayerClass.WARRIOR, GameManager.PlayerClass.PALADIN]
+	var d := Vector2.ZERO
+	if melee and to_t.length() > 40.0: d = to_t.normalized()
+	elif not melee and to_t.length() < 170.0: d = -to_t.normalized()
+	elif not melee and to_t.length() > 280.0: d = to_t.normalized()
+	_apply_dir(d)
+	me.aim_override = target.global_position
+	me.try_attack(to_t.normalized(), target.global_position)
 
 
 func _apply_dir(d: Vector2) -> void:
