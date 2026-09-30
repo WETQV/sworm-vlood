@@ -45,3 +45,6 @@ Thumbs.db
 /build
 /.agent
 /scratch
+
+# Python (tests/net)
+__pycache__/
