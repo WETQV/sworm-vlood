@@ -48,3 +48,5 @@ Thumbs.db
 
 # Python (tests/net)
 __pycache__/
+tests/rooms/nav_checks.gd.uid
+/tests
