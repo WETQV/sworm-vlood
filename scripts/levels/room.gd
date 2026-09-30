@@ -267,6 +267,17 @@ func _on_player_entered(body: Node2D) -> void:
 	call_deferred("_begin_fight", body)
 
 
+func _physics_process(_delta: float) -> void:
+	if current_state != RoomState.SLEEP or _activation_area == null or not NetworkManager.is_authority():
+		return
+	# body_entered приходит при касании краем коллизии, до входа центра игрока.
+	# Повторяем проверку внутри зоны: второй сигнал body_entered уже не придёт.
+	for body in _activation_area.get_overlapping_bodies():
+		_begin_fight(body)
+		if current_state != RoomState.SLEEP:
+			break
+
+
 func _begin_fight(entering_player: Node2D) -> void:
 	if not NetworkManager.is_authority() or current_state != RoomState.SLEEP or not is_instance_valid(entering_player):
 		return

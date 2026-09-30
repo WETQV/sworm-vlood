@@ -6,6 +6,7 @@ const PLANNER := preload("res://scripts/levels/encounter_planner.gd")
 const SMALL := preload("res://scenes/levels/rooms/room_combat_small.tscn")
 const LARGE := preload("res://scenes/levels/rooms/room_combat_large.tscn")
 const DUNGEON := preload("res://scenes/levels/dungeon_generator.tscn")
+const PLAYER := preload("res://scenes/player/player.tscn")
 var failures := 0
 var cases := 0
 
@@ -22,6 +23,7 @@ func _ready() -> void:
 	_check_plans()
 	_check_generation()
 	_check_layouts()
+	await _check_first_entry()
 	for floor_num in [1, 4, 7]:
 		await _check_floor(floor_num)
 	print("ROOM_CHECKS: %d cases, %d failures" % [cases, failures])
@@ -130,6 +132,35 @@ func _check_generation() -> void:
 	_check(rewards == 2, "No reward fallback on cyclic graph")
 	dungeon.free()
 	cases += 1
+
+
+func _check_first_entry() -> void:
+	# Реальное пересечение Area2D, а не прямой вызов _begin_fight из центра.
+	for side: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+		var room: Room = SMALL.instantiate()
+		add_child(room)
+		var player: Player = PLAYER.instantiate()
+		var center := Vector2(room.room_size) * 32.0
+		var boundary := center + side * Vector2(room.room_size - Vector2i(2, 2)) * 32.0
+		player.position = boundary + side * 13.0
+		add_child(player)
+		player.set_physics_process(false)
+		for i in 4:
+			await get_tree().physics_frame
+			await get_tree().process_frame
+		_check(room._activation_area.overlaps_body(player), "Player edge did not enter activation area")
+		_check(room.current_state == Room.RoomState.SLEEP, "Room activated before player center entered")
+		# Пересечение области непрерывно: второго body_entered здесь не будет.
+		player.teleport_to_position(boundary - side * 2.0)
+		for i in 4:
+			await get_tree().physics_frame
+			await get_tree().process_frame
+		_check(room.current_state == Room.RoomState.FIGHT, "First continuous entry did not activate room")
+		_check(room._spawned_enemies_count > 0, "No enemies on first entry")
+		player.queue_free()
+		room.queue_free()
+		await get_tree().process_frame
+		cases += 1
 
 
 func _check_floor(floor_num: int) -> void:
