@@ -27,6 +27,11 @@ func attack(aim_direction: Vector2, target_position: Vector2) -> void:
 		hitbox.damage = damage
 		hitbox.knockback_force = knockback_force
 		hitbox.set_active(true)
+		# Сеть: хост проверяет удар там, где его сделал владелец (компенсация задержки)
+		if origin_override.is_finite():
+			hitbox.top_level = true
+			hitbox.global_position = origin_override
+			hitbox.global_rotation = aim_direction.angle()
 
 	# Звук взмаха клинка / удара
 	var snd = get_node_or_null("/root/SoundManager")
@@ -47,9 +52,14 @@ func attack(aim_direction: Vector2, target_position: Vector2) -> void:
 	tween.tween_property(self, "position:x", _initial_pos.x + swing_distance, attack_duration * 0.4).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "position:x", _initial_pos.x, attack_duration * 0.6).set_ease(Tween.EASE_IN)
 
-	# Таймер деактивации хитбокса
-	get_tree().create_timer(attack_duration).timeout.connect(
-		func() -> void:
-			if hitbox and is_instance_valid(hitbox):
-				hitbox.set_active(false)
-	)
+	# Таймер деактивации хитбокса (метод, а не лямбда: при удалении оружия связь рвётся сама)
+	get_tree().create_timer(attack_duration).timeout.connect(_end_attack_window)
+
+
+func _end_attack_window() -> void:
+	if hitbox and is_instance_valid(hitbox):
+		hitbox.set_active(false)
+		if hitbox.top_level:
+			hitbox.top_level = false
+			hitbox.position = Vector2.ZERO
+			hitbox.rotation = 0.0

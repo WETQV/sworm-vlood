@@ -35,6 +35,31 @@ var peer_id: int = 1
 ## Класс этого персонажа (у каждого игрока свой). -1 = взять из GameManager.
 var player_class: int = -1
 
+# --- Сетевая модель движения (см. docs/network_contract.md) ---
+## Частота снимков движения владельца, Гц
+const NET_SEND_HZ := 60.0
+## Снимок владельца: [seq, epoch, x, y, vx, vy, aim_angle, flags]. flags: 1 = рывок.
+## Владелец пишет, остальные получают через NetSync и кладут в буфер интерполяции.
+var net_state: PackedFloat32Array = PackedFloat32Array():
+	set(value):
+		net_state = value
+		if is_inside_tree() and not is_local() and value.size() >= 8:
+			_on_net_state(value)
+## Номер «эпохи» позиции: растёт при каждом телепорте от хоста. Снимки старой эпохи
+## (отправленные до телепорта) отбрасываются — персонаж не откатывается назад.
+var teleport_epoch: int = 0
+var _net_seq: int = 0
+var _interp := NetInterpolator.new()
+var _net_aim: float = 0.0
+var _last_net_pos: Vector2 = Vector2.INF   # хост: последняя принятая позиция владельца
+var _last_net_seq: int = -1
+# Боевые запросы: порядковые номера и время последнего принятого действия (проверка на хосте)
+var _action_seq: int = 0
+var _last_attack_seq: int = 0
+var _last_dash_seq: int = 0
+var _last_attack_msec: int = -100000
+var _last_dash_msec: int = -100000
+
 # --- Оружие ---
 var current_weapon: BaseWeapon = null
 var _weapon_offset: float = 46.0
@@ -63,6 +88,9 @@ func _ready() -> void:
 	_apply_class_stats()
 	_setup_weapon()
 	_setup_network()
+	_interp.tick_ms = 1000.0 / Engine.physics_ticks_per_second
+	_interp.send_interval_ms = 1000.0 / NET_SEND_HZ
+	_interp.reset(global_position, 0)
 
 	health_component.died.connect(_on_died)
 	health_component.health_changed.connect(_on_health_changed)
@@ -81,16 +109,17 @@ func is_local() -> bool:
 ## Если менять authority в _ready, Godot не успевает зарегистрировать синхронизатор.
 func prepare_network(owner_peer_id: int) -> void:
 	peer_id = owner_peer_id
+	# Один компактный снимок (net_state) вместо позиции/скорости/визуальных свойств каждый кадр.
+	# ALWAYS = ненадёжная доставка: потерянный снимок заменяет следующий, старые отбрасываются по seq.
 	var config := SceneReplicationConfig.new()
-	for prop in [":position", ":velocity", "WeaponPivot:rotation", "WeaponPivot:scale",
-			"Visuals:rotation", "Visuals:scale", "Visuals:modulate"]:
-		var path := NodePath(prop)
-		config.add_property(path)
-		config.property_set_replication_mode(path, SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	var path := NodePath(":net_state")
+	config.add_property(path)
+	config.property_set_replication_mode(path, SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
 	var sync := MultiplayerSynchronizer.new()
 	sync.name = "NetSync"
 	sync.root_path = NodePath("..")
 	sync.replication_config = config
+	sync.replication_interval = 1.0 / NET_SEND_HZ
 	add_child(sync)
 	set_multiplayer_authority(peer_id) # рекурсивно, вместе с NetSync
 
@@ -100,17 +129,24 @@ func teleport_to_position(target: Vector2) -> void:
 	if not NetworkManager.is_authority():
 		return
 	if NetworkManager.is_online():
-		_net_teleport.rpc(target)
+		_net_teleport.rpc(target, teleport_epoch + 1)
 	else:
 		_apply_teleport(target)
 
 
 @rpc("any_peer", "call_local", "reliable")
-func _net_teleport(target: Vector2) -> void:
+func _net_teleport(target: Vector2, new_epoch: int) -> void:
 	var sender: int = multiplayer.get_remote_sender_id()
 	if sender != 0 and sender != 1:
 		return
+	if new_epoch <= teleport_epoch:
+		return # повтор или устаревший телепорт
+	teleport_epoch = new_epoch
 	_apply_teleport(target)
+	if not is_local():
+		_interp.reset(target, new_epoch)
+		_last_net_pos = target
+		_last_net_seq = -1
 
 
 func _apply_teleport(target: Vector2) -> void:
@@ -290,9 +326,9 @@ func _physics_process(delta: float) -> void:
 	if not health_component.is_alive():
 		return
 
-	# Чужой персонаж: позиция и поворот приходят по сети, здесь только таймер рывка
+	# Чужой персонаж: позиция из буфера интерполяции, визуальные эффекты считаются локально
 	if not is_local():
-		_process_remote_dash(delta)
+		_process_remote(delta)
 		return
 
 	# --- 0. Кулдаун рывка ---
@@ -308,10 +344,14 @@ func _physics_process(delta: float) -> void:
 	var wants_dash: bool = Input.is_action_just_pressed("dash") or Input.is_action_just_pressed("ability")
 	if wants_dash and not _is_dashing and _dash_cooldown_timer <= 0.0:
 		var dash_dir: Vector2 = _get_dash_direction(input_dir, aim_vector)
+		_start_dash(dash_dir) # мгновенный отзыв у владельца
 		if NetworkManager.is_online():
-			_net_dash.rpc(dash_dir)
-		else:
-			_start_dash(dash_dir)
+			_action_seq += 1
+			if multiplayer.is_server():
+				_last_dash_seq = _action_seq
+				_net_dash_confirmed.rpc(_action_seq, dash_dir)
+			else:
+				_net_request_dash.rpc_id(1, _action_seq, dash_dir)
 
 	_anim_time += delta
 
@@ -361,33 +401,7 @@ func _physics_process(delta: float) -> void:
 		velocity += _knockback_velocity
 		move_and_slide()
 
-		# Мягкий, естественный наклон корпуса при движении (lean в сторону бега)
-		var target_tilt: float = 0.0
-		if velocity.length_squared() > 100.0:
-			target_tilt = clamp(velocity.x / speed, -1.0, 1.0) * deg_to_rad(6.5)
-			visuals.rotation = lerp_angle(visuals.rotation, target_tilt, 12.0 * delta)
-		else:
-			visuals.rotation = lerp_angle(visuals.rotation, 0.0, 14.0 * delta)
-
-		body_sprite.position = Vector2(-16.0, -16.0)
-
-		if velocity.length_squared() > 100.0:
-			visuals.scale = Vector2.ONE
-			if _ground_shadow:
-				_ground_shadow.scale = Vector2.ONE
-
-			# Аккуратная пыль позади при беге
-			_step_timer -= delta
-			if _step_timer <= 0.0:
-				_step_timer = 0.20
-				if Engine.has_singleton("VFXManager") or get_node_or_null("/root/VFXManager"):
-					VFXManager.spawn_footstep_dust(global_position + Vector2(0, 14), velocity.normalized())
-		else:
-			# Очень мягкое естественное дыхание в покое (едва заметное, 1.5%)
-			var breath: float = sin(_anim_time * 2.6) * 0.018
-			visuals.scale = Vector2(1.0 + breath, 1.0 - breath)
-			if _ground_shadow:
-				_ground_shadow.scale = Vector2(1.0 + breath, 1.0 + breath)
+		_update_move_visuals(delta, velocity)
 
 	# --- 2. Плавный поворот оружия к курсору ---
 	if aim_vector.length_squared() > 1.0:
@@ -413,28 +427,82 @@ func _physics_process(delta: float) -> void:
 	# --- 4. Атака ---
 	if Input.is_action_just_pressed("attack") and current_weapon and current_weapon.can_attack() and not _is_dashing:
 		var aim_dir: Vector2 = aim_vector.normalized()
+		var origin: Vector2 = current_weapon.global_position
+		current_weapon.attack(aim_dir, mouse_pos) # мгновенный отзыв; урон на клиенте не применяется
 		if NetworkManager.is_online():
-			_net_attack.rpc(aim_dir, mouse_pos)
-		else:
-			current_weapon.attack(aim_dir, mouse_pos)
+			_action_seq += 1
+			if multiplayer.is_server():
+				_last_attack_seq = _action_seq
+				_net_attack_confirmed.rpc(_action_seq, aim_dir, mouse_pos, origin)
+			else:
+				_net_request_attack.rpc_id(1, _action_seq, aim_dir, mouse_pos, origin)
+
+	if NetworkManager.is_online():
+		_write_net_state(aim_vector)
 
 
-## Атака, разосланная всем: у всех проигрывается анимация/снаряд, урон засчитывает хост
-@rpc("authority", "call_local", "reliable")
-func _net_attack(aim_dir: Vector2, target_pos: Vector2) -> void:
-	if not current_weapon:
+# ════════════════════════════════════════════════════════════════════════════
+#  Сеть: снимки движения (владелец → все, через хост)
+# ════════════════════════════════════════════════════════════════════════════
+
+func _write_net_state(aim_vector: Vector2) -> void:
+	_net_seq += 1
+	var aim: float = aim_vector.angle() if aim_vector.length_squared() > 1.0 else weapon_pivot.rotation
+	net_state = PackedFloat32Array([_net_seq, teleport_epoch, global_position.x, global_position.y,
+		velocity.x, velocity.y, aim, 1.0 if _is_dashing else 0.0])
+
+
+func _on_net_state(v: PackedFloat32Array) -> void:
+	var seq: int = int(v[0])
+	var ep: int = int(v[1])
+	var pos := Vector2(v[2], v[3])
+	var vel := Vector2(v[4], v[5])
+	if seq == _interp.last_seq and ep == _interp.epoch:
+		return # повтор того же снимка (владелец стоит в портале/мёртв) — не потеря
+
+	# Хост проверяет, что перемещение владельца физически возможно (скорость рывка + запас)
+	if multiplayer.is_server() and ep == teleport_epoch and _last_net_seq >= 0 and seq > _last_net_seq:
+		var dt: float = (seq - _last_net_seq) / float(Engine.physics_ticks_per_second)
+		if pos.distance_to(_last_net_pos) > dash_speed * 1.3 * dt + 48.0:
+			NetworkManager.count_stat("move_rejected")
+			teleport_to_position(_last_net_pos) # возвращаем в последнюю допустимую точку
+			return
+
+	if _interp.push(seq, ep, pos, vel, [v[6], v[7]]):
+		if ep == teleport_epoch:
+			_last_net_pos = pos
+			_last_net_seq = seq
+	else:
+		NetworkManager.count_stat("snapshot_dropped")
+
+
+## Чужой персонаж: позиция из буфера интерполяции, эффекты движения считаются локально
+func _process_remote(delta: float) -> void:
+	_anim_time += delta
+	_process_remote_dash(delta)
+	var s: Dictionary = _interp.sample()
+	if s.is_empty():
 		return
-	if not is_local():
-		current_weapon.force_ready() # кулдауны у копий могут чуть расходиться из-за пинга
-	current_weapon.attack(aim_dir, target_pos)
+	global_position = s["pos"]
+	velocity = s["vel"]
+
+	var extra: Array = s["extra"]
+	if extra.size() >= 1:
+		var aim: float = extra[0]
+		weapon_pivot.rotation = lerp_angle(weapon_pivot.rotation, aim, 1.0 - exp(-rotation_smoothing * delta))
+		if cos(aim) < -0.05:
+			weapon_pivot.scale.y = -1.0
+		elif cos(aim) > 0.05:
+			weapon_pivot.scale.y = 1.0
+
+	if _is_dashing:
+		visuals.scale = Vector2(1.15, 0.88)
+		visuals.rotation = lerp_angle(visuals.rotation, clamp(_dash_direction.x, -1.0, 1.0) * deg_to_rad(9.0), 18.0 * delta)
+	else:
+		_update_move_visuals(delta, velocity)
 
 
-@rpc("authority", "call_local", "reliable")
-func _net_dash(dir: Vector2) -> void:
-	_start_dash(dir)
-
-
-## Рывок чужого персонажа: хосту нужно знать о нём для неуязвимости и тарана паладина
+## Рывок чужого персонажа: хосту нужен для неуязвимости и тарана паладина
 func _process_remote_dash(delta: float) -> void:
 	if not _is_dashing:
 		return
@@ -445,6 +513,121 @@ func _process_remote_dash(delta: float) -> void:
 		_is_dashing = false
 		hurtbox.is_invincible = false
 		_dashed_hit_targets.clear()
+		visuals.modulate.a = 1.0
+		visuals.scale = Vector2.ONE
+		visuals.rotation = 0.0
+
+
+## Наклон корпуса, пыль от шагов и «дыхание» в покое (свой и чужой персонаж)
+func _update_move_visuals(delta: float, vel: Vector2) -> void:
+	if vel.length_squared() > 100.0:
+		var target_tilt: float = clamp(vel.x / speed, -1.0, 1.0) * deg_to_rad(6.5)
+		visuals.rotation = lerp_angle(visuals.rotation, target_tilt, 12.0 * delta)
+	else:
+		visuals.rotation = lerp_angle(visuals.rotation, 0.0, 14.0 * delta)
+
+	body_sprite.position = Vector2(-16.0, -16.0)
+
+	if vel.length_squared() > 100.0:
+		visuals.scale = Vector2.ONE
+		if _ground_shadow:
+			_ground_shadow.scale = Vector2.ONE
+
+		# Аккуратная пыль позади при беге
+		_step_timer -= delta
+		if _step_timer <= 0.0:
+			_step_timer = 0.20
+			if Engine.has_singleton("VFXManager") or get_node_or_null("/root/VFXManager"):
+				VFXManager.spawn_footstep_dust(global_position + Vector2(0, 14), vel.normalized())
+	else:
+		# Очень мягкое естественное дыхание в покое (едва заметное, 1.5%)
+		var breath: float = sin(_anim_time * 2.6) * 0.018
+		visuals.scale = Vector2(1.0 + breath, 1.0 - breath)
+		if _ground_shadow:
+			_ground_shadow.scale = Vector2(1.0 + breath, 1.0 + breath)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Сеть: боевые запросы. Владелец сразу показывает действие у себя и просит хоста;
+#  хост проверяет и рассылает подтверждение остальным. Урон считается только на хосте.
+# ════════════════════════════════════════════════════════════════════════════
+
+## Проверка запроса на хосте. Пустая строка — запрос допустим, иначе причина отказа.
+func _validate_action(seq: int, last_seq: int, last_msec: int, cooldown: float, dir: Vector2, origin: Vector2) -> String:
+	if multiplayer.get_remote_sender_id() != peer_id:
+		return "owner"
+	if seq <= last_seq:
+		return "replay"
+	if not health_component.is_alive():
+		return "dead"
+	if NetworkManager.is_transitioning():
+		return "phase"
+	if not dir.is_finite() or dir.length() < 0.5 or dir.length() > 1.5:
+		return "params"
+	if origin != Vector2.INF and (not origin.is_finite() or origin.distance_to(global_position) > 260.0):
+		return "origin"
+	# Запас 40% на джиттер: два честных запроса могут прийти ближе друг к другу, чем были отправлены
+	if Time.get_ticks_msec() - last_msec < cooldown * 1000.0 * 0.6:
+		return "cooldown"
+	return ""
+
+
+@rpc("any_peer", "reliable")
+func _net_request_attack(seq: int, aim_dir: Vector2, target_pos: Vector2, origin: Vector2) -> void:
+	if not multiplayer.is_server() or not current_weapon:
+		return
+	var reason := _validate_action(seq, _last_attack_seq, _last_attack_msec, current_weapon.attack_cooldown, aim_dir, origin)
+	if reason != "":
+		NetworkManager.count_stat("attack_rejected_" + reason)
+		return
+	_last_attack_seq = seq
+	_last_attack_msec = Time.get_ticks_msec()
+	NetworkManager.count_stat("attack_accepted")
+	var dir := aim_dir.normalized()
+	_perform_remote_attack(dir, target_pos, origin)
+	_net_attack_confirmed.rpc(seq, dir, target_pos, origin)
+
+
+@rpc("any_peer", "reliable")
+func _net_attack_confirmed(seq: int, aim_dir: Vector2, target_pos: Vector2, origin: Vector2) -> void:
+	if multiplayer.get_remote_sender_id() != 1 or is_local() or seq <= _last_attack_seq:
+		return
+	_last_attack_seq = seq
+	_perform_remote_attack(aim_dir, target_pos, origin)
+
+
+## Атака чужого персонажа из точки, где её сделал владелец
+func _perform_remote_attack(dir: Vector2, target_pos: Vector2, origin: Vector2) -> void:
+	if not current_weapon or not health_component.is_alive():
+		return
+	weapon_pivot.rotation = dir.angle()
+	current_weapon.force_ready() # кулдаун уже проверен хостом в _validate_action
+	current_weapon.origin_override = origin
+	current_weapon.attack(dir, target_pos)
+	current_weapon.origin_override = Vector2.INF
+
+
+@rpc("any_peer", "reliable")
+func _net_request_dash(seq: int, dir: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	var reason := _validate_action(seq, _last_dash_seq, _last_dash_msec, dash_cooldown, dir, Vector2.INF)
+	if reason != "":
+		NetworkManager.count_stat("dash_rejected_" + reason)
+		return
+	_last_dash_seq = seq
+	_last_dash_msec = Time.get_ticks_msec()
+	NetworkManager.count_stat("dash_accepted")
+	_start_dash(dir.normalized())
+	_net_dash_confirmed.rpc(seq, dir.normalized())
+
+
+@rpc("any_peer", "reliable")
+func _net_dash_confirmed(seq: int, dir: Vector2) -> void:
+	if multiplayer.get_remote_sender_id() != 1 or is_local() or seq <= _last_dash_seq:
+		return
+	_last_dash_seq = seq
+	_start_dash(dir)
 
 
 func _get_dash_direction(input_dir: Vector2, aim_vector: Vector2) -> Vector2:

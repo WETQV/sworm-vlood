@@ -15,6 +15,18 @@ class_name Slime
 
 var _knockback_velocity: Vector2 = Vector2.ZERO
 
+# --- Сеть (см. docs/network_contract.md) ---
+const NET_SEND_HZ := 60.0
+## Снимок хоста: [seq, x, y, vx, vy]. Клиент показывает врага через буфер интерполяции.
+## Атаки ИИ сюда не входят — они приходят отдельным надёжным событием (SlimeAI._net_ai_event).
+var net_state: PackedFloat32Array = PackedFloat32Array():
+	set(value):
+		net_state = value
+		if value.size() >= 5 and NetworkManager.is_online() and not multiplayer.is_server():
+			_interp.push(int(value[0]), 0, Vector2(value[1], value[2]), Vector2(value[3], value[4]))
+var _net_seq: int = 0
+var _interp := NetInterpolator.new()
+
 
 func _ready() -> void:
 	add_to_group("enemy")
@@ -23,6 +35,9 @@ func _ready() -> void:
 	health_component.health_changed.connect(_on_health_changed)
 	hurtbox.damage_received.connect(_on_damage_received)
 
+	# Правило: враг появляется с полным здоровьем. Раньше HealthComponent оставлял
+	# current_health = 100 по умолчанию, если max_health больше (босс получал 100/500).
+	health_component.current_health = health_component.max_health
 	hp_bar.max_value = health_component.max_health
 	hp_bar.value = health_component.current_health
 
@@ -32,8 +47,9 @@ func _ready() -> void:
 		attack_area.damage = contact_damage
 		attack_area.attacker = self
 
-	if NetworkManager.is_online() and not multiplayer.is_server():
-		set_physics_process(false) # отбрасывание считает хост, позиция приходит по сети
+	_interp.tick_ms = 1000.0 / Engine.physics_ticks_per_second
+	_interp.send_interval_ms = 1000.0 / NET_SEND_HZ
+	_interp.reset(global_position, 0)
 
 	# Эффект материализации слизи при появлении
 	_play_spawn_animation()
@@ -43,21 +59,15 @@ func _ready() -> void:
 ## состояние ИИ и направление атаки. У клиентов враг — «кукла»: сам не думает,
 ## только проигрывает анимации состояний.
 func prepare_network() -> void:
-	var props: Array[String] = [":position"]
-	for child in get_children():
-		if child is SlimeAI:
-			props.append("%s:current_state" % child.name)
-			props.append("%s:_lunge_dir" % child.name)
-
 	var config := SceneReplicationConfig.new()
-	for prop in props:
-		var path := NodePath(prop)
-		config.add_property(path)
-		config.property_set_replication_mode(path, SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	var path := NodePath(":net_state")
+	config.add_property(path)
+	config.property_set_replication_mode(path, SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
 	var sync := MultiplayerSynchronizer.new()
 	sync.name = "NetSync"
 	sync.root_path = NodePath("..")
 	sync.replication_config = config
+	sync.replication_interval = 1.0 / NET_SEND_HZ
 	add_child(sync)
 
 
@@ -84,8 +94,19 @@ func _get_particle_color() -> Color:
 
 
 func _physics_process(delta: float) -> void:
+	# Клиент: враг — «кукла», позиция из буфера интерполяции снимков хоста
+	if NetworkManager.is_online() and not multiplayer.is_server():
+		var s: Dictionary = _interp.sample()
+		if not s.is_empty() and health_component.is_alive():
+			global_position = s["pos"]
+		return
+
 	if not health_component.is_alive():
 		return
+
+	if NetworkManager.is_online():
+		_net_seq += 1
+		net_state = PackedFloat32Array([_net_seq, global_position.x, global_position.y, velocity.x, velocity.y])
 
 	# Четкое затухание отбрасывания без накопления скорости
 	if _knockback_velocity.length_squared() > 1.0:

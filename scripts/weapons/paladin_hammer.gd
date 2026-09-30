@@ -10,6 +10,7 @@ class_name PaladinHammer
 var _pending_shockwave: bool = false
 var _shockwave_delay_timer: float = 0.0
 var _shockwave_aim_dir: Vector2 = Vector2.ZERO
+var _shockwave_origin: Vector2 = Vector2.INF
 
 
 func _init() -> void:
@@ -35,6 +36,7 @@ func attack(aim_direction: Vector2, target_position: Vector2) -> void:
 	_pending_shockwave = true
 	_shockwave_delay_timer = attack_duration * 0.45
 	_shockwave_aim_dir = aim_direction
+	_shockwave_origin = origin_override
 
 
 func _on_hitbox_hit(target: Hurtbox, _damage_amount: int) -> void:
@@ -58,7 +60,8 @@ func _trigger_holy_shockwave(aim_direction: Vector2) -> void:
 		return
 
 	# Точка эпицентра удара перед щитом
-	var impact_pos: Vector2 = global_position + aim_direction * (swing_distance + 14.0)
+	var base_pos: Vector2 = _shockwave_origin if _shockwave_origin.is_finite() else global_position
+	var impact_pos: Vector2 = base_pos + aim_direction * (swing_distance + 14.0)
 
 	# Спавн визуального эффекта золотой волны и искр
 	var vfx = get_node_or_null("/root/VFXManager")

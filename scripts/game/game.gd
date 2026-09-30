@@ -3,6 +3,8 @@ extends Node2D
 ## Запускает генерацию подземелья, потом спавнит игрока в стартовой комнате.
 
 const DUNGEON_SCENE := preload("res://scenes/levels/dungeon_generator.tscn")
+## Сколько хост ждёт загрузки уровня у клиентов, сек
+const SCENE_READY_TIMEOUT := 20.0
 
 @onready var info_label: Label = get_node_or_null("CanvasLayer/InfoLabel")
 @onready var player_container: Node2D = $PlayerContainer
@@ -78,6 +80,9 @@ func _generate_dungeon() -> void:
 		_setup_network_spawners()
 		if multiplayer.is_server():
 			NetworkManager.all_players_in_game.connect(_spawn_all_network_players, CONNECT_ONE_SHOT)
+			# Ограниченное ожидание: кто не загрузился за SCENE_READY_TIMEOUT, отключается,
+			# остальные начинают игру (без вечного ожидания и без запуска без готовности)
+			get_tree().create_timer(SCENE_READY_TIMEOUT).timeout.connect(_on_scene_ready_timeout)
 		NetworkManager.notify_game_scene_ready()
 	else:
 		_spawn_player_node(1, GameManager.selected_class, _get_player_spawn_pos(0))
@@ -236,6 +241,12 @@ func _setup_network_spawners() -> void:
 		enemy.position = data[2]
 		enemy.prepare_network()
 		return enemy
+
+
+## Хост: не все загрузились за SCENE_READY_TIMEOUT — отключаем опоздавших, остальные играют
+func _on_scene_ready_timeout() -> void:
+	if player_container.get_child_count() == 0:
+		NetworkManager.drop_players_not_in_game()
 
 
 ## Хост: все загрузились — создаём персонажей

@@ -435,8 +435,6 @@ func _spawn_effect(particles: CPUParticles2D) -> void:
 	if is_inside_tree():
 		var tree := get_tree()
 		if tree:
-			tree.create_timer(particles.lifetime + 0.1).timeout.connect(
-				func() -> void:
-					if is_instance_valid(particles):
-						particles.queue_free()
-			)
+			# Связь с методом частиц (а не лямбда с захватом): если частицы удалятся раньше
+			# вместе со сценой (смена этажа), связь порвётся сама, без ошибки "Lambda capture was freed"
+			tree.create_timer(particles.lifetime + 0.1).timeout.connect(particles.queue_free)

@@ -71,9 +71,10 @@ func _physics_process(delta: float) -> void:
 		_update_target()
 
 	if NetworkManager.is_online() and not multiplayer.is_server():
-		_process_puppet()
+		_process_puppet(delta)
 		return
 
+	var prev_state: State = current_state
 	match current_state:
 		State.IDLE:
 			_process_idle()
@@ -88,17 +89,35 @@ func _physics_process(delta: float) -> void:
 		State.RECOVER:
 			_process_recover(delta)
 
+	# Хост: начало атаки/удара/восстановления — надёжное событие для клиентов
+	if current_state != prev_state and NetworkManager.is_online() \
+			and current_state in [State.WINDUP, State.LUNGE, State.RECOVER]:
+		_net_ai_event.rpc(current_state, _lunge_dir, _body.global_position)
 
-## Клиент: состояние приходит от хоста — при смене проигрываем анимацию/звук/выстрел.
-## Направление атаки (_lunge_dir) тоже синхронизируется, поэтому выстрелы летят туда же, что у хоста.
-var _puppet_state: int = -1
 
-func _process_puppet() -> void:
-	if current_state != _puppet_state:
-		_puppet_state = current_state
-		var synced_dir: Vector2 = _lunge_dir
-		_change_state(current_state)
-		_lunge_dir = synced_dir
+## Клиент: атаки приходят от хоста надёжным событием _net_ai_event (замах, удар, восстановление),
+## поэтому даже очень короткое состояние не теряется между снимками позиции.
+## event_origin — позиция врага у хоста в момент события (точка вылета снаряда).
+var event_origin: Vector2 = Vector2.INF
+
+func _process_puppet(delta: float) -> void:
+	# После восстановления кукла возвращается в погоню (не-атакующие состояния хост не шлёт)
+	if current_state == State.RECOVER:
+		_state_timer -= delta
+		if _state_timer <= 0.0:
+			current_state = State.CHASE
+
+
+@rpc("authority", "reliable")
+func _net_ai_event(state: int, dir: Vector2, origin: Vector2) -> void:
+	var hc := _body.get_node_or_null("HealthComponent") as HealthComponent
+	if hc and not hc.is_alive():
+		return
+	event_origin = origin
+	_lunge_dir = dir
+	_change_state(state as State)
+	_lunge_dir = dir # направление хоста, а не пересчитанное по локальной цели в _change_state
+	event_origin = Vector2.INF
 
 
 func _update_target() -> void:

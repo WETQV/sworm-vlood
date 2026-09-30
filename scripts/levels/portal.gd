@@ -24,16 +24,30 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _transitioning:
-		return
-		
+	if _transitioning or not NetworkManager.is_authority():
+		return # у клиентов статус приходит от хоста (_net_status)
+
 	if not _players_inside.is_empty() and not timer.is_stopped():
 		var remaining = ceil(timer.time_left)
 		status_label.text = "Переход через: %d сек\n(Игроков: %d/%d)" % [
-			remaining, 
+			remaining,
 			_get_living_inside_count(),
 			_get_total_players_count()
 		]
+	# Хост рассылает статус только при изменении текста (раз в секунду при отсчёте)
+	if NetworkManager.is_online() and status_label.text != _sent_status:
+		_sent_status = status_label.text
+		_net_status.rpc(_sent_status)
+
+
+var _sent_status: String = ""
+
+
+## Клиенты показывают таймер и число игроков в портале так, как их видит хост
+@rpc("authority", "reliable")
+func _net_status(text: String) -> void:
+	if not _transitioning:
+		status_label.text = text
 
 
 func _on_body_entered(body: Node2D) -> void:

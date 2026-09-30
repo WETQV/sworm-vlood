@@ -167,7 +167,9 @@ func _shoot() -> void:
 	arrow.speed = arrow_speed
 	arrow.damage = _body.contact_damage if "contact_damage" in _body else 12
 	arrow.attacker = _body
-	arrow.global_position = _body.global_position + _lunge_dir * 16.0
+	# В сети у клиента — точка выстрела у хоста, чтобы стрела летела по тому же пути
+	var from: Vector2 = event_origin if event_origin.is_finite() else _body.global_position
+	arrow.global_position = from + _lunge_dir * 16.0
 
 	var world_root: Node = get_tree().current_scene
 	if not world_root:

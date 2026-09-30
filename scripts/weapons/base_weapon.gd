@@ -12,6 +12,8 @@ signal cooldown_finished
 
 var is_attacking: bool = false
 var wielder: Node2D = null
+## Сеть: точка атаки по данным владельца (INF — использовать позицию оружия)
+var origin_override: Vector2 = Vector2.INF
 var _cooldown_timer: Timer
 
 

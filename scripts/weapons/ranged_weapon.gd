@@ -33,7 +33,8 @@ func _spawn_projectile(aim_dir: Vector2, _target_pos: Vector2) -> void:
 	if not projectile:
 		return
 
-	projectile.global_position = global_position
+	# В сети — точка выстрела у владельца, чтобы снаряд у всех летел из одного места
+	projectile.global_position = origin_override if origin_override.is_finite() else global_position
 	if "direction" in projectile:
 		projectile.direction = aim_dir
 	if "damage" in projectile:
