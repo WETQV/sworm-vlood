@@ -419,6 +419,7 @@ func _on_peer_disconnected(id: int) -> void:
 		return
 	players.erase(id)
 	_players_in_game.erase(id)
+	Progression.on_peer_left(id)
 	_sync_players.rpc(players)
 	players_changed.emit()
 	# Если ждали только его — продолжаем (до паузы: остальные не должны ждать)

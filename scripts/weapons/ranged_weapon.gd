@@ -6,6 +6,9 @@ class_name RangedWeapon
 @export var projectile_speed: float = 450.0
 @export var recoil_distance: float = 6.0
 
+## Модификаторы снаряда от навыков (Player.apply_build): пробитие, взрыв, поджог…
+var projectile_mods: Dictionary = {}
+
 var _initial_pos: Vector2 = Vector2.ZERO
 
 
@@ -43,6 +46,8 @@ func _spawn_projectile(aim_dir: Vector2, _target_pos: Vector2) -> void:
 		projectile.knockback_force = knockback_force
 	if "attacker" in projectile:
 		projectile.attacker = wielder
+	if "mods" in projectile:
+		projectile.mods = projectile_mods
 
 	# Безопасное добавление снаряда в корень сцены/уровня
 	var world_root: Node = get_tree().current_scene

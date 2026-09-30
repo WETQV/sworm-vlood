@@ -43,6 +43,8 @@ var _rooms_parent: Node
 var _report: Array[String] = []
 var _args: Dictionary = {}
 var _shots := 0
+## Разброс испытаний: смещение точки появления и сторона обхода (seed= для повтора)
+var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
@@ -56,6 +58,8 @@ func _ready() -> void:
 		var kv := arg.split("=", true, 1)
 		_args[kv[0]] = kv[1] if kv.size() > 1 else "1"
 	var tests: String = _args.get("tests", "reach,kite,doors,lead,pull")
+	_rng.seed = int(_args.get("seed", str(Time.get_ticks_usec())))
+	print("NAV_CHECKS seed=%d" % _rng.seed)
 	GameManager.start_floor(4, 4242)
 	for i in 4:
 		await get_tree().process_frame
@@ -226,7 +230,8 @@ func _check_reach(room: Room, label: String) -> void:
 		for tile in _player_spots(room):
 			_player.global_position = _tile_global(room, tile)
 			var player_local := room.spawn_root.to_local(_player.global_position)
-			var enemy := _spawn(room, kind, _far_spawn(room, player_local))
+			var enemy := _spawn(room, kind, _far_spawn(room, player_local) + Vector2(_rng.randf_range(-12, 12), _rng.randf_range(-12, 12)))
+			_ai(enemy)._circumnavigate_side = 1 if _rng.randf() < 0.5 else -1
 			_hits = 0
 			var t := 0.0
 			# Запас: путь по навигации со скоростью врага + время на кружение и замах.

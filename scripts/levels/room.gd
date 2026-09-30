@@ -16,6 +16,7 @@ const FLOOR_ATLAS    := Vector2i(0, 0)
 const WALL_ATLAS     := Vector2i(1, 0)
 
 const DOOR_SCENE   := preload("res://scenes/levels/door.tscn")
+const ALTAR_SCRIPT := preload("res://scripts/progression/reward_altar.gd")
 const PORTAL_SCENE := preload("res://scenes/levels/portal.tscn")
 
 const SLIME_SCENE      := preload("res://scenes/enemies/slime.tscn")
@@ -63,6 +64,8 @@ func _ready() -> void:
 	update_autotiles()
 	_collect_spawn_points()
 	_setup_activation_area()
+	if room_type == RoomType.SHRINE:
+		_spawn_altar(RewardAltar.Kind.SHRINE) # святилище безопасно и доступно сразу
 
 # ── Создание слоёв ──────────────────────────────────────────────────────────
 func _create_layers() -> void:
@@ -574,9 +577,28 @@ func _on_enemy_died(_killer, enemy_id: int) -> void:
 
 
 func _spawn_loot() -> void:
-	# Пока просто логируем, так как нет сцены сундука под рукой
-	print("[Room %d] Спавн лута в %d точках" % [room_id, _loot_points.size()])
-	# Здесь будет инстантиация сундуков по _loot_points
+	# Сундук появляется после зачистки охраны у всех участников; открывает его хост
+	if room_type == RoomType.CHEST:
+		_spawn_altar(RewardAltar.Kind.CHEST)
+
+
+## Сундук/святилище в точке маркера комнаты. Имя и ключ наград одинаковы у всех участников:
+## ключ включает этаж и имя комнаты, поэтому награды не повторяются между комнатами/этажами.
+func _spawn_altar(kind: RewardAltar.Kind) -> void:
+	if has_node("RewardAltar"):
+		return
+	var pos := Vector2(room_size) * TILE_SIZE / 2.0
+	var wanted := SpawnPoint.SpawnType.CHEST if kind == RewardAltar.Kind.CHEST else SpawnPoint.SpawnType.SHRINE
+	if spawn_root:
+		for child in spawn_root.get_children():
+			if child is SpawnPoint and child.type == wanted:
+				pos = spawn_root.position + child.position
+				break
+	var altar: RewardAltar = ALTAR_SCRIPT.new()
+	altar.name = "RewardAltar"
+	altar.setup(kind, "f%d:%s" % [GameManager.current_floor, name])
+	altar.position = pos
+	add_child(altar)
 
 
 # ── Соединения (вызывает генератор) ─────────────────────────────────────────

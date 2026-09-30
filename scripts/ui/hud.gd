@@ -12,12 +12,26 @@ class_name GameHUD
 
 var _player: CharacterBody2D = null
 var _damage_tween: Tween = null
+var _build_label: Label = null
 
 
 func _ready() -> void:
 	layer = 10
 	if GameManager:
 		set_floor(GameManager.current_floor)
+	# Навыки и улучшения своего героя (прокачка забега, см. Progression)
+	_build_label = Label.new()
+	_build_label.name = "BuildLabel"
+	_build_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_build_label.custom_minimum_size = Vector2(260, 0)
+	_build_label.add_theme_font_size_override("font_size", 12)
+	_build_label.add_theme_color_override("font_color", Color(0.96, 0.85, 0.52))
+	_build_label.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.06))
+	_build_label.add_theme_constant_override("outline_size", 4)
+	var box := get_node_or_null("MarginContainer/VBoxContainer")
+	if box:
+		box.add_child(_build_label)
+	Progression.build_changed.connect(_on_build_changed)
 
 
 func setup_player(player: CharacterBody2D) -> void:
@@ -37,6 +51,8 @@ func setup_player(player: CharacterBody2D) -> void:
 
 	if _player.has_signal("dash_cooldown_updated"):
 		_player.dash_cooldown_updated.connect(_on_dash_cooldown_updated)
+
+	_on_build_changed(_player.peer_id)
 
 	if GameManager.CLASS_DATA.has(GameManager.selected_class):
 		var class_name_str: String = GameManager.CLASS_DATA[GameManager.selected_class]["name"]
@@ -76,3 +92,9 @@ func _on_dash_cooldown_updated(current: float, max_time: float) -> void:
 	if dash_bar:
 		dash_bar.max_value = max_time
 		dash_bar.value = current
+
+
+func _on_build_changed(peer_id: int) -> void:
+	if _build_label == null or not is_instance_valid(_player) or peer_id != _player.peer_id:
+		return
+	_build_label.text = ProgressionCatalog.build_summary(Progression.get_build(peer_id))

@@ -54,8 +54,10 @@ func _ready() -> void:
 			visual_target = parent_node as CanvasItem
 
 
-## Получить урон (вызывается хитбоксом или атакующей стороной)
-func receive_damage(amount: int, knockback_force: float, attacker_position: Vector2, attacker: Node2D = null, ignore_invincibility: bool = false) -> void:
+## Получить урон (вызывается хитбоксом или атакующей стороной).
+## start_iframes = false — периодический/вторичный урон (поджог, взрыв), не дающий цели
+## неуязвимость: иначе он гасил бы прямые попадания в следующие 0,25 с.
+func receive_damage(amount: int, knockback_force: float, attacker_position: Vector2, attacker: Node2D = null, ignore_invincibility: bool = false, start_iframes: bool = true) -> void:
 	# В сети попадания считает только хост; клиенты получают результат через _net_hit_fx
 	if not NetworkManager.is_authority():
 		return
@@ -73,8 +75,11 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 
 	# Наносим урон через HealthComponent с учетом снижения урона
 	var final_amount: int = amount
-	if damage_reduction > 0.0:
-		final_amount = max(1, int(round(float(amount) * (1.0 - damage_reduction))))
+	var reduction := damage_reduction
+	if entity is Player:
+		reduction = minf(0.6, reduction + Progression.ally_damage_reduction(entity))
+	if reduction > 0.0:
+		final_amount = max(1, int(round(float(amount) * (1.0 - reduction))))
 
 	if health_component:
 		health_component.take_damage(final_amount, attacker)
@@ -88,7 +93,8 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 	_play_hit_fx()
 
 	# Запуск i-frames
-	_start_invincibility()
+	if start_iframes:
+		_start_invincibility()
 
 	if NetworkManager.is_online():
 		_net_hit_fx.rpc(final_amount, direction * knockback_force)

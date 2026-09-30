@@ -30,6 +30,10 @@ var _pause_overlay: Control
 func _ready() -> void:
 	_create_transition_overlay()
 	_setup_pause_menu()
+	var reward_ui := CanvasLayer.new()
+	reward_ui.name = "RewardUI"
+	reward_ui.set_script(preload("res://scripts/ui/reward_ui.gd"))
+	add_child(reward_ui)
 	_generate_dungeon()
 
 
@@ -140,6 +144,9 @@ func _on_player_node_ready(player: CharacterBody2D) -> void:
 	player.speed = class_data["stats"]["speed"]
 	player.attack_damage = class_data["stats"]["damage"]
 	player.get_node("Visuals/Body").color = class_data["color"]
+
+	# Билд забега (навыки и улучшения прошлых этажей) — от базовых значений класса
+	player.apply_build(Progression.get_build(player.peer_id), true)
 
 	var health: HealthComponent = player.get_node("HealthComponent")
 	health.died.connect(_on_player_died.bind(player))

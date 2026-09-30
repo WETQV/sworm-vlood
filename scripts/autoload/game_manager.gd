@@ -65,6 +65,8 @@ func start_new_game() -> void:
 
 ## Переход на следующий этаж
 func next_floor() -> void:
+	# Хост: неподобранные предметы и несделанный выбор выдаются, а не пропадают
+	Progression.settle_floor()
 	if NetworkManager.is_online():
 		NetworkManager.start_next_floor()
 		return
@@ -80,6 +82,7 @@ func start_floor(floor_num: int, seed_value: int) -> void:
 
 	current_floor = floor_num
 	dungeon_seed = seed_value
+	Progression.begin_floor(floor_num)
 	difficulty_multiplier = 1.0 + (current_floor - 1) * 0.25 # +25% статов за каждый этаж
 	print("[GameManager] Этаж %d, Сложность: %.2f" % [current_floor, difficulty_multiplier])
 	change_scene("res://scenes/game/game.tscn")

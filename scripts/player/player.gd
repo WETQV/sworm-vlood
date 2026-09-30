@@ -84,6 +84,18 @@ var _step_timer: float = 0.0
 var _dash_ghost_timer: float = 0.0
 var _ground_shadow: Polygon2D = null
 
+# --- Прокачка забега (Progression): базовые значения оружия и эффекты навыков ---
+const BASE_DASH_COOLDOWN := 0.75
+const BASE_MELEE_RADIUS := 28.0
+## Запас окна «Выпада дуэлянта» у хоста для чужого героя: рывок и удар приходят по сети
+const DUELIST_NET_LEEWAY := 0.15
+var _base_attack_cooldown: float = 0.4
+var _base_knockback: float = 140.0
+var _duelist_bonus: float = 0.0
+var _last_dash_start_msec: int = -100000
+## Паладин «Бастион»: снижение урона союзникам рядом (доля его собственного бонуса)
+var bastion_aura: float = 0.0
+
 
 func _ready() -> void:
 	add_to_group("player")
@@ -303,6 +315,83 @@ func _setup_weapon() -> void:
 
 	if current_weapon:
 		current_weapon.wielder = self
+		_base_attack_cooldown = current_weapon.attack_cooldown
+		_base_knockback = current_weapon.knockback_force
+
+
+## Пересчитать характеристики из базовых значений класса и билда забега.
+## fresh — новый герой (полное здоровье); gained — билд вырос, прибавку максимума лечим (хост).
+## Всегда от базы: повторный вызов не умножает статы второй раз.
+func apply_build(build: Dictionary, fresh: bool = false, gained: bool = false) -> void:
+	if not GameManager.CLASS_DATA.has(player_class) or not current_weapon:
+		return
+	var base: Dictionary = GameManager.CLASS_DATA[player_class]["stats"]
+	var vitality := ProgressionCatalog.stacks(build, "vitality")
+	var tempo := ProgressionCatalog.stacks(build, "tempo")
+	var agility := ProgressionCatalog.stacks(build, "agility")
+
+	var old_max := health_component.max_health
+	var new_max := int(round(float(base["hp"]) * (1.0 + ProgressionCatalog.UPGRADES["vitality"]["hp"] * vitality)))
+	health_component.max_health = new_max
+	if fresh:
+		health_component.current_health = new_max
+	elif gained and new_max > old_max and NetworkManager.is_authority():
+		health_component.heal(new_max - old_max) # рассылает здоровье клиентам
+	health_component.current_health = mini(health_component.current_health, new_max)
+	health_component.health_changed.emit(health_component.current_health, new_max)
+
+	speed = float(base["speed"]) * (1.0 + ProgressionCatalog.UPGRADES["agility"]["speed"] * agility)
+	dash_cooldown = BASE_DASH_COOLDOWN * (1.0 - ProgressionCatalog.UPGRADES["agility"]["dash"] * agility)
+	attack_damage = int(base["damage"])
+	current_weapon.attack_cooldown = _base_attack_cooldown * pow(ProgressionCatalog.UPGRADES["tempo"]["cooldown"], tempo)
+	current_weapon.knockback_force = _base_knockback
+
+	_duelist_bonus = 0.0
+	bastion_aura = 0.0
+	match player_class:
+		GameManager.PlayerClass.WARRIOR:
+			var cleave := ProgressionCatalog.rank(build, "cleave")
+			var melee := current_weapon as MeleeWeapon
+			var hit_shape := melee.hitbox.get_child(0) as CollisionShape2D if melee and melee.hitbox else null
+			if hit_shape and hit_shape.shape is CircleShape2D:
+				(hit_shape.shape as CircleShape2D).radius = BASE_MELEE_RADIUS * ProgressionCatalog.SKILLS["cleave"]["radius"][cleave]
+			current_weapon.knockback_force = _base_knockback * ProgressionCatalog.SKILLS["cleave"]["knockback"][cleave]
+			_duelist_bonus = ProgressionCatalog.SKILLS["duelist"]["bonus"][ProgressionCatalog.rank(build, "duelist")]
+		GameManager.PlayerClass.RANGER:
+			var ricochet: Dictionary = ProgressionCatalog.SKILLS["ricochet"]
+			(current_weapon as RangedWeapon).projectile_mods = {
+				"pierce": ricochet["pierce"][ProgressionCatalog.rank(build, "ricochet")], "pierce_damage": ricochet["pierce_damage"],
+				"sniper": ProgressionCatalog.SKILLS["sniper"]["bonus"][ProgressionCatalog.rank(build, "sniper")]}
+		GameManager.PlayerClass.MAGE:
+			var blast: Dictionary = ProgressionCatalog.SKILLS["blast"]
+			var burn: Dictionary = ProgressionCatalog.SKILLS["burn"]
+			var burn_rank := ProgressionCatalog.rank(build, "burn")
+			(current_weapon as RangedWeapon).projectile_mods = {
+				"blast_radius": blast["radius"][ProgressionCatalog.rank(build, "blast")], "splash": blast["splash"],
+				"burn_tick": burn["tick"][burn_rank], "burn_duration": burn["duration"],
+				"burn_interval": burn["interval"], "boss_factor": burn["boss_factor"]}
+		GameManager.PlayerClass.PALADIN:
+			var bastion: Dictionary = ProgressionCatalog.SKILLS["bastion"]
+			var reduction: float = bastion["reduction"][ProgressionCatalog.rank(build, "bastion")]
+			hurtbox.damage_reduction = 0.25 + reduction
+			bastion_aura = reduction * bastion["aura_share"]
+			var wave: float = ProgressionCatalog.SKILLS["thunder"]["wave"][ProgressionCatalog.rank(build, "thunder")]
+			var hammer := current_weapon as PaladinHammer
+			hammer.shockwave_radius = PaladinHammer.BASE_SHOCKWAVE_RADIUS * wave
+			hammer.shockwave_damage = int(round(PaladinHammer.BASE_SHOCKWAVE_DAMAGE * wave))
+
+
+## «Выпад дуэлянта»: урон удара сразу после рывка (считается там же, где атака —
+## у хоста это определяет итоговый урон; у остальных только отображение)
+func _prepare_attack_damage(remote: bool) -> void:
+	current_weapon.damage = attack_damage
+	if _duelist_bonus <= 0.0:
+		return
+	var window: float = dash_duration + ProgressionCatalog.SKILLS["duelist"]["window"] + (DUELIST_NET_LEEWAY if remote else 0.0)
+	if Time.get_ticks_msec() - _last_dash_start_msec <= window * 1000.0:
+		current_weapon.damage = int(round(attack_damage * (1.0 + _duelist_bonus)))
+		if get_node_or_null("/root/VFXManager"):
+			VFXManager.spawn_spark(current_weapon.global_position, Color(1.0, 0.85, 0.4))
 
 
 func _add_weapon_visual(weapon_node: Node2D, scene_path: String) -> void:
@@ -446,6 +535,7 @@ func try_attack(aim_dir: Vector2, target_pos: Vector2) -> bool:
 			or not health_component.is_alive():
 		return false
 	var origin: Vector2 = current_weapon.global_position
+	_prepare_attack_damage(false)
 	current_weapon.attack(aim_dir, target_pos) # мгновенный отзыв; урон на клиенте не применяется
 	if NetworkManager.is_online():
 		_action_seq += 1
@@ -639,6 +729,7 @@ func _perform_remote_attack(dir: Vector2, target_pos: Vector2, origin: Vector2, 
 	# Для замеров: насколько показанное оружие разошлось с точкой, где ударил владелец
 	remote_action_played.emit("attack", seq, current_weapon.global_position.distance_to(origin))
 	current_weapon.force_ready() # кулдаун уже проверен хостом в _validate_action
+	_prepare_attack_damage(true)
 	current_weapon.origin_override = origin
 	current_weapon.attack(dir, target_pos)
 	current_weapon.origin_override = Vector2.INF
@@ -701,6 +792,7 @@ func _get_dash_direction(input_dir: Vector2, aim_vector: Vector2) -> Vector2:
 
 func _start_dash(dash_dir: Vector2) -> void:
 	_is_dashing = true
+	_last_dash_start_msec = Time.get_ticks_msec()
 	_dash_timer = dash_duration
 	_dash_cooldown_timer = dash_cooldown
 	_dashed_hit_targets.clear()

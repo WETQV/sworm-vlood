@@ -3,8 +3,11 @@ class_name PaladinHammer
 ## PaladinHammer — Священный щит-бастион Паладина.
 ## Наносит сокрушительный урон вблизи ударом щита и порождает золотую священную волну (AoE).
 
-@export var shockwave_radius: float = 46.0
-@export var shockwave_damage: int = 22
+const BASE_SHOCKWAVE_RADIUS := 46.0
+const BASE_SHOCKWAVE_DAMAGE := 22
+
+@export var shockwave_radius: float = BASE_SHOCKWAVE_RADIUS
+@export var shockwave_damage: int = BASE_SHOCKWAVE_DAMAGE
 @export var shockwave_knockback: float = 240.0
 
 var _pending_shockwave: bool = false

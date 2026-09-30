@@ -211,6 +211,8 @@ func _run_scenario() -> void:
 			await _scenario_host_leave()
 		"showcase":
 			await _scenario_showcase()
+		"loot":
+			await _scenario_loot()
 		_:
 			await wait(duration)
 	log_event("scenario=%s end" % scenario)
@@ -276,6 +278,81 @@ func _scenario_floors() -> void:
 		await _wait_for_players(NetworkManager.players.size() if NetworkManager.is_online() else 1)
 	log_event("FLOOR %d transitions_done=%d nodes=%d orphans=%d" % [GameManager.current_floor, transitions,
 		Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)])
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Награды в кооперативе: сундук, личные предметы, святилище, переход этажа
+# ════════════════════════════════════════════════════════════════════════════
+
+func _scenario_loot() -> void:
+	_running = false # героев расставляет хост
+	_release_all()
+	var offers_got: Array = []
+	Progression.offers_received.connect(func(key: String, offers: Array) -> void:
+		offers_got.append([key, offers])
+		log_event("OFFERS %s %d" % [key, offers.size()]))
+	Progression.reward_granted.connect(func(peer_id: int, text: String) -> void:
+		log_event("REWARD %d %s" % [peer_id, text.replace(",", ";")]))
+	if role == "host":
+		var chest_room := _nearest_room(Room.RoomType.CHEST)
+		chest_room.set_room_state(Room.RoomState.CLEARED) # охрана «зачищена» — сундук появляется у всех
+		await wait(0.6)
+		var chest: Node2D = chest_room.get_node("RewardAltar")
+		var players := get_tree().get_nodes_in_group("player")
+		for i in players.size():
+			(players[i] as Player).teleport_to_position(chest.global_position + Vector2(-30 + 20 * i, -20))
+		await wait(1.2)
+		var pickups := get_tree().current_scene.get_children().filter(func(n: Node) -> bool: return n.has_method("collect"))
+		log_event("PICKUPS %d" % pickups.size())
+		# Каждого героя — на чужой предмет (не подбирается), затем на свой
+		for pickup in pickups:
+			for p in players:
+				if p.peer_id != pickup.owner_id:
+					(p as Player).teleport_to_position(pickup.global_position)
+		await wait(1.0)
+		for pickup in pickups:
+			if is_instance_valid(pickup):
+				Progression._player_node(pickup.owner_id).teleport_to_position(pickup.global_position)
+		await wait(1.5)
+		var shrine: Node2D = _nearest_room(Room.RoomType.SHRINE).get_node("RewardAltar")
+		for i in players.size():
+			(players[i] as Player).teleport_to_position(shrine.global_position + Vector2(-30 + 20 * i, -20))
+	var deadline := Time.get_ticks_msec() + 12000
+	while offers_got.is_empty() and Time.get_ticks_msec() < deadline:
+		await wait(0.2)
+	var old_key := ""
+	if not offers_got.is_empty():
+		old_key = offers_got[0][0]
+		var choice: int = Progression._peer_slot(multiplayer.get_unique_id()) % offers_got[0][1].size()
+		Progression.choose_offer(old_key, choice)
+		log_event("CHOSE %s %d" % [old_key, choice])
+		await wait(1.0)
+		Progression.choose_offer(old_key, 0) # повтор — хост должен отклонить
+	await wait(2.0)
+	_log_builds("before")
+	var scene_before := get_tree().current_scene
+	if role == "host":
+		GameManager.next_floor()
+	while get_tree().current_scene == scene_before and Time.get_ticks_msec() < deadline + 30000:
+		await wait(0.2)
+	await _wait_for_players(NetworkManager.players.size())
+	if role != "host" and old_key != "":
+		Progression._req_choose.rpc_id(1, old_key, 0) # выбор с прошлого этажа — отказ
+	await wait(1.5)
+	_log_builds("after")
+
+
+func _log_builds(stage: String) -> void:
+	var ids: Array = Progression.builds.keys()
+	ids.sort()
+	var parts: Array[String] = []
+	for id in ids:
+		parts.append("%d:%s" % [id, JSON.stringify(Progression.builds[id])])
+	log_event("BUILDS %s %s" % [stage, " | ".join(parts).replace(",", ";")])
+	for node in get_tree().get_nodes_in_group("player"):
+		var p := node as Player
+		log_event("STATS %s peer=%d hp=%d/%d speed=%.1f cd=%.3f" % [stage, p.peer_id,
+			p.health_component.current_health, p.health_component.max_health, p.speed, p.current_weapon.attack_cooldown])
+
 
 # ════════════════════════════════════════════════════════════════════════════
 #  Целостность боя: двойное/пропущенное применение, спам и повтор запросов, одна смерть

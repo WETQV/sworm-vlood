@@ -123,19 +123,10 @@ func _process_chase(delta: float) -> void:
 	if dist <= shoot_range and _has_line_of_sight():
 		_change_state(State.ENCIRCLE)
 		return
-	var move_dir: Vector2
-	if dist < preferred_distance:
-		# Близко, но линию закрывает колонна: подходить ещё ближе бессмысленно (лучник
-		# упирался в угол рядом с героем). Обходим цель по дуге, пока линия не откроется.
-		var to_target: Vector2 = target_player.global_position - _body.global_position
-		var tangent: Vector2 = Vector2(-to_target.y, to_target.x).normalized() * _circumnavigate_side
-		move_dir = _steer_clear_of_nearby_walls(tangent, _body.get_world_2d().direct_space_state, _body.global_position)
-		if _body.get_slide_collision_count() > 0 and move_dir.dot(tangent) < 0.3:
-			_circumnavigate_side *= -1
-	else:
-		# Без прямой видимости идём по пути даже вблизи: переход в ENCIRCLE (по дистанции,
-		# как у слайма) тут же возвращал в CHASE, и лучник топтался за колонной, не стреляя
-		move_dir = _avoid_obstacles(_get_chase_direction(delta))
+	# Без прямой видимости идём по пути к цели даже вблизи: за углом укрытия линия
+	# откроется. Переход в ENCIRCLE по дистанции (как у слайма) тут же возвращал в CHASE,
+	# а обход цели по дуге упирался в само укрытие — лучник топтался, не стреляя.
+	var move_dir: Vector2 = _avoid_obstacles(_get_chase_direction(delta))
 	_body.velocity = _body.velocity.move_toward(move_dir * base_speed, 450.0 * delta)
 	_body.move_and_slide()
 
