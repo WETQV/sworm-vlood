@@ -31,6 +31,7 @@ func _ready() -> void:
 		_check_apply_build(player_class)
 	await _check_skill_effects()
 	await _check_rooms_and_floors()
+	await _check_consumables()
 	for line in _report:
 		print(line)
 	print("PROGRESSION_CHECKS: %d cases, %d failures" % [cases, failures])
@@ -440,3 +441,77 @@ func _ranks(build: Dictionary) -> int:
 	for v in build["upgrades"].values():
 		total += v
 	return total
+
+
+# ── Расходники: выпадение, сумка, применение, сохранение ─────────────────────
+
+func _bag(id: String) -> int:
+	return Catalog.item_count(Progression.get_build(1), id)
+
+
+func _check_consumables() -> void:
+	await _start(0, 1, 4242)
+	# Выходная арена 1–6 всегда роняет зелье здоровья
+	var boss_room := _room_of(Room.RoomType.BOSS)
+	boss_room.current_state = Room.RoomState.FIGHT
+	boss_room._living_enemies.clear()
+	boss_room._pending_wave.clear()
+	boss_room.set_room_state(Room.RoomState.CLEARED)
+	var drops := get_tree().current_scene.get_children().filter(func(n: Node) -> bool:
+		return n.has_method("collect") and n.item_id == "health_potion")
+	_check(drops.size() == 1, "exit arena drops a health potion (%d)" % drops.size())
+	_player.global_position = drops[0].global_position
+	await _frames(4)
+	_check(_bag("health_potion") == 1, "potion picked into the bag")
+	# Предел сумки: третье зелье остаётся лежать
+	for i in 2:
+		var key := "f1:test_potion_%d" % i
+		var spot := boss_room.global_position + Vector2(200 + i * 120, 200)
+		Progression._pickups[key] = {"item": "health_potion", "owner": 0, "pos": spot}
+		Progression._net_spawn_pickup(key, "health_potion", 0, spot)
+		_player.global_position = spot
+		await _frames(4)
+	_check(_bag("health_potion") == 2 and Progression._pickups.has("f1:test_potion_1"), "bag cap 2: extra potion stays on the floor")
+	# Отходим: иначе после выпитого зелья освободится место и лежащее подберётся (это верно)
+	_player.global_position = boss_room.global_position + Vector2(100, 100)
+	await _frames(2)
+	# Полное здоровье — зелье не тратится; раненый лечится на 35% (не меньше 30)
+	var hc := _player.health_component
+	Progression.use_consumable("health_potion")
+	_check(_bag("health_potion") == 2, "potion not wasted at full hp")
+	hc.current_health = 20
+	Progression.use_consumable("health_potion")
+	_check(_bag("health_potion") == 1 and hc.current_health == 20 + maxi(30, int(ceil(hc.max_health * 0.35))), "health potion heals 35%% (hp %d)" % hc.current_health)
+	# Зелье скорости: +30% и обновление времени без складывания
+	var speed_key := "f1:test_speed"
+	var speed_spot := boss_room.global_position + Vector2(200, 320)
+	Progression._pickups[speed_key] = {"item": "speed_potion", "owner": 0, "pos": speed_spot}
+	Progression._net_spawn_pickup(speed_key, "speed_potion", 0, speed_spot)
+	_player.global_position = speed_spot
+	await _frames(4)
+	Progression.use_consumable("speed_potion")
+	_check(is_equal_approx(_player.speed_boost_left, 6.0) and _bag("speed_potion") == 0, "speed potion 6 s")
+	var rejected: int = NetworkManager.net_stats.get("consumable_rejected", 0)
+	Progression.use_consumable("speed_potion")
+	_check(NetworkManager.net_stats.get("consumable_rejected", 0) == rejected + 1, "empty bag use rejected")
+	_player.set_physics_process(true)
+	Input.action_press("move_right")
+	await _frames(30)
+	var boosted := _player.velocity.length()
+	Input.action_release("move_right")
+	_player.speed_boost_left = 0.0
+	Input.action_press("move_right")
+	await _frames(30)
+	var normal := _player.velocity.length()
+	Input.action_release("move_right")
+	_player.set_physics_process(false)
+	_check(is_equal_approx(boosted, normal * 1.3), "speed boost +30%% (%.0f vs %.0f)" % [boosted, normal])
+	# Сумка переживает смену этажа и сбрасывается в новом забеге
+	GameManager.next_floor()
+	for i in 4:
+		await get_tree().process_frame
+	_check(_bag("health_potion") == 1, "potions persist to next floor (%s)" % [Progression.get_build(1)])
+	GameManager.start_new_game()
+	for i in 4:
+		await get_tree().process_frame
+	_check(_bag("health_potion") == 0, "new run empties the bag")

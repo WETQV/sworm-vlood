@@ -55,6 +55,7 @@ func _check_plans() -> void:
 							for kind in roster:
 								cost += int(PLANNER.ENEMIES[kind]["cost"])
 								_check(int(PLANNER.ENEMIES[kind]["floor"]) <= floor_num, "Role introduced too early")
+							cost += int(plan.get("elite_cost", 0)) # надбавка за «Стража» выходной арены
 							_check(cost == plan["spent"] and cost <= plan["budget"], "Threat budget exceeded")
 							_check(roster.count("archer") <= (2 if large and floor_num >= 5 else 1), "Archer cap exceeded")
 							_check(roster.count("bat") <= (4 if large else 2), "Bat cap exceeded")
@@ -211,20 +212,34 @@ func _check_floor(floor_num: int) -> void:
 			other._begin_fight(player)
 			_check(other.current_state == Room.RoomState.SLEEP, "Stale room entry activated fight")
 			break
-		var enemies: Array[Node] = room.spawn_root.get_children()
 		var boss_count := 0
-		for enemy in enemies:
-			var health := enemy.get_node_or_null("HealthComponent") as HealthComponent
-			if health == null:
-				continue
-			if enemy.scene_file_path == "res://scenes/enemies/slime_boss.tscn":
-				boss_count += 1
-			_check(enemy.global_position.distance_to(player.global_position) >= Room.SPAWN_PLAYER_DISTANCE, "Enemy too close to player")
-			var enemy_id := enemy.get_instance_id()
-			health.take_damage(100000, player)
-			var remaining: int = room._spawned_enemies_count
-			room._on_enemy_died(player, enemy_id)
-			_check(room._spawned_enemies_count == remaining, "Duplicate death changed count")
+		var waves := 0
+		var elites := 0
+		# Выходная арена 1–6 идёт двумя волнами: зачищаем каждую, пока волны не кончатся
+		while waves < 4:
+			waves += 1
+			var enemies: Array[Node] = room.spawn_root.get_children()
+			for enemy in enemies:
+				var health := enemy.get_node_or_null("HealthComponent") as HealthComponent
+				if health == null or not health.is_alive():
+					continue
+				if enemy.scene_file_path == "res://scenes/enemies/slime_boss.tscn":
+					boss_count += 1
+				if enemy.has_meta("elite"):
+					elites += 1
+				_check(enemy.global_position.distance_to(player.global_position) >= Room.SPAWN_PLAYER_DISTANCE, "Enemy too close to player")
+				var enemy_id := enemy.get_instance_id()
+				health.take_damage(100000, player)
+				var remaining: int = room._spawned_enemies_count
+				room._on_enemy_died(player, enemy_id)
+				_check(room._spawned_enemies_count == remaining, "Duplicate death changed count")
+			if room._pending_wave.is_empty() and not room._wave_starting:
+				break
+			await get_tree().process_frame
+			_check(room.current_state == Room.RoomState.FIGHT, "Cleared before the last wave")
+			await get_tree().create_timer(Room.WAVE_WARNING + 0.1).timeout
+		if room.room_type == Room.RoomType.BOSS and floor_num < 7:
+			_check(waves == 2 and elites == 1, "Exit arena must have a second wave with one elite (waves %d, elites %d)" % [waves, elites])
 		_check(boss_count == (1 if floor_num == 7 and room.room_type == Room.RoomType.BOSS else 0), "Wrong final boss count")
 		await get_tree().process_frame
 		_check(room.current_state == Room.RoomState.CLEARED and room._spawned_enemies_count == 0, "Encounter did not clear")

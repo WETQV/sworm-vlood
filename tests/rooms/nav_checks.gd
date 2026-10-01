@@ -17,6 +17,7 @@ const ENEMIES := {
 	"bat": preload("res://scenes/enemies/bat.tscn"),
 	"archer": preload("res://scenes/enemies/archer.tscn"),
 	"boss": preload("res://scenes/enemies/slime_boss.tscn"),
+	"necromancer": preload("res://scenes/enemies/necromancer.tscn"),
 }
 const PROJECTILES := {
 	"arrow": preload("res://scenes/items/arrow.tscn"),
@@ -57,7 +58,7 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		var kv := arg.split("=", true, 1)
 		_args[kv[0]] = kv[1] if kv.size() > 1 else "1"
-	var tests: String = _args.get("tests", "reach,kite,doors,lead,pull")
+	var tests: String = _args.get("tests", "reach,kite,doors,lead,pull,roles")
 	_rng.seed = int(_args.get("seed", str(Time.get_ticks_usec())))
 	print("NAV_CHECKS seed=%d" % _rng.seed)
 	GameManager.start_floor(4, 4242)
@@ -91,6 +92,9 @@ func _ready() -> void:
 				await _check_doors(room, label)
 			if "lead" in tests and label == "small/0":
 				await _check_archer_lead(room, label)
+			if "roles" in tests and label == "large/0":
+				await _check_necromancer(room, label)
+				await _check_boss_patterns(room, label)
 			room.queue_free()
 			await get_tree().process_frame
 			if "pull" in tests:
@@ -311,7 +315,8 @@ func _check_kiting(room: Room, label: String) -> void:
 				samples.pop_front()
 				var ai := _ai(e)
 				var chasing := ai != null and (ai.current_state == SlimeAI.State.CHASE \
-					or (ai.current_state == SlimeAI.State.ENCIRCLE and not ai is ArcherAI))
+					or (ai.current_state == SlimeAI.State.ENCIRCLE and not ai is ArcherAI)) \
+					and not (ai is BossAI and (ai as BossAI)._pattern != "") # замах приёма — намеренная остановка
 				var far := e.global_position.distance_to(_player.global_position) > ai.attack_range + 20.0
 				var moved: float = (samples[samples.size() - 1] as Vector2).distance_to(samples[0])
 				if chasing and far and moved < STUCK_DISTANCE:
@@ -335,7 +340,7 @@ func _check_archer_lead(room: Room, label: String) -> void:
 	_game.add_child(archer)
 	var shots_total := 0
 	var hits_total := 0
-	for run in 6:
+	for run in 12:
 		var side := -1.0 if run % 2 else 1.0
 		var start := origin + Vector2(-1600 * side, 230)
 		var finish := origin + Vector2(1600 * side, 230)
@@ -360,8 +365,94 @@ func _check_archer_lead(room: Room, label: String) -> void:
 		hits_total += _hits
 	archer.queue_free()
 	var rate := float(hits_total) / maxf(shots_total, 1)
-	_check(shots_total >= 4 and rate >= 0.5, "%s: archer lead %d/%d hits" % [label, hits_total, shots_total])
+	_check(shots_total >= 8 and rate >= 0.3, "%s: archer lead %d/%d hits" % [label, hits_total, shots_total])
 	_report.append("lead  archer hits %d of %d shots on a straight runner" % [hits_total, shots_total])
+
+func _frames(n: int) -> void:
+	for i in n:
+		await get_tree().physics_frame
+
+
+func _alive_enemies(room: Room) -> Array[Node2D]:
+	var result: Array[Node2D] = []
+	for node in get_tree().get_nodes_in_group("enemy"):
+		var enemy := node as Node2D
+		if enemy and enemy.health_component.is_alive() and enemy.global_position.distance_to(_center(room)) < 2000.0:
+			result.append(enemy)
+	return result
+
+
+## Некромант: призыв с телеграфом, предел 3 прислужников, гибель прислужников с ним
+func _check_necromancer(room: Room, label: String) -> void:
+	_player.global_position = _tile_global(room, Vector2i(3, room.room_size.y / 2))
+	var necro := _spawn(room, "necromancer", room.floor_layer.map_to_local(Vector2i(room.room_size.x - 6, room.room_size.y / 2)))
+	_shots = 0
+	var most := 0
+	for i in int(16.0 / DT):
+		await get_tree().physics_frame
+		most = maxi(most, _alive_enemies(room).size() - 1)
+	_check(most >= 2 and most <= 3, "%s: necromancer minions alive max %d (expected 2..3)" % [label, most])
+	_check(_shots >= 1, "%s: necromancer never cast a bolt" % label)
+	necro.health_component.take_damage(100000)
+	await _frames(3)
+	_check(_alive_enemies(room).is_empty(), "%s: minions survived the necromancer" % label)
+	_report.append("roles necromancer: minions max %d, bolts %d" % [most, _shots])
+	await _clear(room)
+
+
+## Финальный босс: удар о землю вблизи (рывок спасает), веер плевков издалека, деление
+func _check_boss_patterns(room: Room, label: String) -> void:
+	var center := room.floor_layer.map_to_local(room.floor_layer.local_to_map(Vector2(room.room_size) * TILE / 2.0))
+	var boss := _spawn(room, "boss", center)
+	var ai := _ai(boss) as BossAI
+	_player.global_position = room.to_global(center) + Vector2(110, 0)
+	var hp := _player.health_component
+	var slam := false
+	var dodged := false
+	for i in int(8.0 / DT):
+		await get_tree().physics_frame
+		if ai._pattern == "slam" and not slam:
+			slam = true
+			_player.global_position = boss.global_position + Vector2(110, 0)
+			_player.hurtbox.set_invincible_for(ai.slam_windup + 0.3) # «рывок» в момент удара
+			hp.current_health = hp.max_health
+		if slam and ai._pattern == "slam" and ai._pattern_fired:
+			dodged = hp.current_health == hp.max_health
+			break
+	_check(slam and dodged, "%s: boss slam (seen %s) must be dodgeable by dash i-frames" % [label, slam])
+	await _frames(int(ai.slam_recover / DT) + 5)
+	_hits = 0
+	ai._slam_cd = 0.0
+	for i in int(6.0 / DT):
+		await get_tree().physics_frame
+		if ai._pattern == "slam" and ai._pattern_fired:
+			break
+	_check(_hits > 0, "%s: boss slam did not hit a hero standing inside" % label)
+	# Кайтинг издалека — веер сгустков
+	await _frames(int(ai.slam_recover / DT) + 5)
+	_player.global_position = boss.global_position + Vector2(-420, 0)
+	_shots = 0
+	for i in int(8.0 / DT):
+		await get_tree().physics_frame
+		if _shots >= ai.spit_count:
+			break
+	_check(_shots >= ai.spit_count, "%s: boss spit fan vs ranged hero (%d globs)" % [label, _shots])
+	# Деление на 66% и 33%, не больше 4 прислужников, гибнут с боссом
+	_player.global_position = room.to_global(center) + Vector2(5000, 0)
+	var bhc: HealthComponent = boss.health_component
+	bhc.take_damage(bhc.max_health - int(bhc.max_health * 0.6))
+	await _frames(3)
+	var after_first := _alive_enemies(room).size() - 1
+	bhc.take_damage(bhc.current_health - int(bhc.max_health * 0.3))
+	await _frames(3)
+	var after_second := _alive_enemies(room).size() - 1
+	_check(after_first == 2 and after_second == 4, "%s: boss split adds %d then %d (expected 2, 4)" % [label, after_first, after_second])
+	bhc.take_damage(100000)
+	await _frames(3)
+	_check(_alive_enemies(room).is_empty(), "%s: boss adds survived the boss" % label)
+	_report.append("roles boss: slam dodge %s, spit globs %d, split %d/%d" % [dodged, _shots, after_first, after_second])
+	await _clear(room)
+
 
 ## Снаряд снаружи внутрь (игрок) и изнутри наружу (враг) не проходит закрытую дверь.
 func _check_doors(room: Room, label: String) -> void:

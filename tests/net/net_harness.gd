@@ -213,6 +213,8 @@ func _run_scenario() -> void:
 			await _scenario_showcase()
 		"loot":
 			await _scenario_loot()
+		"roles":
+			await _scenario_roles()
 		_:
 			await wait(duration)
 	log_event("scenario=%s end" % scenario)
@@ -339,6 +341,48 @@ func _scenario_loot() -> void:
 		Progression._req_choose.rpc_id(1, old_key, 0) # выбор с прошлого этажа — отказ
 	await wait(1.5)
 	_log_builds("after")
+
+
+## Новые роли по сети: босс (удар, плевки, деление), некромант (призыв), элитный враг.
+## Хост ставит их рядом с героями; все процессы логируют, что видят (типы, элиту, приёмы).
+func _scenario_roles() -> void:
+	_running = false
+	_release_all()
+	var game := get_tree().current_scene
+	var start_room: Room = game._dungeon.get_start_room()
+	var center: Vector2 = start_room.global_position + Vector2(start_room.room_size) * 32.0
+	if role == "host":
+		game.spawn_network_enemy(load("res://scenes/enemies/slime_boss.tscn"), center + Vector2(0, -150))
+		game.spawn_network_enemy(load("res://scenes/enemies/necromancer.tscn"), center + Vector2(250, 0))
+		game.spawn_network_enemy(load("res://scenes/enemies/skeleton.tscn"), center + Vector2(-250, 0), true)
+		for p in get_tree().get_nodes_in_group("player"):
+			(p as Player).health_component.max_health = 100000
+			(p as Player).health_component.set_health(100000)
+	var patterns: Dictionary = {}
+	var deadline := Time.get_ticks_msec() + 14000
+	while Time.get_ticks_msec() < deadline:
+		await wait(0.1)
+		for e in get_tree().get_nodes_in_group("enemy"):
+			var ai := e.get_node_or_null("SlimeAI")
+			if ai is BossAI and ai._pattern != "":
+				patterns[ai._pattern] = true
+	if role == "host":
+		var boss: Node2D = null
+		for e in get_tree().get_nodes_in_group("enemy"):
+			if e.scene_file_path.contains("slime_boss"):
+				boss = e
+		if boss:
+			boss.health_component.take_damage(int(boss.health_component.max_health * 0.5))
+	await wait(1.5)
+	var kinds: Dictionary = {}
+	var elites := 0
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if e.health_component.is_alive():
+			var kind: String = e.scene_file_path.get_file().get_basename()
+			kinds[kind] = int(kinds.get(kind, 0)) + 1
+			if e.has_meta("elite"):
+				elites += 1
+	log_event("ROLES patterns=%s enemies=%s elites=%d" % [";".join(patterns.keys()), JSON.stringify(kinds).replace(",", ";"), elites])
 
 
 func _log_builds(stage: String) -> void:

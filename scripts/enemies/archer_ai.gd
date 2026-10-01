@@ -126,7 +126,7 @@ func _process_chase(delta: float) -> void:
 	# Без прямой видимости идём по пути к цели даже вблизи: за углом укрытия линия
 	# откроется. Переход в ENCIRCLE по дистанции (как у слайма) тут же возвращал в CHASE,
 	# а обход цели по дуге упирался в само укрытие — лучник топтался, не стреляя.
-	var move_dir: Vector2 = _avoid_obstacles(_get_chase_direction(delta))
+	var move_dir: Vector2 = _unstick(_avoid_obstacles(_get_chase_direction(delta)), delta)
 	_body.velocity = _body.velocity.move_toward(move_dir * base_speed, 450.0 * delta)
 	_body.move_and_slide()
 

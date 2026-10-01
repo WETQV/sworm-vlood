@@ -33,6 +33,15 @@ var _repath_timer: float = 0.0
 ## и обход по касательной (без навигации) его перебивать не должен
 var _following_nav: bool = false
 var _body_radius: float = 12.0
+## Страховка от застревания в погоне: если за STUCK_CHECK с почти не сдвинулись,
+## UNSTICK_TIME с идём вбок от направления пути (каждый раз в другую сторону)
+const STUCK_CHECK := 1.0
+const STUCK_DISTANCE := 8.0
+const UNSTICK_TIME := 0.5
+var _stuck_timer: float = 0.0
+var _stuck_from: Vector2 = Vector2.INF
+var _unstick_timer: float = 0.0
+var _unstick_dir: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -184,10 +193,29 @@ func _process_chase(delta: float) -> void:
 		return
 
 	# Обход стен и углов (усики и тангенциальное скольжение)
-	var move_dir: Vector2 = _avoid_obstacles(_get_chase_direction(delta))
+	var move_dir: Vector2 = _unstick(_avoid_obstacles(_get_chase_direction(delta)), delta)
 
 	_body.velocity = _body.velocity.move_toward(move_dir * base_speed, 450.0 * delta)
 	_body.move_and_slide()
+
+
+## Если враг в погоне застрял (угол укрытия, сосед по стае), ненадолго уходит вбок.
+## Живую угрозу не удаляем и не телепортируем — только меняем направление.
+func _unstick(move_dir: Vector2, delta: float) -> Vector2:
+	if _unstick_timer > 0.0:
+		_unstick_timer -= delta
+		return _steer_clear_of_nearby_walls(_unstick_dir, _body.get_world_2d().direct_space_state, _body.global_position)
+	_stuck_timer += delta
+	if not _stuck_from.is_finite():
+		_stuck_from = _body.global_position
+	if _stuck_timer >= STUCK_CHECK:
+		if _body.global_position.distance_to(_stuck_from) < STUCK_DISTANCE and move_dir != Vector2.ZERO:
+			_circumnavigate_side *= -1
+			_unstick_dir = move_dir.orthogonal() * _circumnavigate_side
+			_unstick_timer = UNSTICK_TIME
+		_stuck_timer = 0.0
+		_stuck_from = _body.global_position
+	return move_dir
 
 
 ## Направление погони по NavMesh.

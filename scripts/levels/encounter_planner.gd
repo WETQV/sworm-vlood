@@ -6,11 +6,18 @@ const ENEMIES := {
 	"skeleton": {"cost": 3, "floor": 2},
 	"bat": {"cost": 1, "floor": 3},
 	"archer": {"cost": 4, "floor": 4},
+	"necromancer": {"cost": 6, "floor": 5},
 }
+## Элитный «Страж этажа» выходной арены 1–6: надбавка к цене основы сценария
+const ELITE_SURCHARGE := 3
+## Выходная арена 1–6 идёт двумя волнами: доля состава в первой волне
+const FIRST_WAVE_SHARE := 0.6
 const SCENARIOS := [
 	{"id": "pursuit", "floor": 1, "core": ["slime", "slime"], "pool": ["slime", "skeleton"]},
 	{"id": "swarm", "floor": 3, "core": ["skeleton", "bat", "bat"], "pool": ["skeleton", "bat", "slime"]},
 	{"id": "crossfire", "floor": 4, "core": ["archer", "slime", "slime"], "pool": ["archer", "slime", "skeleton"]},
+	# Некромант за спинами скелетов: прорваться к нему, пока не поднялись прислужники
+	{"id": "ritual", "floor": 5, "core": ["necromancer", "skeleton", "skeleton"], "pool": ["skeleton", "slime", "bat"], "large_only": true},
 ]
 
 
@@ -35,35 +42,59 @@ static func build(seed_value: int, floor_num: int, players: int, large: bool,
 	var melee_cap := mini(cap, party * 3 + (5 if large else 3))
 	var available: Array = []
 	for scenario in SCENARIOS:
-		if floor_index >= scenario["floor"]:
+		if floor_index >= scenario["floor"] and (large or not scenario.get("large_only", false)):
 			available.append(scenario)
 	var chosen: Dictionary = available[rng.randi_range(0, available.size() - 1)]
 	var roster: Array[String] = []
 	var spent := 0
+	# Выходная арена 1–6: элитная версия основной роли сценария во второй волне
+	var elite := ""
+	if exit_arena and not final_boss:
+		elite = chosen["core"][0]
+		spent += ELITE_SURCHARGE
 	# Сначала роль, определяющая сценарий; затем дополнение в оставшийся бюджет.
 	for kind in chosen["core"]:
-		if _allowed(kind, roster, floor_index, budget - spent, cap, archer_cap, bat_cap, melee_cap):
+		if _allowed(kind, roster, floor_index, budget - spent, cap, archer_cap, bat_cap, melee_cap, large):
 			roster.append(kind)
 			spent += int(ENEMIES[kind]["cost"])
+	if elite != "" and not roster.has(elite):
+		elite = ""
+		spent -= ELITE_SURCHARGE # основа не поместилась — элиты нет
 	while roster.size() < cap:
 		var candidates: Array[String] = []
 		for kind in chosen["pool"]:
-			if _allowed(kind, roster, floor_index, budget - spent, cap, archer_cap, bat_cap, melee_cap):
+			if _allowed(kind, roster, floor_index, budget - spent, cap, archer_cap, bat_cap, melee_cap, large):
 				candidates.append(kind)
 		if candidates.is_empty():
 			break
 		var kind: String = candidates[rng.randi_range(0, candidates.size() - 1)]
 		roster.append(kind)
 		spent += int(ENEMIES[kind]["cost"])
-	return {"scenario": chosen["id"], "enemies": roster, "budget": budget, "spent": spent, "cap": cap}
+	var plan := {"scenario": chosen["id"], "enemies": roster, "budget": budget, "spent": spent, "cap": cap,
+		"elite": -1, "elite_cost": 0, "waves": [roster.size()]}
+	if elite != "" and roster.size() >= 2:
+		# Вторая волна: элита (основа сценария) и хвост состава
+		var elite_index := roster.find(elite)
+		roster.remove_at(elite_index)
+		var first := clampi(int(ceil(roster.size() * FIRST_WAVE_SHARE)), 1, roster.size())
+		roster.insert(first, elite)
+		plan["elite"] = first
+		plan["elite_cost"] = ELITE_SURCHARGE
+		plan["waves"] = [first, roster.size() - first]
+	elif elite != "":
+		spent -= ELITE_SURCHARGE
+		plan["spent"] = spent
+	return plan
 
 
 static func _allowed(kind: String, roster: Array[String], floor_num: int, remaining: int,
-		cap: int, archer_cap: int, bat_cap: int, melee_cap: int) -> bool:
+		cap: int, archer_cap: int, bat_cap: int, melee_cap: int, large: bool = false) -> bool:
 	if roster.size() >= cap or int(ENEMIES[kind]["floor"]) > floor_num or int(ENEMIES[kind]["cost"]) > remaining:
 		return false
 	if kind == "archer":
 		return roster.count(kind) < archer_cap
+	if kind == "necromancer":
+		return large and roster.count(kind) == 0 # один, и только в большой комнате
 	if kind == "bat" and roster.count(kind) >= bat_cap:
 		return false
-	return roster.size() - roster.count("archer") < melee_cap
+	return roster.size() - roster.count("archer") - roster.count("necromancer") < melee_cap

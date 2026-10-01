@@ -1,0 +1,35 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/archer.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/enemies/necromancer_ai.gd" id="2_ai"]
+
+[node name="Necromancer" instance=ExtResource("1_base")]
+speed = 70.0
+contact_damage = 10
+knockback_resistance = 1.2
+
+[node name="HealthComponent" parent="."]
+max_health = 60
+
+[node name="AimLine" parent="."]
+default_color = Color(0.7, 0.3, 1, 0.3)
+
+[node name="Visuals" parent="."]
+scale = Vector2(1.15, 1.15)
+modulate = Color(0.72, 0.5, 0.98, 1)
+
+[node name="BowPivot" parent="Visuals"]
+visible = false
+
+[node name="ArcherAI" parent="."]
+script = ExtResource("2_ai")
+base_speed = 70.0
+windup_time = 0.9
+lunge_duration = 0.15
+recover_time = 0.7
+preferred_distance = 270.0
+min_distance = 180.0
+shoot_range = 400.0
+arrow_speed = 230.0
+shot_interval_min = 1.6
+shot_interval_max = 2.4

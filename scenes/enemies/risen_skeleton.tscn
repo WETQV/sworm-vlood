@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/skeleton.tscn" id="1_base"]
+
+[node name="RisenSkeleton" instance=ExtResource("1_base")]
+contact_damage = 8
+
+[node name="HealthComponent" parent="."]
+max_health = 28
+
+[node name="Visuals" parent="."]
+modulate = Color(0.72, 0.6, 1, 0.9)

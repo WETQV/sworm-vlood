@@ -42,7 +42,7 @@ func _process_chase(delta: float) -> void:
 		_change_state(State.ENCIRCLE)
 		return
 
-	var move_dir: Vector2 = _avoid_obstacles(_wobble(_get_chase_direction(delta)))
+	var move_dir: Vector2 = _unstick(_avoid_obstacles(_wobble(_get_chase_direction(delta))), delta)
 	_body.velocity = _body.velocity.move_toward(move_dir * base_speed, 700.0 * delta)
 	_body.move_and_slide()
 

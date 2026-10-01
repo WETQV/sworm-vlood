@@ -29,7 +29,11 @@ const ENCOUNTER_PLANNER := preload("res://scripts/levels/encounter_planner.gd")
 const ENEMY_SCENES := {
 	"slime": SLIME_SCENE, "skeleton": SKELETON_SCENE,
 	"archer": ARCHER_SCENE, "bat": BAT_SCENE,
+	"necromancer": preload("res://scenes/enemies/necromancer.tscn"),
 }
+## Пауза между волнами выходной арены: красные отметки места появления видны всем
+const WAVE_WARNING := 1.2
+const ELITE_SCRIPT := preload("res://scripts/enemies/elite.gd")
 const SPAWN_PLAYER_DISTANCE := 192.0
 const SPAWN_ENEMY_DISTANCE := 64.0
 
@@ -49,6 +53,9 @@ var _loot_points:  Array[Marker2D] = []
 var _boss_points:  Array[Marker2D] = []
 var _spawned_enemies_count: int = 0
 var _living_enemies: Dictionary = {}
+## Хост: ожидающие волны выходной арены — [{"kind": String, "elite": bool}, ...]
+var _pending_wave: Array = []
+var _wave_starting: bool = false
 
 # ── Слои создаём программно, чтобы не было конфликта с @onready ─────────────
 var floor_layer: TileMapLayer = null
@@ -358,7 +365,7 @@ func _is_safe_pull_position(candidate: Vector2, occupied: Array[Vector2], interi
 func set_room_state(new_state: RoomState) -> void:
 	if current_state == new_state or current_state == RoomState.CLEARED or new_state == RoomState.SLEEP:
 		return
-	if new_state == RoomState.CLEARED and NetworkManager.is_authority() and not _living_enemies.is_empty():
+	if new_state == RoomState.CLEARED and NetworkManager.is_authority() 			and (not _living_enemies.is_empty() or not _pending_wave.is_empty() or _wave_starting):
 		return
 	current_state = new_state
 	if NetworkManager.is_online() and multiplayer.is_server():
@@ -388,6 +395,7 @@ func _end_fight() -> void:
 		snd.play_room_cleared()
 	_remove_doors()
 	_spawn_loot()
+	Progression.room_cleared(self) # хост: возможный общий расходник на полу
 	
 	# Если это комната босса — спавним портал в центре
 	if room_type == RoomType.BOSS:
@@ -481,8 +489,14 @@ func _spawn_enemies() -> void:
 	encounter_plan = ENCOUNTER_PLANNER.build(encounter_seed, floor_num, alive_players.size(),
 		room_size.x >= 20, room_type == RoomType.BOSS, positions.size(), final_boss)
 	var roster: Array = encounter_plan["enemies"]
+	var first_wave: int = encounter_plan["waves"][0]
+	_pending_wave.clear()
 	for i in roster.size():
-		_spawn_enemy_at(ENEMY_SCENES[roster[i]], positions[i])
+		var elite: bool = i == encounter_plan["elite"]
+		if i < first_wave:
+			_spawn_enemy_at(ENEMY_SCENES[roster[i]], positions[i], elite)
+		else:
+			_pending_wave.append({"kind": roster[i], "elite": elite})
 	print("[Room %d] Встреча %s: %d врагов, угроза %d/%d" % [room_id,
 		encounter_plan["scenario"], _spawned_enemies_count, encounter_plan["spent"], encounter_plan["budget"]])
 
@@ -533,7 +547,61 @@ func _is_safe_enemy_position(pos: Vector2, players: Array[Vector2], occupied: Ar
 	return true
 
 
-func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
+## Хост: вторая волна выходной арены. Сначала у всех на месте появления горят отметки
+## (WAVE_WARNING), позиции — безопасные относительно героев в момент предупреждения.
+func _start_next_wave() -> void:
+	_wave_starting = true
+	var alive_players: Array[Vector2] = []
+	for node in get_tree().get_nodes_in_group("player"):
+		var player := node as Player
+		if player and player.health_component.is_alive():
+			alive_players.append(spawn_root.to_local(player.global_position))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = encounter_seed + 7919
+	var positions := _encounter_positions(alive_players, rng)
+	var wave := _pending_wave.duplicate()
+	_pending_wave.clear()
+	var count := mini(wave.size(), positions.size())
+	positions = positions.slice(0, count)
+	if NetworkManager.is_online():
+		_net_wave_warning.rpc(positions)
+	else:
+		_net_wave_warning(positions)
+	await get_tree().create_timer(WAVE_WARNING).timeout
+	if not is_inside_tree() or current_state != RoomState.FIGHT:
+		_wave_starting = false
+		return
+	for i in count:
+		_spawn_enemy_at(ENEMY_SCENES[wave[i]["kind"]], positions[i], wave[i]["elite"])
+	_wave_starting = false
+	print("[Room %d] Вторая волна: %d врагов" % [room_id, count])
+	if _living_enemies.is_empty():
+		set_room_state(RoomState.CLEARED)
+
+
+## Отметки места появления следующей волны (у всех участников)
+@rpc("authority", "reliable")
+func _net_wave_warning(positions: Array) -> void:
+	var snd = get_node_or_null("/root/SoundManager")
+	if snd and snd.has_method("play_door_slam"):
+		snd.play_door_slam()
+	for pos in positions:
+		var mark := Polygon2D.new()
+		var points := PackedVector2Array()
+		for i in 16:
+			points.append(Vector2.RIGHT.rotated(TAU * i / 16.0) * Vector2(26, 15))
+		mark.polygon = points
+		mark.color = Color(1.0, 0.2, 0.15, 0.45)
+		mark.position = pos
+		mark.z_index = -1
+		spawn_root.add_child(mark)
+		var tween := mark.create_tween()
+		tween.tween_property(mark, "scale", Vector2(1.6, 1.6), WAVE_WARNING)
+		tween.parallel().tween_property(mark, "modulate:a", 0.2, WAVE_WARNING)
+		tween.tween_callback(mark.queue_free)
+
+
+func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2, elite: bool = false) -> void:
 	if scene == null: return
 
 	# --- ПРОВЕРКА БЕЗОПАСНОСТИ СПАВНА ---
@@ -551,10 +619,12 @@ func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2) -> void:
 	var game := get_tree().current_scene
 	if NetworkManager.is_online() and game and game.has_method("spawn_network_enemy"):
 		# В сети враг создаётся через спавнер игры — и сразу появляется у всех игроков
-		enemy = game.spawn_network_enemy(scene, spawn_root.to_global(local_pos))
+		enemy = game.spawn_network_enemy(scene, spawn_root.to_global(local_pos), elite)
 	else:
 		enemy = scene.instantiate()
 		enemy.position = local_pos
+		if elite:
+			ELITE_SCRIPT.apply(enemy)
 		# Враги — дети spawn_root (так удобнее по координатам)
 		spawn_root.add_child(enemy)
 	var enemy_id := enemy.get_instance_id()
@@ -573,7 +643,10 @@ func _on_enemy_died(_killer, enemy_id: int) -> void:
 	_living_enemies.erase(enemy_id)
 	_spawned_enemies_count = _living_enemies.size()
 	if _spawned_enemies_count == 0:
-		call_deferred("set_room_state", RoomState.CLEARED)
+		if not _pending_wave.is_empty():
+			_start_next_wave()
+		elif not _wave_starting:
+			call_deferred("set_room_state", RoomState.CLEARED)
 
 
 func _spawn_loot() -> void:

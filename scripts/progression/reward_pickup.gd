@@ -35,6 +35,9 @@ func _ready() -> void:
 	_gem = Polygon2D.new()
 	_gem.polygon = PackedVector2Array([Vector2(0, -14), Vector2(11, 0), Vector2(0, 14), Vector2(-11, 0)])
 	_gem.color = Color(0.98, 0.78, 0.3) if item.has("skill") else Color(0.45, 0.9, 0.6)
+	match item.get("consumable", ""):
+		"health_potion": _gem.color = Color(0.95, 0.25, 0.3)
+		"speed_potion": _gem.color = Color(0.35, 0.65, 1.0)
 	add_child(_gem)
 
 	_label = Label.new()

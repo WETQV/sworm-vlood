@@ -95,6 +95,8 @@ var _duelist_bonus: float = 0.0
 var _last_dash_start_msec: int = -100000
 ## Паладин «Бастион»: снижение урона союзникам рядом (доля его собственного бонуса)
 var bastion_aura: float = 0.0
+## Зелье скорости: оставшееся время действия (Progression._net_speed_boost)
+var speed_boost_left: float = 0.0
 
 
 func _ready() -> void:
@@ -434,6 +436,8 @@ func _physics_process(delta: float) -> void:
 		_process_remote(delta)
 		return
 
+	speed_boost_left = maxf(0.0, speed_boost_left - delta)
+
 	# --- 0. Кулдаун рывка ---
 	if _dash_cooldown_timer > 0.0:
 		_dash_cooldown_timer = max(0.0, _dash_cooldown_timer - delta)
@@ -491,7 +495,10 @@ func _physics_process(delta: float) -> void:
 				_ground_shadow.scale = Vector2.ONE
 	else:
 		# Обычное движение с отзывчивой инерцией (без рывков и тряски спрайта)
-		var target_vel: Vector2 = input_dir.normalized() * speed
+		var move_speed: float = speed
+		if speed_boost_left > 0.0:
+			move_speed *= 1.0 + ProgressionCatalog.CONSUMABLES["speed_potion"]["speed"]
+		var target_vel: Vector2 = input_dir.normalized() * move_speed
 		velocity = velocity.move_toward(target_vel, 3500.0 * delta)
 		_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 1500.0 * delta)
 		velocity += _knockback_velocity
@@ -523,6 +530,12 @@ func _physics_process(delta: float) -> void:
 	# --- 4. Атака ---
 	if Input.is_action_just_pressed("attack"):
 		try_attack(aim_vector.normalized(), mouse_pos)
+
+	# --- 5. Расходники (решает хост) ---
+	if Input.is_action_just_pressed("use_health_potion"):
+		Progression.use_consumable("health_potion")
+	if Input.is_action_just_pressed("use_speed_potion"):
+		Progression.use_consumable("speed_potion")
 
 	if NetworkManager.is_online():
 		_write_net_state(aim_vector)

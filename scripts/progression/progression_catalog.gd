@@ -97,7 +97,24 @@ const ITEMS := {
 	"vitality_stone": {"name": "Камень жизненной силы", "upgrade": "vitality"},
 	"tempo_charm": {"name": "Оберег темпа", "upgrade": "tempo"},
 	"agility_boots": {"name": "Сапоги проворства", "upgrade": "agility"},
+	"health_potion": {"name": "Зелье здоровья", "consumable": "health_potion"},
+	"speed_potion": {"name": "Зелье скорости", "consumable": "speed_potion"},
 }
+
+## Расходники: носятся в сумке (до max), применяются клавишей, тратятся только при пользе.
+## Хранятся в билде ("items") и переживают смену этажа; новый забег их сбрасывает.
+const CONSUMABLES := {
+	"health_potion": {"name": "Зелье здоровья", "max": 2, "key": "Q",
+		"desc": "Восстанавливает 35% макс. здоровья (не меньше 30). При полном здоровье не тратится",
+		"heal": 0.35, "heal_min": 30},
+	"speed_potion": {"name": "Зелье скорости", "max": 2, "key": "E",
+		"desc": "+30% скорости на 6 с; повторное применение обновляет время, а не складывает эффект",
+		"speed": 0.3, "duration": 6.0},
+}
+## Зачищенная боевая комната роняет общий расходник с этой вероятностью;
+## выходная арена 1–6 — всегда зелье здоровья
+const ROOM_DROP_CHANCE := 0.35
+const HEALTH_POTION_SHARE := 0.65
 
 ## Доля наград сундука: предмет навыка своего направления либо общий предмет
 const CHEST_SKILL_CHANCE := 0.6
@@ -106,7 +123,11 @@ const SHRINE_OFFERS := 3
 
 
 static func empty_build() -> Dictionary:
-	return {"skills": {}, "upgrades": {}}
+	return {"skills": {}, "upgrades": {}, "items": {}}
+
+
+static func item_count(build: Dictionary, consumable_id: String) -> int:
+	return int(build.get("items", {}).get(consumable_id, 0))
 
 
 static func rank(build: Dictionary, skill_id: String) -> int:
@@ -290,4 +311,9 @@ static func build_summary(build: Dictionary) -> String:
 		var s := stacks(build, id)
 		if s > 0:
 			parts.append("%s %d" % [UPGRADES[id]["name"], s])
-	return " · ".join(parts)
+	var bag: Array[String] = []
+	for id in CONSUMABLES:
+		bag.append("[%s] %s ×%d" % [CONSUMABLES[id]["key"], CONSUMABLES[id]["name"], item_count(build, id)])
+	var text := " · ".join(parts)
+	return (text + "
+" if text != "" else "") + "   ".join(bag)

@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="1_health"]
 [ext_resource type="Script" path="res://scripts/components/hurtbox.gd" id="2_hurtbox"]
 [ext_resource type="Script" path="res://scripts/enemies/slime_boss.gd" id="3_boss"]
-[ext_resource type="Script" path="res://scripts/enemies/slime_ai.gd" id="4_slimeai"]
+[ext_resource type="Script" path="res://scripts/enemies/boss_ai.gd" id="4_slimeai"]
 [ext_resource type="Material" path="res://resources/shaders/slime_boss_material.tres" id="4_mat"]
 [ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="5_hitbox"]
 

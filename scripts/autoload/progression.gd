@@ -14,6 +14,8 @@ signal reward_granted(peer_id: int, text: String)
 ## Своему игроку пришли варианты выбора (святилище/фолиант)
 signal offers_received(offer_key: String, offers: Array)
 signal offers_closed(offer_key: String)
+## Зелье скорости подействовало на героя (у всех участников)
+signal speed_boost(peer_id: int, duration: float)
 
 const Catalog := preload("res://scripts/progression/progression_catalog.gd")
 const PICKUP_SCRIPT := preload("res://scripts/progression/reward_pickup.gd")
@@ -32,6 +34,16 @@ var _opened_chests: Dictionary = {}
 var _pickup_nodes: Dictionary = {}
 ## Клиент: показанные своему игроку варианты
 var local_offers: Dictionary = {}
+
+
+func _ready() -> void:
+	# Клавиши расходников (если их ещё нет в настройках ввода проекта)
+	for action in [["use_health_potion", KEY_Q], ["use_speed_potion", KEY_E]]:
+		if not InputMap.has_action(action[0]):
+			InputMap.add_action(action[0])
+			var key := InputEventKey.new()
+			key.physical_keycode = action[1]
+			InputMap.action_add_event(action[0], key)
 
 
 ## Начало этажа у всех участников: первый этаж — новый забег (сброс билдов),
@@ -221,16 +233,112 @@ func try_collect(key: String, player: Player) -> bool:
 	var owner_id: int = entry["owner"]
 	if owner_id != player.peer_id and _player_node(owner_id) != null:
 		return false # чужой личный предмет
+	var consumable: String = Catalog.ITEMS.get(entry["item"], {}).get("consumable", "")
+	if consumable != "":
+		# Расходник: только если в сумке есть место — иначе остаётся лежать для союзника
+		var bag := get_build(player.peer_id)
+		if Catalog.item_count(bag, consumable) >= int(Catalog.CONSUMABLES[consumable]["max"]):
+			return false
+		_pickups.erase(key)
+		bag = bag.duplicate(true)
+		if not bag.has("items"):
+			bag["items"] = {}
+		bag["items"][consumable] = Catalog.item_count(bag, consumable) + 1
+		_set_build(player.peer_id, bag, false)
+		_announce(player.peer_id, "Подобрано: %s" % Catalog.CONSUMABLES[consumable]["name"])
+		_remove_pickup(key)
+		return true
 	_pickups.erase(key)
 	var rng := _reward_rng(key, player.peer_id)
 	var reward := Catalog.item_reward(entry["item"], get_build(player.peer_id), _player_class(player.peer_id), rng)
 	var item_name: String = Catalog.ITEMS.get(entry["item"], {}).get("name", Catalog.BLESSING["name"])
 	grant(player.peer_id, reward, item_name)
+	_remove_pickup(key)
+	return true
+
+
+func _remove_pickup(key: String) -> void:
 	if NetworkManager.is_online():
 		_net_remove_pickup.rpc(key)
 	else:
 		_net_remove_pickup(key)
-	return true
+
+
+func _announce(peer_id: int, text: String) -> void:
+	if NetworkManager.is_online():
+		_net_reward_text.rpc(peer_id, text)
+	else:
+		_net_reward_text(peer_id, text)
+
+
+## Хост: зачищена боевая комната — возможно, на пол падает общий расходник.
+## Выходная арена этажей 1–6 всегда роняет зелье здоровья. RNG — поток наград.
+func room_cleared(room: Room) -> void:
+	if not _is_host() or room.room_type not in [Room.RoomType.FIGHT, Room.RoomType.BOSS]:
+		return
+	var key := "f%d:%s:drop" % [GameManager.current_floor, room.name]
+	var rng := _reward_rng(key, 0)
+	var item := ""
+	if room.room_type == Room.RoomType.BOSS:
+		if GameManager.current_floor < GameManager.LAST_FLOOR:
+			item = "health_potion"
+	elif rng.randf() < Catalog.ROOM_DROP_CHANCE:
+		item = "health_potion" if rng.randf() < Catalog.HEALTH_POTION_SHARE else "speed_potion"
+	if item == "":
+		return
+	var pos := room.global_position + Vector2(room.room_size) * Room.TILE_SIZE / 2.0 + Vector2(0, 96)
+	_pickups[key] = {"item": item, "owner": 0, "pos": pos}
+	if NetworkManager.is_online():
+		_net_spawn_pickup.rpc(key, item, 0, pos)
+	else:
+		_net_spawn_pickup(key, item, 0, pos)
+
+
+## Игрок нажал клавишу расходника (свой герой)
+func use_consumable(consumable: String) -> void:
+	if NetworkManager.is_online() and not multiplayer.is_server():
+		_req_use.rpc_id(1, consumable)
+	else:
+		_apply_use(multiplayer.get_unique_id() if NetworkManager.is_online() else 1, consumable)
+
+
+@rpc("any_peer", "reliable")
+func _req_use(consumable: String) -> void:
+	if multiplayer.is_server():
+		_apply_use(multiplayer.get_remote_sender_id(), consumable)
+
+
+## Хост: есть в сумке, герой жив, есть польза (лечение при неполном здоровье)
+func _apply_use(sender: int, consumable: String) -> void:
+	var data: Dictionary = Catalog.CONSUMABLES.get(consumable, {})
+	var player := _player_node(sender)
+	var bag := get_build(sender)
+	if data.is_empty() or player == null or not player.health_component.is_alive() \
+			or Catalog.item_count(bag, consumable) <= 0 or NetworkManager.is_transitioning():
+		NetworkManager.count_stat("consumable_rejected")
+		return
+	var hc := player.health_component
+	if consumable == "health_potion":
+		if hc.current_health >= hc.max_health:
+			NetworkManager.count_stat("consumable_rejected")
+			return # не тратим впустую
+		hc.heal(maxi(int(data["heal_min"]), int(ceil(hc.max_health * float(data["heal"])))))
+	elif NetworkManager.is_online():
+		_net_speed_boost.rpc(sender, float(data["duration"]))
+	else:
+		_net_speed_boost(sender, float(data["duration"]))
+	bag = bag.duplicate(true)
+	bag["items"][consumable] = Catalog.item_count(bag, consumable) - 1
+	_set_build(sender, bag, false)
+	_announce(sender, data["name"])
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_speed_boost(peer_id: int, duration: float) -> void:
+	var player := _player_node(peer_id)
+	if player:
+		player.speed_boost_left = duration # обновляет время, не складывается
+	speed_boost.emit(peer_id, duration)
 
 
 ## Владелец отключился: его предмет становится общим (подберёт любой, с заменой под класс)
