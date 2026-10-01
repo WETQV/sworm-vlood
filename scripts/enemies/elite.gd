@@ -3,8 +3,8 @@ extends RefCounted
 ## Видимый модификатор: золотая аура и подпись, крупнее, больше здоровья, почти не
 ## отбрасывается. Поведение и телеграфы прежние — игрок узнаёт роль, но не может
 ## «отжать» стража отбрасыванием. Цена угрозы — EncounterPlanner.ELITE_SURCHARGE.
-## Применяется ДО добавления в дерево (до _ready) у всех участников: на хосте при спавне,
-## у клиентов — в spawn_function сетевого спавнера по флагу elite.
+## Множители здоровья/урона входят в общий расчёт EnemyScaling.compute (после этажа и группы);
+## здесь — только вид и сопротивление отбрасыванию. Применяется до _ready у всех участников.
 
 const HP_FACTOR := 2.2
 const DAMAGE_FACTOR := 1.25
@@ -13,14 +13,8 @@ const VISUAL_SCALE := 1.3
 const TINT := Color(1.0, 0.86, 0.45)
 
 
-static func apply(enemy: Node2D) -> void:
+static func apply_look(enemy: Node) -> void:
 	enemy.set_meta("elite", true)
-	var health := enemy.get_node_or_null("HealthComponent") as HealthComponent
-	if health:
-		health.max_health = int(round(health.max_health * HP_FACTOR))
-		health.current_health = health.max_health
-	if "contact_damage" in enemy:
-		enemy.contact_damage = int(round(enemy.contact_damage * DAMAGE_FACTOR))
 	if "knockback_resistance" in enemy:
 		enemy.knockback_resistance *= KNOCKBACK_RESISTANCE_FACTOR
 	var visuals := enemy.get_node_or_null("Visuals") as Node2D

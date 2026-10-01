@@ -1,0 +1,234 @@
+class,floor,seed,room,room_type,enemies,composition,result,time,hp_start,hp_lost,hits_taken,deaths,enemy_attacks,attacks_per_min,threat_share,party,team_damage,enemy_hp
+1,1,1001,Room_1,FIGHT,3,slime×3,cleared,3.35,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1001,Room_2,FIGHT,3,slime×3,cleared,6.57,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1001,Room_3,FIGHT,5,slime×5,cleared,5.82,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1001,Room_4,FIGHT,3,slime×3,cleared,5.75,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1001,Room_5,FIGHT,3,slime×3,cleared,3.35,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1001,Room_8,FIGHT,5,slime×5,cleared,7.55,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1001,Room_6,ARENA,3,slime×3,cleared,7.33,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1002,Room_1,FIGHT,3,slime×3,cleared,5.37,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1002,Room_2,FIGHT,3,slime×3,cleared,3.77,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1002,Room_3,FIGHT,3,slime×3,cleared,5.45,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1002,Room_4,FIGHT,5,slime×5,cleared,5.83,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1002,Room_5,FIGHT,5,slime×5,cleared,8.02,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1002,Room_9,FIGHT,3,slime×3,cleared,5.40,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1002,Room_7,ARENA,3,slime×3,cleared,8.88,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1003,Room_1,FIGHT,3,slime×3,cleared,3.35,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1003,Room_2,FIGHT,3,slime×3,cleared,6.17,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1003,Room_3,FIGHT,5,slime×5,cleared,6.18,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1003,Room_4,FIGHT,3,slime×3,cleared,4.55,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1003,Room_5,FIGHT,3,slime×3,cleared,3.35,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1003,Room_9,FIGHT,3,slime×3,cleared,3.35,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1003,Room_6,ARENA,3,slime×3,cleared,8.08,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1004,Room_1,FIGHT,5,slime×5,cleared,7.32,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1004,Room_2,FIGHT,3,slime×3,cleared,4.48,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1004,Room_3,FIGHT,3,slime×3,cleared,5.75,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1004,Room_5,FIGHT,3,slime×3,cleared,4.52,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1004,Room_6,FIGHT,3,slime×3,cleared,3.35,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1004,Room_7,FIGHT,3,slime×3,cleared,5.42,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1004,Room_8,ARENA,3,slime×3,cleared,10.23,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1005,Room_1,FIGHT,3,slime×3,cleared,3.33,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1005,Room_2,FIGHT,3,slime×3,cleared,6.15,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1005,Room_3,FIGHT,5,slime×5,cleared,5.80,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1005,Room_4,FIGHT,3,slime×3,cleared,6.98,80,0,0,0,0,0.0,0.000,1,0,120
+1,1,1005,Room_5,FIGHT,5,slime×5,cleared,5.82,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1005,Room_8,FIGHT,5,slime×5,cleared,7.30,80,0,0,0,0,0.0,0.000,1,0,200
+1,1,1005,Room_6,ARENA,3,slime×3,cleared,7.33,80,0,0,0,0,0.0,0.000,1,0,120
+1,2,2001,Room_2,FIGHT,6,slime×6,cleared,9.48,80,0,0,0,0,0.0,0.000,1,0,240
+1,2,2001,Room_3,FIGHT,5,slime×3 skeleton×2,cleared,8.23,80,0,0,0,0,0.0,0.000,1,0,260
+1,2,2001,Room_4,FIGHT,4,slime×4,cleared,6.58,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2001,Room_5,FIGHT,5,slime×4 skeleton×1,cleared,7.40,80,0,0,0,0,0.0,0.000,1,0,230
+1,2,2001,Room_7,FIGHT,5,slime×4 skeleton×1,cleared,6.62,80,0,0,0,0,0.0,0.000,1,0,230
+1,2,2001,Room_8,FIGHT,3,slime×2 skeleton×1,cleared,4.08,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2001,Room_9,ARENA,3,slime×2 skeleton×1,cleared,12.20,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2002,Room_1,FIGHT,4,slime×4,cleared,5.82,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2002,Room_2,FIGHT,4,slime×4,cleared,4.57,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2002,Room_3,FIGHT,3,slime×2 skeleton×1,cleared,4.08,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2002,Room_5,FIGHT,5,slime×3 skeleton×2,cleared,10.05,80,0,0,0,0,0.0,0.000,1,0,260
+1,2,2002,Room_7,FIGHT,4,slime×4,cleared,5.80,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2002,Room_8,FIGHT,4,slime×4,cleared,4.18,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2002,Room_4,ARENA,3,slime×2 skeleton×1,cleared,10.62,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2003,Room_1,FIGHT,3,slime×2 skeleton×1,cleared,3.75,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2003,Room_2,FIGHT,3,slime×2 skeleton×1,cleared,4.08,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2003,Room_3,FIGHT,3,slime×2 skeleton×1,cleared,3.75,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2003,Room_4,FIGHT,3,slime×2 skeleton×1,cleared,4.10,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2003,Room_6,FIGHT,3,slime×2 skeleton×1,cleared,4.08,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2003,Room_7,FIGHT,4,slime×4,cleared,4.57,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2003,Room_8,ARENA,3,slime×1 skeleton×2,cleared,10.95,80,0,0,0,0,0.0,0.000,1,0,180
+1,2,2004,Room_1,FIGHT,4,slime×4,cleared,8.67,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2004,Room_3,FIGHT,6,slime×6,cleared,7.10,80,0,0,0,0,0.0,0.000,1,0,240
+1,2,2004,Room_5,FIGHT,3,slime×2 skeleton×1,cleared,3.72,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2004,Room_6,FIGHT,5,slime×4 skeleton×1,cleared,6.73,80,0,0,0,0,0.0,0.000,1,0,230
+1,2,2004,Room_7,FIGHT,4,slime×4,cleared,7.47,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2004,Room_8,FIGHT,3,slime×2 skeleton×1,cleared,3.75,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2004,Room_9,ARENA,3,slime×3,cleared,10.63,80,0,0,0,0,0.0,0.000,1,0,120
+1,2,2005,Room_1,FIGHT,3,slime×2 skeleton×1,cleared,3.75,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2005,Room_2,FIGHT,3,slime×2 skeleton×1,cleared,4.10,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2005,Room_3,FIGHT,5,slime×4 skeleton×1,cleared,5.87,80,0,0,0,0,0.0,0.000,1,0,230
+1,2,2005,Room_5,FIGHT,5,slime×4 skeleton×1,cleared,7.42,80,0,0,0,0,0.0,0.000,1,0,230
+1,2,2005,Room_6,FIGHT,4,slime×4,cleared,6.17,80,0,0,0,0,0.0,0.000,1,0,160
+1,2,2005,Room_7,FIGHT,3,slime×2 skeleton×1,cleared,3.75,80,0,0,0,0,0.0,0.000,1,0,150
+1,2,2005,Room_4,ARENA,3,slime×1 skeleton×2,cleared,11.05,80,0,0,0,0,0.0,0.000,1,0,180
+1,3,3001,Room_1,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,8.23,80,0,0,0,0,0.0,0.000,1,0,224
+1,3,3001,Room_2,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,12.03,80,0,0,0,0,0.0,0.000,1,0,224
+1,3,3001,Room_4,FIGHT,7,slime×7,cleared,8.80,80,10,1,0,4,27.3,0.083,1,0,280
+1,3,3001,Room_5,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,7.82,80,0,0,0,0,0.0,0.000,1,0,224
+1,3,3001,Room_6,FIGHT,4,slime×3 skeleton×1,cleared,5.03,80,0,0,0,1,11.9,0.093,1,0,190
+1,3,3001,Room_7,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,6.98,80,0,0,0,3,25.8,0.086,1,0,224
+1,3,3001,Room_8,ARENA,3,slime×2 skeleton×1,cleared,10.93,80,0,0,0,0,0.0,0.000,1,0,150
+1,3,3002,Room_1,FIGHT,5,skeleton×1 bat×2 slime×2,cleared,6.57,80,0,0,0,0,0.0,0.000,1,0,194
+1,3,3002,Room_2,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,6.65,80,0,0,0,3,27.1,0.078,1,0,224
+1,3,3002,Room_3,FIGHT,6,slime×4 skeleton×2,cleared,9.53,80,0,0,0,0,0.0,0.000,1,0,300
+1,3,3002,Room_4,FIGHT,5,slime×5,cleared,5.88,80,0,0,0,0,0.0,0.000,1,0,200
+1,3,3002,Room_6,FIGHT,8,skeleton×1 bat×4 slime×3,cleared,10.53,80,0,0,0,2,11.4,0.038,1,0,278
+1,3,3002,Room_7,FIGHT,4,slime×2 skeleton×2,cleared,5.75,80,0,0,0,0,0.0,0.000,1,0,220
+1,3,3002,Room_5,ARENA,4,slime×3 skeleton×1,cleared,12.35,80,0,0,0,0,0.0,0.000,1,0,190
+1,3,3003,Room_1,FIGHT,4,slime×2 skeleton×2,cleared,6.17,80,0,0,0,0,0.0,0.000,1,0,220
+1,3,3003,Room_2,FIGHT,6,slime×4 skeleton×2,cleared,14.08,80,0,0,0,0,0.0,0.000,1,0,300
+1,3,3003,Room_3,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,11.40,80,0,0,0,5,26.3,0.067,1,0,308
+1,3,3003,Room_6,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,17.43,80,0,0,0,3,10.3,0.040,1,0,308
+1,3,3003,Room_8,FIGHT,4,slime×3 skeleton×1,cleared,4.90,80,0,0,0,0,0.0,0.000,1,0,190
+1,3,3003,Room_9,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,7.43,80,0,0,0,0,0.0,0.000,1,0,224
+1,3,3003,Room_4,ARENA,5,bat×4 skeleton×1,cleared,13.87,80,0,0,0,0,0.0,0.000,1,0,158
+1,3,3004,Room_1,FIGHT,4,slime×3 skeleton×1,cleared,6.58,80,0,0,0,0,0.0,0.000,1,0,190
+1,3,3004,Room_3,FIGHT,7,skeleton×3 bat×3 slime×1,cleared,12.83,80,0,0,0,3,14.0,0.058,1,0,316
+1,3,3004,Room_4,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,8.60,80,0,0,0,3,20.9,0.060,1,0,224
+1,3,3004,Room_6,FIGHT,4,slime×3 skeleton×1,cleared,4.60,80,0,0,0,0,0.0,0.000,1,0,190
+1,3,3004,Room_7,FIGHT,5,skeleton×2 bat×2 slime×1,cleared,7.83,80,0,0,0,0,0.0,0.000,1,0,224
+1,3,3004,Room_8,FIGHT,6,slime×5 skeleton×1,cleared,8.30,80,0,0,0,8,57.8,0.261,1,0,270
+1,3,3004,Room_9,ARENA,5,bat×4 slime×1,cleared,15.93,80,0,0,0,0,0.0,0.000,1,0,128
+1,3,3005,Room_1,FIGHT,4,slime×3 skeleton×1,cleared,4.97,80,0,0,0,0,0.0,0.000,1,0,190
+1,3,3005,Room_3,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,12.68,80,0,0,0,2,9.5,0.034,1,0,308
+1,3,3005,Room_5,FIGHT,6,slime×4 skeleton×2,cleared,9.15,80,0,0,0,4,26.2,0.126,1,0,300
+1,3,3005,Room_6,FIGHT,4,slime×3 skeleton×1,cleared,4.92,80,0,0,0,0,0.0,0.000,1,0,190
+1,3,3005,Room_8,FIGHT,6,skeleton×4 bat×2,cleared,10.35,80,0,0,0,0,0.0,0.000,1,0,324
+1,3,3005,Room_9,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,12.08,80,10,1,0,6,29.8,0.113,1,0,308
+1,3,3005,Room_7,ARENA,5,bat×3 slime×1 skeleton×1,cleared,14.72,80,0,0,0,0,0.0,0.000,1,0,176
+1,4,4001,Room_1,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,8.67,80,0,0,0,0,0.0,0.000,1,0,264
+1,4,4001,Room_2,FIGHT,5,skeleton×3 bat×2,cleared,11.38,80,0,0,0,4,21.1,0.116,1,0,254
+1,4,4001,Room_3,FIGHT,5,archer×1 slime×4,cleared,5.87,80,0,0,0,1,10.2,0.134,1,0,195
+1,4,4001,Room_5,FIGHT,5,slime×3 skeleton×2,cleared,6.67,80,0,0,0,0,0.0,0.000,1,0,260
+1,4,4001,Room_6,FIGHT,5,archer×1 slime×4,cleared,6.73,80,0,0,0,0,0.0,0.017,1,0,195
+1,4,4001,Room_8,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,14.37,80,0,0,0,6,25.1,0.075,1,0,308
+1,4,4001,Room_4,ARENA,4,slime×3 skeleton×1,cleared,13.03,80,0,0,0,0,0.0,0.000,1,0,190
+1,4,4002,Room_1,FIGHT,7,slime×5 skeleton×2,cleared,13.15,80,10,1,0,11,50.2,0.189,1,0,340
+1,4,4002,Room_3,FIGHT,4,archer×1 slime×2 skeleton×1,cleared,6.73,80,0,0,0,1,8.9,0.176,1,0,185
+1,4,4002,Room_4,FIGHT,7,slime×5 skeleton×2,cleared,11.17,80,0,0,0,5,26.9,0.130,1,0,340
+1,4,4002,Room_5,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,8.72,80,0,0,0,2,13.8,0.067,1,0,264
+1,4,4002,Room_7,FIGHT,5,archer×1 slime×4,cleared,8.00,80,0,0,0,1,7.5,0.098,1,0,195
+1,4,4002,Room_9,FIGHT,8,skeleton×3 bat×4 slime×1,cleared,16.20,80,0,0,0,3,11.1,0.043,1,0,338
+1,4,4002,Room_6,ARENA,4,slime×4,cleared,10.25,80,15,1,0,1,5.9,0.101,1,0,160
+1,4,4003,Room_1,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,13.33,80,12,1,0,7,31.5,0.276,1,0,295
+1,4,4003,Room_2,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,11.17,80,12,1,0,1,5.4,0.067,1,0,295
+1,4,4003,Room_3,FIGHT,8,skeleton×2 bat×3 slime×3,cleared,11.47,80,18,2,0,9,47.1,0.176,1,0,326
+1,4,4003,Room_4,FIGHT,6,slime×3 skeleton×3,cleared,11.27,80,0,0,0,0,0.0,0.000,1,0,330
+1,4,4003,Room_5,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,8.35,80,0,0,0,4,28.7,0.176,1,0,295
+1,4,4003,Room_6,FIGHT,7,slime×5 skeleton×2,cleared,12.18,80,15,1,0,6,29.5,0.109,1,0,340
+1,4,4003,Room_8,ARENA,5,bat×2 slime×2 skeleton×1,cleared,14.28,80,0,0,0,0,0.0,0.000,1,0,194
+1,4,4004,Room_1,FIGHT,8,skeleton×1 bat×4 slime×3,cleared,11.33,80,10,1,0,7,37.1,0.147,1,0,278
+1,4,4004,Room_4,FIGHT,8,skeleton×2 bat×3 slime×3,cleared,9.70,80,0,0,0,3,18.6,0.052,1,0,326
+1,4,4004,Room_5,FIGHT,7,slime×5 skeleton×2,cleared,11.63,80,0,0,0,3,15.5,0.059,1,0,340
+1,4,4004,Room_6,FIGHT,5,archer×1 slime×4,cleared,7.02,80,0,0,0,0,0.0,0.088,1,0,195
+1,4,4004,Room_7,FIGHT,5,slime×4 skeleton×1,cleared,7.07,80,0,0,0,0,0.0,0.000,1,0,230
+1,4,4004,Room_8,FIGHT,4,archer×1 slime×2 skeleton×1,cleared,4.95,80,0,0,0,1,12.1,0.141,1,0,185
+1,4,4004,Room_9,ARENA,4,slime×3 skeleton×1,cleared,12.68,80,0,0,0,0,0.0,0.000,1,0,190
+1,4,4005,Room_1,FIGHT,6,archer×1 slime×4 skeleton×1,cleared,9.92,80,20,2,0,12,72.6,0.292,1,0,265
+1,4,4005,Room_2,FIGHT,5,slime×3 skeleton×2,cleared,6.23,80,0,0,0,4,38.5,0.139,1,0,260
+1,4,4005,Room_3,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,8.48,80,0,0,0,3,21.2,0.218,1,0,295
+1,4,4005,Room_4,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,14.10,80,0,0,0,1,4.3,0.033,1,0,308
+1,4,4005,Room_6,FIGHT,5,skeleton×3 bat×2,cleared,9.58,80,0,0,0,0,0.0,0.000,1,0,254
+1,4,4005,Room_9,FIGHT,6,archer×1 slime×4 skeleton×1,cleared,9.52,80,10,1,0,6,37.8,0.231,1,0,265
+1,4,4005,Room_8,ARENA,4,slime×3 skeleton×1,cleared,11.83,80,0,0,0,0,0.0,0.000,1,0,190
+1,5,5001,Room_1,FIGHT,7,archer×2 slime×5,cleared,8.80,80,20,2,0,13,88.6,0.500,1,0,270
+1,5,5001,Room_2,FIGHT,6,slime×5 skeleton×1,cleared,6.58,80,0,0,0,0,0.0,0.000,1,0,270
+1,5,5001,Room_3,FIGHT,7,slime×3 skeleton×4,cleared,11.20,80,0,0,0,2,10.7,0.028,1,0,400
+1,5,5001,Room_4,FIGHT,6,slime×4 skeleton×2,cleared,8.67,80,0,0,0,0,0.0,0.000,1,0,300
+1,5,5001,Room_5,FIGHT,6,archer×1 slime×5,cleared,6.38,80,0,0,0,1,9.4,0.175,1,0,235
+1,5,5001,Room_6,FIGHT,6,slime×4 skeleton×2,cleared,9.13,80,0,0,0,3,19.7,0.119,1,0,300
+1,5,5001,Room_7,ARENA,4,slime×3 skeleton×1,cleared,11.58,80,12,1,0,2,10.4,0.145,1,0,190
+1,5,5002,Room_1,FIGHT,6,slime×4 skeleton×2,cleared,10.32,80,0,0,0,2,11.6,0.073,1,0,300
+1,5,5002,Room_3,FIGHT,8,slime×6 skeleton×2,cleared,14.55,80,0,0,0,3,12.4,0.054,1,0,380
+1,5,5002,Room_4,FIGHT,8,slime×6 skeleton×2,cleared,11.62,80,0,0,0,5,25.8,0.108,1,0,380
+1,5,5002,Room_5,FIGHT,5,slime×2 skeleton×3,cleared,8.25,80,0,0,0,0,0.0,0.000,1,0,290
+1,5,5002,Room_6,FIGHT,5,slime×2 skeleton×3,death,9.32,80,80,7,1,13,83.7,0.438,1,0,290
+1,5,5003,Room_1,FIGHT,5,archer×1 slime×2 skeleton×2,cleared,7.15,80,0,0,0,1,8.4,0.177,1,0,255
+1,5,5003,Room_2,FIGHT,6,slime×4 skeleton×2,cleared,6.97,80,0,0,0,2,17.2,0.069,1,0,300
+1,5,5003,Room_3,FIGHT,7,archer×2 slime×5,cleared,9.17,80,0,0,0,2,13.1,0.171,1,0,270
+1,5,5003,Room_4,FIGHT,6,necromancer×1 skeleton×2 slime×3,cleared,11.50,80,0,0,0,0,0.0,0.052,1,0,320
+1,5,5003,Room_5,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,10.30,80,0,0,0,0,0.0,0.000,1,0,264
+1,5,5003,Room_6,FIGHT,6,slime×4 skeleton×2,cleared,9.07,80,0,0,0,0,0.0,0.000,1,0,300
+1,5,5003,Room_9,ARENA,3,skeleton×2 bat×1,cleared,16.05,80,0,0,0,2,7.5,0.150,1,0,162
+1,5,5004,Room_1,FIGHT,6,slime×4 skeleton×2,cleared,9.10,80,0,0,0,0,0.0,0.000,1,0,300
+1,5,5004,Room_2,FIGHT,6,skeleton×3 bat×2 slime×1,cleared,8.25,80,0,0,0,0,0.0,0.000,1,0,294
+1,5,5004,Room_3,FIGHT,6,slime×5 skeleton×1,cleared,9.48,80,0,0,0,0,0.0,0.000,1,0,270
+1,5,5004,Room_5,FIGHT,6,skeleton×4 bat×2,cleared,10.55,80,0,0,0,2,11.4,0.039,1,0,324
+1,5,5004,Room_6,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,8.22,80,0,0,0,0,0.0,0.000,1,0,264
+1,5,5004,Room_8,FIGHT,6,archer×1 slime×5,cleared,6.58,80,0,0,0,1,9.1,0.119,1,0,235
+1,5,5004,Room_4,ARENA,5,bat×3 skeleton×2,cleared,14.73,80,0,0,0,0,0.0,0.000,1,0,206
+1,5,5005,Room_1,FIGHT,6,slime×5 skeleton×1,cleared,6.98,80,0,0,0,0,0.0,0.000,1,0,270
+1,5,5005,Room_2,FIGHT,6,slime×4 skeleton×2,cleared,9.08,80,0,0,0,0,0.0,0.000,1,0,300
+1,5,5005,Room_3,FIGHT,5,archer×1 slime×2 skeleton×2,cleared,8.40,80,0,0,0,2,14.3,0.169,1,0,255
+1,5,5005,Room_4,FIGHT,8,skeleton×4 bat×2 slime×2,cleared,13.07,80,0,0,0,5,23.0,0.103,1,0,404
+1,5,5005,Room_6,FIGHT,6,necromancer×1 skeleton×3 slime×1 bat×1,cleared,14.93,80,0,0,0,1,4.0,0.071,1,0,332
+1,5,5005,Room_8,FIGHT,6,slime×5 skeleton×1,cleared,7.43,80,0,0,0,0,0.0,0.000,1,0,270
+1,5,5005,Room_9,ARENA,5,bat×3 slime×1 skeleton×1,cleared,13.82,80,0,0,0,0,0.0,0.000,1,0,176
+1,6,6001,Room_1,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,7.87,80,12,1,0,1,7.6,0.100,1,0,295
+1,6,6001,Room_2,FIGHT,6,slime×4 skeleton×2,death,7.08,80,80,7,1,17,144.0,0.569,1,0,300
+1,6,6002,Room_1,FIGHT,6,slime×5 skeleton×1,cleared,9.55,80,0,0,0,0,0.0,0.000,1,0,270
+1,6,6002,Room_2,FIGHT,6,archer×1 slime×4 skeleton×1,cleared,7.00,80,0,0,0,0,0.0,0.079,1,0,265
+1,6,6002,Room_4,FIGHT,7,archer×2 slime×3 skeleton×2,cleared,12.28,80,24,2,0,10,48.8,0.324,1,0,330
+1,6,6002,Room_5,FIGHT,6,slime×3 skeleton×3,cleared,11.85,80,0,0,0,2,10.1,0.059,1,0,330
+1,6,6002,Room_7,FIGHT,6,archer×1 slime×4 skeleton×1,cleared,9.98,80,0,0,0,1,6.0,0.078,1,0,265
+1,6,6002,Room_9,FIGHT,6,slime×4 skeleton×2,cleared,10.35,80,0,0,0,0,0.0,0.000,1,0,300
+1,6,6002,Room_8,ARENA,4,slime×3 archer×1,cleared,14.50,80,0,0,0,4,16.6,0.283,1,0,155
+1,6,6003,Room_1,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,8.67,80,0,0,0,3,20.8,0.062,1,0,264
+1,6,6003,Room_2,FIGHT,6,skeleton×3 bat×2 slime×1,death,9.97,80,80,7,1,14,84.3,0.390,1,0,294
+1,6,6004,Room_2,FIGHT,7,archer×1 slime×3 skeleton×3,cleared,10.83,80,0,0,0,4,22.2,0.242,1,0,365
+1,6,6004,Room_3,FIGHT,8,slime×4 skeleton×4,cleared,18.10,80,10,1,0,7,23.2,0.118,1,0,440
+1,6,6004,Room_5,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,9.50,80,0,0,0,0,0.0,0.000,1,0,264
+1,6,6004,Room_7,FIGHT,8,slime×4 skeleton×4,cleared,14.95,80,0,0,0,1,4.0,0.031,1,0,440
+1,6,6004,Room_8,FIGHT,8,skeleton×2 bat×4 slime×2,cleared,11.42,80,0,0,0,6,31.5,0.093,1,0,308
+1,6,6004,Room_9,FIGHT,7,archer×2 slime×3 skeleton×2,cleared,15.63,80,0,0,0,5,19.2,0.113,1,0,330
+1,6,6004,Room_6,ARENA,5,bat×2 slime×2 skeleton×1,cleared,16.77,80,0,0,0,0,0.0,0.000,1,0,194
+1,6,6005,Room_1,FIGHT,7,archer×2 slime×4 skeleton×1,cleared,10.20,80,12,1,0,8,47.1,0.430,1,0,300
+1,6,6005,Room_2,FIGHT,6,skeleton×4 bat×2,cleared,12.42,80,0,0,0,0,0.0,0.000,1,0,324
+1,6,6005,Room_4,FIGHT,8,skeleton×1 bat×4 slime×3,cleared,10.95,80,0,0,0,8,43.8,0.169,1,0,278
+1,6,6005,Room_5,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,9.58,80,0,0,0,0,0.0,0.000,1,0,264
+1,6,6005,Room_6,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,9.55,80,0,0,0,0,0.0,0.000,1,0,295
+1,6,6005,Room_9,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,8.63,80,0,0,0,0,0.0,0.000,1,0,264
+1,6,6005,Room_7,ARENA,4,slime×3 archer×1,cleared,12.07,80,15,1,0,1,5.0,0.101,1,0,155
+1,7,7001,Room_1,FIGHT,6,slime×6,cleared,5.85,80,0,0,0,0,0.0,0.000,1,0,240
+1,7,7001,Room_2,FIGHT,8,skeleton×1 bat×4 slime×3,cleared,14.08,80,0,0,0,3,12.8,0.069,1,0,278
+1,7,7001,Room_3,FIGHT,6,archer×1 slime×5,cleared,7.60,80,12,1,0,2,15.8,0.248,1,0,235
+1,7,7001,Room_4,FIGHT,6,archer×1 slime×4 skeleton×1,cleared,9.20,80,0,0,0,2,13.0,0.187,1,0,265
+1,7,7001,Room_7,FIGHT,8,skeleton×3 bat×4 slime×1,cleared,13.32,80,0,0,0,4,18.0,0.063,1,0,338
+1,7,7001,Room_9,FIGHT,8,skeleton×3 bat×3 slime×2,cleared,11.60,80,10,1,0,3,15.5,0.049,1,0,356
+1,7,7001,Room_8,ARENA,4,slime_boss×1 skeleton×1 bat×2,cleared,15.72,80,0,0,0,0,0.0,0.000,1,0,614
+1,7,7002,Room_1,FIGHT,6,slime×4 skeleton×2,cleared,9.23,80,20,2,0,6,39.0,0.182,1,0,300
+1,7,7002,Room_2,FIGHT,6,skeleton×3 bat×2 slime×1,cleared,9.97,80,0,0,0,2,12.0,0.050,1,0,294
+1,7,7002,Room_4,FIGHT,8,slime×5 skeleton×3,cleared,11.43,80,0,0,0,4,21.0,0.095,1,0,410
+1,7,7002,Room_5,FIGHT,6,skeleton×3 bat×2 slime×1,cleared,9.18,80,0,0,0,3,19.6,0.103,1,0,294
+1,7,7002,Room_6,FIGHT,6,archer×1 slime×2 skeleton×3,cleared,8.65,80,0,0,0,2,13.9,0.181,1,0,325
+1,7,7002,Room_9,FIGHT,6,slime×4 skeleton×2,cleared,10.05,80,10,1,0,5,29.9,0.101,1,0,300
+1,7,7002,Room_7,ARENA,4,slime_boss×1 skeleton×1 bat×2,cleared,16.53,80,0,0,0,0,0.0,0.000,1,0,614
+1,7,7003,Room_1,FIGHT,6,slime×6,cleared,6.22,80,0,0,0,0,0.0,0.000,1,0,240
+1,7,7003,Room_2,FIGHT,6,slime×5 skeleton×1,cleared,7.45,80,0,0,0,3,24.2,0.157,1,0,270
+1,7,7003,Room_4,FIGHT,6,skeleton×3 bat×2 slime×1,cleared,14.70,80,0,0,0,2,8.2,0.031,1,0,294
+1,7,7003,Room_5,FIGHT,6,slime×4 skeleton×2,cleared,7.42,80,0,0,0,0,0.0,0.000,1,0,300
+1,7,7003,Room_8,FIGHT,6,slime×3 skeleton×3,cleared,12.67,80,55,5,0,12,56.8,0.250,1,0,330
+1,7,7003,Room_9,FIGHT,8,necromancer×1 skeleton×3 slime×3 bat×1,cleared,17.22,80,0,0,0,5,17.4,0.190,1,0,412
+1,7,7003,Room_3,ARENA,2,slime_boss×1 necromancer×1,cleared,15.32,80,0,0,0,1,3.9,0.070,1,0,560
+1,7,7004,Room_1,FIGHT,6,skeleton×4 bat×2,cleared,11.75,80,0,0,0,3,15.3,0.079,1,0,324
+1,7,7004,Room_3,FIGHT,6,skeleton×4 bat×2,cleared,12.02,80,0,0,0,0,0.0,0.000,1,0,324
+1,7,7004,Room_4,FIGHT,6,archer×1 slime×5,cleared,6.27,80,0,0,0,1,9.6,0.125,1,0,235
+1,7,7004,Room_5,FIGHT,6,slime×3 skeleton×3,cleared,9.52,80,0,0,0,1,6.3,0.049,1,0,330
+1,7,7004,Room_7,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,8.75,80,0,0,0,2,13.7,0.200,1,0,295
+1,7,7004,Room_9,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,10.80,80,0,0,0,0,0.0,0.000,1,0,264
+1,7,7004,Room_8,ARENA,2,slime_boss×1 necromancer×1,cleared,14.52,80,0,0,0,1,4.1,0.073,1,0,560
+1,7,7005,Room_1,FIGHT,6,archer×1 slime×2 skeleton×3,cleared,10.52,80,0,0,0,4,22.8,0.227,1,0,325
+1,7,7005,Room_2,FIGHT,6,archer×1 slime×4 skeleton×1,cleared,9.07,80,0,0,0,0,0.0,0.000,1,0,265
+1,7,7005,Room_4,FIGHT,9,archer×2 slime×7,cleared,12.07,80,22,2,0,10,49.7,0.315,1,0,350
+1,7,7005,Room_5,FIGHT,8,archer×2 slime×4 skeleton×2,cleared,15.35,80,24,2,0,16,62.5,0.506,1,0,370
+1,7,7005,Room_7,FIGHT,6,archer×1 slime×3 skeleton×2,cleared,8.65,80,0,0,0,1,6.9,0.091,1,0,295
+1,7,7005,Room_9,FIGHT,6,skeleton×2 bat×2 slime×2,cleared,9.75,80,0,0,0,3,18.5,0.068,1,0,264
+1,7,7005,Room_3,ARENA,3,slime_boss×1 archer×1 slime×1,cleared,14.47,80,0,0,0,0,0.0,0.045,1,0,575

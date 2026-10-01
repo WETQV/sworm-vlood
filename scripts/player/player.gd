@@ -54,6 +54,9 @@ var net_state: PackedFloat32Array = PackedFloat32Array():
 var teleport_epoch: int = 0
 ## Тестовый хук: если задано — прицел сюда вместо курсора мыши (боты в tests/net)
 var aim_override: Vector2 = Vector2.INF
+## Тестовый хук: направление движения бота вместо клавиатуры (tests/balance — несколько
+## героев в одной игре не могут делить общий Input)
+var move_override: Vector2 = Vector2.INF
 var _net_seq: int = 0
 var _interp := NetInterpolator.new()
 var _net_aim: float = 0.0
@@ -86,6 +89,8 @@ var _ground_shadow: Polygon2D = null
 
 # --- Прокачка забега (Progression): базовые значения оружия и эффекты навыков ---
 const BASE_DASH_COOLDOWN := 0.75
+## Встроенное снижение входящего урона паладина (P1 TTK: было 25%)
+const PALADIN_BASE_REDUCTION := 0.2
 const BASE_MELEE_RADIUS := 28.0
 ## Запас окна «Выпада дуэлянта» у хоста для чужого героя: рывок и удар приходят по сети
 const DUELIST_NET_LEEWAY := 0.15
@@ -263,7 +268,7 @@ func _apply_class_stats() -> void:
 			player_info.player_class = PlayerInfo.PlayerClass.PALADIN
 
 	if player_class == GameManager.PlayerClass.PALADIN:
-		hurtbox.damage_reduction = 0.25
+		hurtbox.damage_reduction = PALADIN_BASE_REDUCTION
 	else:
 		hurtbox.damage_reduction = 0.0
 
@@ -375,7 +380,7 @@ func apply_build(build: Dictionary, fresh: bool = false, gained: bool = false) -
 		GameManager.PlayerClass.PALADIN:
 			var bastion: Dictionary = ProgressionCatalog.SKILLS["bastion"]
 			var reduction: float = bastion["reduction"][ProgressionCatalog.rank(build, "bastion")]
-			hurtbox.damage_reduction = 0.25 + reduction
+			hurtbox.damage_reduction = PALADIN_BASE_REDUCTION + reduction
 			bastion_aura = reduction * bastion["aura_share"]
 			var wave: float = ProgressionCatalog.SKILLS["thunder"]["wave"][ProgressionCatalog.rank(build, "thunder")]
 			var hammer := current_weapon as PaladinHammer
@@ -444,6 +449,8 @@ func _physics_process(delta: float) -> void:
 		dash_cooldown_updated.emit(dash_cooldown - _dash_cooldown_timer, dash_cooldown)
 
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if move_override.is_finite():
+		input_dir = move_override
 	# aim_override — тестовый хук (tests/net): точка прицела вместо мыши
 	var mouse_pos: Vector2 = aim_override if aim_override.is_finite() else get_global_mouse_position()
 	var aim_vector: Vector2 = mouse_pos - global_position

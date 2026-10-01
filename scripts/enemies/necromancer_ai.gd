@@ -104,7 +104,6 @@ func _summon() -> void:
 		return
 	_summon_timer = summon_cooldown
 	var space_state := _body.get_world_2d().direct_space_state
-	var game := get_tree().current_scene
 	var spawned := 0
 	for i in 6:
 		if spawned >= summon_count or _minions.size() >= max_minions:
@@ -114,13 +113,9 @@ func _summon() -> void:
 		var hit := space_state.intersect_ray(PhysicsRayQueryParameters2D.create(_body.global_position, want + dir * 16.0, 1))
 		if not hit.is_empty():
 			continue # за стеной — пробуем другое направление
-		var minion: Node2D
-		if NetworkManager.is_online() and game and game.has_method("spawn_network_enemy"):
-			minion = game.spawn_network_enemy(RISEN_SCENE, want)
-		else:
-			minion = RISEN_SCENE.instantiate()
-			_body.get_parent().add_child(minion)
-			minion.global_position = want # после добавления: у родителя-комнаты своё смещение
+		# Прислужники — с характеристиками текущего этажа и живой группы
+		var minion := EnemyScaling.spawn(RISEN_SCENE, want, _body.get_parent(),
+			GameManager.current_floor, EnemyScaling.alive_party(get_tree()))
 		_minions.append(minion)
 		spawned += 1
 

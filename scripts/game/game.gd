@@ -3,7 +3,6 @@ extends Node2D
 ## Запускает генерацию подземелья, потом спавнит игрока в стартовой комнате.
 
 const DUNGEON_SCENE := preload("res://scenes/levels/dungeon_generator.tscn")
-const ELITE_SCRIPT := preload("res://scripts/enemies/elite.gd")
 ## Сколько хост ждёт загрузки уровня у клиентов, сек
 const SCENE_READY_TIMEOUT := 20.0
 
@@ -247,8 +246,8 @@ func _setup_network_spawners() -> void:
 		var enemy: Node2D = load(data[0]).instantiate()
 		enemy.name = data[1]
 		enemy.position = data[2]
-		if data.size() > 3 and data[3]:
-			ELITE_SCRIPT.apply(enemy) # до _ready: здоровье и вид одинаковы у всех
+		if data.size() > 3 and data[3] is Dictionary:
+			EnemyScaling.apply(enemy, data[3]) # числа хоста, до _ready — одинаковы у всех
 		enemy.prepare_network()
 		return enemy
 
@@ -292,9 +291,10 @@ func clear_network_entities() -> void:
 
 
 ## Хост: создать врага для всех игроков. Возвращает созданный узел.
-func spawn_network_enemy(scene: PackedScene, global_pos: Vector2, elite: bool = false) -> Node2D:
+## stats — итоговые характеристики (EnemyScaling.compute); пустой словарь — базовые из сцены
+func spawn_network_enemy(scene: PackedScene, global_pos: Vector2, stats: Dictionary = {}) -> Node2D:
 	_enemy_counter += 1
-	return _enemy_spawner.spawn([scene.resource_path, "Enemy_%d" % _enemy_counter, global_pos, elite]) as Node2D
+	return _enemy_spawner.spawn([scene.resource_path, "Enemy_%d" % _enemy_counter, global_pos, stats]) as Node2D
 
 ## Публичный метод для плавного выхода / перехода между этажами
 func fade_out(duration: float = 0.6, next_floor: int = -1) -> Tween:

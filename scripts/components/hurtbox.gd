@@ -54,6 +54,11 @@ func _ready() -> void:
 			visual_target = parent_node as CanvasItem
 
 
+## Дружественный огонь: союзник получает эту долю урона героя (P1 TTK: полный урон по своим
+## убивал группы ботов уже на 1-м этаже — игроку тоже трудно не задевать союзников в толпе)
+const FRIENDLY_FIRE_FACTOR := 0.5
+
+
 ## Получить урон (вызывается хитбоксом или атакующей стороной).
 ## start_iframes = false — периодический/вторичный урон (поджог, взрыв), не дающий цели
 ## неуязвимость: иначе он гасил бы прямые попадания в следующие 0,25 с.
@@ -75,11 +80,13 @@ func receive_damage(amount: int, knockback_force: float, attacker_position: Vect
 
 	# Наносим урон через HealthComponent с учетом снижения урона
 	var final_amount: int = amount
+	if attacker and attacker.is_in_group("player") and entity.is_in_group("player"):
+		final_amount = maxi(1, int(round(amount * FRIENDLY_FIRE_FACTOR)))
 	var reduction := damage_reduction
 	if entity is Player:
 		reduction = minf(0.6, reduction + Progression.ally_damage_reduction(entity))
 	if reduction > 0.0:
-		final_amount = max(1, int(round(float(amount) * (1.0 - reduction))))
+		final_amount = max(1, int(round(float(final_amount) * (1.0 - reduction))))
 
 	if health_component:
 		health_component.take_damage(final_amount, attacker)

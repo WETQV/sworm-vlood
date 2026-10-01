@@ -190,7 +190,7 @@ func _check_apply_build(player_class: int) -> void:
 		2:
 			_check((_player.current_weapon as RangedWeapon).projectile_mods["blast_radius"] == 64.0, "blast radius rank 2")
 		3:
-			_check(is_equal_approx(_player.hurtbox.damage_reduction, 0.37), "bastion reduction rank 2")
+			_check(is_equal_approx(_player.hurtbox.damage_reduction, Player.PALADIN_BASE_REDUCTION + 0.12), "bastion reduction rank 2")
 			_check(is_equal_approx(_player.bastion_aura, 0.06), "bastion aura rank 2")
 	# Получение живучести посреди этажа лечит на прибавку, а не до полного
 	_player.apply_build(Catalog.empty_build(), true)
@@ -332,7 +332,8 @@ func _check_skill_effects() -> void:
 	_check(near_loss == 92 and far_loss == 100, "bastion aura -8%% near paladin only (%d/%d)" % [near_loss, far_loss])
 	var phc := _player.health_component
 	_player.hurtbox.receive_damage(100, 0.0, _player.global_position, null, true)
-	_check(phc.max_health - phc.current_health == 59, "paladin own reduction 25%% + 16%% (got %d)" % (phc.max_health - phc.current_health))
+	var expected_loss := int(round(100 * (1.0 - Player.PALADIN_BASE_REDUCTION - 0.16)))
+	_check(phc.max_health - phc.current_health == expected_loss, "paladin own reduction base + 16%% (got %d)" % (phc.max_health - phc.current_health))
 	ally.queue_free()
 	# Громовая волна: радиус волны растёт
 	_player.apply_build({"skills": {"thunder": 3}, "upgrades": {}}, true)

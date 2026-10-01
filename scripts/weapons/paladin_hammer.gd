@@ -17,7 +17,7 @@ var _shockwave_origin: Vector2 = Vector2.INF
 
 
 func _init() -> void:
-	damage = 38
+	damage = 32 # совпадает с GameManager.CLASS_DATA (итог задаёт Player.apply_build)
 	knockback_force = 280.0
 	attack_cooldown = 0.40
 	swing_distance = 28.0

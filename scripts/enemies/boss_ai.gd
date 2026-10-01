@@ -15,20 +15,22 @@ const GLOB_SCENE := preload("res://scenes/items/enemy_arrow.tscn")
 const ADD_SCENE := preload("res://scenes/enemies/slime.tscn")
 
 @export var slam_radius: float = 150.0
-@export var slam_damage: int = 22
+@export var slam_damage: int = 18
 @export var slam_windup: float = 0.9
 @export var slam_recover: float = 1.1
-@export var slam_cooldown: float = 5.0
+@export var slam_cooldown: float = 6.0
 @export var slam_trigger_distance: float = 175.0
 @export var spit_windup: float = 0.7
 @export var spit_recover: float = 0.6
-@export var spit_cooldown: float = 4.0
-@export var spit_min_distance: float = 260.0
+@export var spit_cooldown: float = 3.5
+@export var spit_min_distance: float = 180.0
 @export var spit_count: int = 5
 @export var spit_spread_deg: float = 50.0
 @export var spit_speed: float = 260.0
 @export var spit_damage: int = 12
 @export var max_adds: int = 4
+## Упреждение веера: доля скорости цели (полное делало бы веер неуворачиваемым)
+@export var spit_lead: float = 0.7
 
 var _pattern: String = ""
 var _pattern_timer: float = 0.0
@@ -84,7 +86,9 @@ func _choose_pattern() -> bool:
 		_start_pattern("slam", to_target.normalized(), _body.global_position)
 		return true
 	if dist >= spit_min_distance and _spit_cd <= 0.0 and _has_clear_line():
-		_start_pattern("spit", to_target.normalized(), _body.global_position)
+		# Центр веера — с частичным упреждением: стрейф вбок уже не уводит от всех сгустков
+		var lead := target_player.velocity * (dist / spit_speed + spit_windup) * spit_lead
+		_start_pattern("spit", (to_target + lead).normalized(), _body.global_position)
 		return true
 	return false
 
@@ -201,7 +205,6 @@ func _check_split(hc: HealthComponent) -> void:
 	_split_thresholds.pop_front()
 	_adds = _adds.filter(func(a: Node2D) -> bool: return is_instance_valid(a) and a.health_component.is_alive())
 	var space_state := _body.get_world_2d().direct_space_state
-	var game := get_tree().current_scene
 	for side in [-1.0, 1.0]:
 		if _adds.size() >= max_adds:
 			break
@@ -209,13 +212,9 @@ func _check_split(hc: HealthComponent) -> void:
 		var pos: Vector2 = _body.global_position + dir * 70.0
 		if not space_state.intersect_ray(PhysicsRayQueryParameters2D.create(_body.global_position, pos + dir * 16.0, 1)).is_empty():
 			pos = _body.global_position - dir * 70.0
-		var add: Node2D
-		if NetworkManager.is_online() and game and game.has_method("spawn_network_enemy"):
-			add = game.spawn_network_enemy(ADD_SCENE, pos)
-		else:
-			add = ADD_SCENE.instantiate()
-			_body.get_parent().add_child(add)
-			add.global_position = pos # после добавления: у родителя-комнаты своё смещение
+		# Прислужники — с характеристиками текущего этажа и живой группы
+		var add := EnemyScaling.spawn(ADD_SCENE, pos, _body.get_parent(),
+			GameManager.current_floor, EnemyScaling.alive_party(get_tree()))
 		_adds.append(add)
 
 

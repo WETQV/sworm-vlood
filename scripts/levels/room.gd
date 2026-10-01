@@ -33,7 +33,9 @@ const ENEMY_SCENES := {
 }
 ## Пауза между волнами выходной арены: красные отметки места появления видны всем
 const WAVE_WARNING := 1.2
-const ELITE_SCRIPT := preload("res://scripts/enemies/elite.gd")
+## Живые герои при старте встречи: по ним бюджет и здоровье врагов всей встречи
+## (смерть/выход героя посреди боя ничего не пересчитывает)
+var _encounter_party: int = 1
 const SPAWN_PLAYER_DISTANCE := 192.0
 const SPAWN_ENEMY_DISTANCE := 64.0
 
@@ -473,6 +475,7 @@ func _spawn_enemies() -> void:
 		var player := node as Player
 		if player and player.health_component.is_alive():
 			alive_players.append(spawn_root.to_local(player.global_position))
+	_encounter_party = maxi(alive_players.size(), 1)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = encounter_seed
 	var positions := _encounter_positions(alive_players, rng)
@@ -615,18 +618,10 @@ func _spawn_enemy_at(scene: PackedScene, local_pos: Vector2, elite: bool = false
 		local_pos += dir_to_center * TILE_SIZE * 1.5
 		print("[Room %d] Спавн в препятствии! Сдвинуто к центру: %s" % [room_id, local_pos])
 
-	var enemy: Node2D
-	var game := get_tree().current_scene
-	if NetworkManager.is_online() and game and game.has_method("spawn_network_enemy"):
-		# В сети враг создаётся через спавнер игры — и сразу появляется у всех игроков
-		enemy = game.spawn_network_enemy(scene, spawn_root.to_global(local_pos), elite)
-	else:
-		enemy = scene.instantiate()
-		enemy.position = local_pos
-		if elite:
-			ELITE_SCRIPT.apply(enemy)
-		# Враги — дети spawn_root (так удобнее по координатам)
-		spawn_root.add_child(enemy)
+	# Характеристики этажа/группы/элиты считает хост; в сети враг создаётся через спавнер
+	# игры и сразу появляется у всех с теми же числами. Враги — дети spawn_root.
+	var enemy := EnemyScaling.spawn(scene, spawn_root.to_global(local_pos), spawn_root,
+		GameManager.current_floor, _encounter_party, elite)
 	var enemy_id := enemy.get_instance_id()
 	_living_enemies[enemy_id] = true
 	_spawned_enemies_count = _living_enemies.size()

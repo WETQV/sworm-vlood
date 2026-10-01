@@ -12,6 +12,7 @@ const ENEMIES := {
 const ELITE_SURCHARGE := 3
 ## Выходная арена 1–6 идёт двумя волнами: доля состава в первой волне
 const FIRST_WAVE_SHARE := 0.6
+const PARTY_BUDGET := 3
 const SCENARIOS := [
 	{"id": "pursuit", "floor": 1, "core": ["slime", "slime"], "pool": ["slime", "skeleton"]},
 	{"id": "swarm", "floor": 3, "core": ["skeleton", "bat", "bat"], "pool": ["skeleton", "bat", "slime"]},
@@ -27,11 +28,12 @@ static func build(seed_value: int, floor_num: int, players: int, large: bool,
 	rng.seed = seed_value
 	var floor_index := clampi(floor_num, 1, 7)
 	var party := clampi(players, 1, 4)
-	var budget := 6 + (floor_index - 1) * 2 + (4 if large else 0) + (party - 1) * 2
+	# Группа: +3 угрозы за каждого героя сверх первого (P1 TTK: +2 оставляло co-op слишком лёгким)
+	var budget := 6 + (floor_index - 1) * 2 + (4 if large else 0) + (party - 1) * PARTY_BUDGET
 	if exit_arena:
 		budget += 4
 	if final_boss:
-		budget = 6 + (party - 1) * 2 # Босс имеет отдельную стоимость: только ограниченная свита.
+		budget = 6 + (party - 1) * PARTY_BUDGET # Босс имеет отдельную стоимость: только ограниченная свита.
 	var cap := mini(slots, (10 if large else 6) + mini(party - 1, 2))
 	if final_boss:
 		cap = mini(cap, 2 + party)

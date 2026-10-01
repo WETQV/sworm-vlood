@@ -354,7 +354,8 @@ func _scenario_roles() -> void:
 	if role == "host":
 		game.spawn_network_enemy(load("res://scenes/enemies/slime_boss.tscn"), center + Vector2(0, -150))
 		game.spawn_network_enemy(load("res://scenes/enemies/necromancer.tscn"), center + Vector2(250, 0))
-		game.spawn_network_enemy(load("res://scenes/enemies/skeleton.tscn"), center + Vector2(-250, 0), true)
+		var skeleton := load("res://scenes/enemies/skeleton.tscn")
+		game.spawn_network_enemy(skeleton, center + Vector2(-250, 0), EnemyScaling.compute(skeleton, 7, 2, true))
 		for p in get_tree().get_nodes_in_group("player"):
 			(p as Player).health_component.max_health = 100000
 			(p as Player).health_component.set_health(100000)

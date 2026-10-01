@@ -17,7 +17,7 @@ const CLASS_DATA: Dictionary = {
 		"name": "Мечник",
 		"description": "Ближний бой. Высокий урон и крепкое здоровье.",
 		"color": Color(0.8, 0.2, 0.2),
-		"stats": {"hp": 120, "damage": 25, "speed": 280}
+		"stats": {"hp": 150, "damage": 25, "speed": 280}
 	},
 	PlayerClass.RANGER: {
 		"name": "Лучник",
@@ -33,9 +33,9 @@ const CLASS_DATA: Dictionary = {
 	},
 	PlayerClass.PALADIN: {
 		"name": "Паладин",
-		"description": "Священный джаггернаут. Молот со взрывной волной, таран щитом при рывке и -25% к урону.",
+		"description": "Священный джаггернаут. Молот со взрывной волной, таран щитом при рывке и -20% к урону.",
 		"color": Color(0.95, 0.82, 0.25),
-		"stats": {"hp": 180, "damage": 38, "speed": 260}
+		"stats": {"hp": 160, "damage": 32, "speed": 260}
 	}
 }
 
@@ -83,7 +83,9 @@ func start_floor(floor_num: int, seed_value: int) -> void:
 	current_floor = floor_num
 	dungeon_seed = seed_value
 	Progression.begin_floor(floor_num)
-	difficulty_multiplier = 1.0 + (current_floor - 1) * 0.25 # +25% статов за каждый этаж
+	# Для логов/интерфейса: множитель здоровья обычных врагов этажа. Сам скейлинг
+	# применяется к каждому врагу при появлении — EnemyScaling (здоровье, урон, темп раздельно)
+	difficulty_multiplier = EnemyScaling.floor_hp(current_floor)
 	print("[GameManager] Этаж %d, Сложность: %.2f" % [current_floor, difficulty_multiplier])
 	change_scene("res://scenes/game/game.tscn")
 
