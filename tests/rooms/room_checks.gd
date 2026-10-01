@@ -192,7 +192,25 @@ func _check_floor(floor_num: int) -> void:
 		room._begin_fight(player)
 		_check(room.current_state == Room.RoomState.SLEEP, "Dead player activated room")
 		player.health_component.is_dead = false
+		# Эффекты появления врагов — внутри комнаты, а не в её углу за стеной
+		var bursts: Array[Node2D] = []
+		var on_added := func(node: Node) -> void:
+			if node is CPUParticles2D:
+				bursts.append(node)
+		get_tree().node_added.connect(on_added)
 		room._begin_fight(player)
+		await get_tree().process_frame # эффекты добавляются отложенно (call_deferred)
+		get_tree().node_added.disconnect(on_added)
+		_check(not bursts.is_empty(), "No spawn effects captured (%s)" % room.name)
+		var room_rect := Rect2(room.global_position + Vector2.ONE * 64.0, Vector2(room.room_size - Vector2i(2, 2)) * 64.0)
+		for burst in bursts:
+			var at_door := false # пыль захлопнувшейся двери — законно в проёме
+			for door in room.spawned_doors:
+				if is_instance_valid(door) and door.global_position.distance_to(burst.global_position) < 48.0:
+					at_door = true
+			if at_door:
+				continue
+			_check(room_rect.has_point(burst.global_position), "Spawn effect outside room at %s (%s, rect %s, type %s)" % [burst.global_position, room.name, room_rect, Room.RoomType.keys()[room.room_type]])
 		_check(room.current_state == Room.RoomState.FIGHT and room._spawned_enemies_count > 0, "Encounter did not activate")
 		var count: int = room._spawned_enemies_count
 		room._begin_fight(player)

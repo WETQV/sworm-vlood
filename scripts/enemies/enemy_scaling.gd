@@ -141,8 +141,10 @@ static func spawn(scene: PackedScene, global_pos: Vector2, parent: Node, floor_n
 		return game.spawn_network_enemy(scene, global_pos, stats)
 	var enemy: Node2D = scene.instantiate()
 	apply(enemy, stats)
+	# Позиция ДО добавления: _ready врага ставит эффект появления и сбрасывает интерполяцию
+	# по своей позиции — иначе они срабатывали в начале координат комнаты (угол за стеной)
+	enemy.position = (parent as Node2D).to_local(global_pos) if parent is Node2D else global_pos
 	parent.add_child(enemy)
-	enemy.global_position = global_pos
 	return enemy
 
 
